@@ -26,7 +26,7 @@ class PrimalDual(torch.nn.Module):
     #     torch.set_grad_enabled(True)
     #     return device
             
-    def forward(self, f, repeats, l, lmbda, nu, tol, dev):
+    def forward(self, f, repeats, l, lmbda, nu, tol):
     # Original __init__ code moved here (with 'self.' removed)
     
         # repeats = int(repeats_a)
@@ -34,15 +34,13 @@ class PrimalDual(torch.nn.Module):
         # lmbda = float(lmbda_a)
         # nu = float(nu_a)
         
-        self.device = dev #self.setDevice()
-
+        dev = f.device
         
-
         # initialize parameters
-        nrj = torch.tensor(0, device = self.device)
-        tauu = torch.tensor(1.0 / 6.0, device = self.device)
-        sigmap = torch.tensor(1.0 / (3.0 + l), device = self.device)
-        sigmas = torch.tensor(1.0, device = self.device)
+        nrj = torch.tensor(0, device=dev)
+        tauu = torch.tensor(1.0 / 6.0, device=dev)
+        sigmap = torch.tensor(1.0 / (3.0 + l), device=dev)
+        sigmas = torch.tensor(1.0, device=dev)
 
         # get image dimensions
         dim = len(f.size())
@@ -55,22 +53,22 @@ class PrimalDual(torch.nn.Module):
 
         
         # allocate memory on device
-        u = torch.zeros(dims + [int(l)], dtype=torch.float32, device = self.device)
-        ubar = torch.zeros(dims + [int(l)], dtype=torch.float32, device = self.device)
-        px = torch.zeros([dim-1] + dims + [int(l)], dtype=torch.float32, device = self.device)
-        pt = torch.zeros(dims + [int(l)], dtype=torch.float32, device = self.device)
-        # p1 = torch.zeros(h, w, nc, l, dtype=torch.float32, device = self.device)
-        # p2 = torch.zeros(h, w, nc, l, dtype=torch.float32, device = self.device)
-        # p3 = torch.zeros(h, w, nc, l, dtype=torch.float32, device = self.device)
-        sx = torch.zeros([dim-1] + dims + [proj], dtype=torch.float32, device = self.device)
-        mux = torch.zeros([dim-1] + dims + [proj], dtype=torch.float32, device = self.device)
-        mubarx = torch.zeros([dim-1] + dims + [proj], dtype=torch.float32, device = self.device)
-        # s1 = torch.zeros(h, w, nc, proj, dtype=torch.float32, device = self.device)
-        # s2 = torch.zeros(h, w, nc, proj, dtype=torch.float32, device = self.device)
-        # mu1 = torch.zeros(h, w, nc, proj, dtype=torch.float32, device = self.device)
-        # mu2 = torch.zeros(h, w, nc, proj, dtype=torch.float32, device = self.device)
-        # mubar1 = torch.zeros(h, w, nc, proj, dtype=torch.float32, device = self.device)
-        # mubar2 = torch.zeros(h, w, nc, proj, dtype=torch.float32, device = self.device)
+        u = torch.zeros(dims + [int(l)], dtype=torch.float32, device=dev)
+        ubar = torch.zeros(dims + [int(l)], dtype=torch.float32, device=dev)
+        px = torch.zeros([dim-1] + dims + [int(l)], dtype=torch.float32, device=dev)
+        pt = torch.zeros(dims + [int(l)], dtype=torch.float32, device=dev)
+        # p1 = torch.zeros(h, w, nc, l, dtype=torch.float32)
+        # p2 = torch.zeros(h, w, nc, l, dtype=torch.float32)
+        # p3 = torch.zeros(h, w, nc, l, dtype=torch.float32)
+        sx = torch.zeros([dim-1] + dims + [proj], dtype=torch.float32, device=dev)
+        mux = torch.zeros([dim-1] + dims + [proj], dtype=torch.float32, device=dev)
+        mubarx = torch.zeros([dim-1] + dims + [proj], dtype=torch.float32, device=dev)
+        # s1 = torch.zeros(h, w, nc, proj, dtype=torch.float32)
+        # s2 = torch.zeros(h, w, nc, proj, dtype=torch.float32)
+        # mu1 = torch.zeros(h, w, nc, proj, dtype=torch.float32)
+        # mu2 = torch.zeros(h, w, nc, proj, dtype=torch.float32)
+        # mubar1 = torch.zeros(h, w, nc, proj, dtype=torch.float32)
+        # mubar2 = torch.zeros(h, w, nc, proj, dtype=torch.float32)
 
         
         # remove brackets in all lines above as in the first one
@@ -100,9 +98,9 @@ class PrimalDual(torch.nn.Module):
 
         k1_k2_combinations = torch.cat(k1_k2_combinations, dim=0)
             
-        h_un = torch.zeros_like(u, device = self.device)  # Initialize h_un with a default value (None in this case)
-        h_u = torch.zeros_like(u, device = self.device)  # Initialize h_u with a default value (None in this case)
-        nrj = torch.tensor([0], device = self.device)  # Initialize nrj with a default value (None in this case)
+        h_un = torch.zeros_like(u)  # Initialize h_un with a default value (None in this case)
+        h_u = torch.zeros_like(u)  # Initialize h_u with a default value (None in this case)
+        nrj = torch.tensor([0], device = dev)  # Initialize nrj with a default value (None in this case)
         it_total = 0
         
         # START loop
@@ -143,7 +141,7 @@ class PrimalDual(torch.nn.Module):
             #         zeros_shape.append(1)
             #     else:
             #         zeros_shape.append(ubar.shape[j])
-            zeros = torch.zeros(zeros_shape, device=self.device)
+            zeros = torch.zeros(zeros_shape, device=ubar.device)
             diff = torch.cat((torch.diff(ubar, dim=dim), zeros), dim=dim)
             diffs.append(diff)
 
@@ -158,16 +156,16 @@ class PrimalDual(torch.nn.Module):
 
         # take forward differences
         ux = self.forward_differences(ubar, len(dims)-1)
-        # u1 = torch.cat((torch.diff(ubar[...], dim=0), torch.zeros_like(ubar[:1,...], dtype = torch.float16, device = self.device)), dim = 0)
+        # u1 = torch.cat((torch.diff(ubar[...], dim=0), torch.zeros_like(ubar[:1,...], dtype = torch.float16)), dim = 0)
         # (u1 == ux[0,...]).all()
-        ut = torch.cat((torch.diff(ubar, dim=-1), torch.zeros_like(ubar[...,:1], dtype = torch.float32, device = self.device)), dim = -1)
+        ut = torch.cat((torch.diff(ubar, dim=-1), torch.zeros_like(ubar[...,:1], dtype = torch.float32)), dim = -1)
         
         musum_list = []
 
         for z in range(int(l)):
 
             #musum_temp = mux[..., k_indices[z]].sum(dim=-1)
-            musum_temp = torch.index_select(mux, -1, torch.tensor(k_indices[z], device = self.device)).sum(dim=-1)
+            musum_temp = torch.index_select(mux, -1, torch.tensor(k_indices[z],  device = px.device)).sum(dim=-1)
 
             musum_list.append(musum_temp)
 
@@ -181,7 +179,7 @@ class PrimalDual(torch.nn.Module):
         img = torch.stack([f] * l, dim=-1)
 
         # Calculate B using bound and broadcast it along the last dimension
-        k = torch.arange(1, int(l)+1, dtype=torch.int64, device = self.device).repeat(dims + [1])
+        k = torch.arange(1, int(l)+1, dtype=torch.int64, device = px.device).repeat(dims + [1])
         
         B = self.bound(ux, lmbda, k, l, img) # chcked
         
@@ -268,12 +266,12 @@ class PrimalDual(torch.nn.Module):
         
         # take backward differences
         dx = self.backward_differences(px, px.size(dim = 0))
-        dt = torch.cat((pt[...,:-1], torch.zeros(dims + [1], device = self.device)), dim=-1) - torch.cat((torch.zeros(dims + [1], device = self.device), pt[...,:-1]), dim=-1) 
+        dt = torch.cat((pt[...,:-1], torch.zeros(dims + [1], device = u.device)), dim=-1) - torch.cat((torch.zeros(dims + [1], device = u.device), pt[...,:-1]), dim=-1) 
         
         D = temp+tauu*(torch.sum(dx, dim=0)+dt)
         u = torch.clamp(D, min=0, max=1)
-        u[...,0] = torch.ones(dims, device = self.device)
-        u[...,int(l)-1] = torch.zeros(dims, device = self.device)
+        u[...,0] = torch.ones(dims, device = u.device)
+        u[...,int(l)-1] = torch.zeros(dims, device = u.device)
         ubar = 2.0 * u - temp
         return u, ubar
     
@@ -283,10 +281,10 @@ class PrimalDual(torch.nn.Module):
 
         for i in range(dims):
             # zeros_shape = [1 if j == i else p[i].shape[j] for j in range(p[0].dim())]
-            # zeros = torch.zeros(*zeros_shape, device=self.device)
+            # zeros = torch.zeros(*zeros_shape)
             zeros_shape = list(p[i].shape)
             zeros_shape[i] = 1
-            zeros = torch.zeros(zeros_shape, device=self.device)
+            zeros = torch.zeros(zeros_shape, device = p.device)
 
             before_cat = torch.cat((p[i].narrow(i, 0, p[i].shape[i] - 1), zeros), dim=i)
             after_cat = torch.cat((zeros, p[i].narrow(i, 0, p[i].shape[i] - 1)), dim=i)
@@ -321,8 +319,8 @@ if __name__ == "__main__":
     g = DeviceMode(torch.device(dev))
     g.__enter__()
 
-    f = torch.randn(10, 10, 1)
-    repeats = torch.tensor(10)
+    f = torch.randn(10, 10, 1, device = dev)
+    repeats = torch.tensor(10, device = dev)
     level = torch.tensor(16)
     lmbda = torch.tensor(1)
     nu = torch.tensor(0.1)
@@ -331,7 +329,10 @@ if __name__ == "__main__":
     # model = PrimalDual()
     # test = model.forward(f, repeats, level, lmbda, nu, tol)
     
-    scripted_primal_dual = torch.jit.script(PrimalDual(), example_inputs = [f, repeats, level, lmbda, nu, tol, dev])
+    pd = PrimalDual()
+    pd = pd.to(dev)
+    
+    scripted_primal_dual = torch.jit.script(pd, example_inputs = [f, repeats, level, lmbda, nu, tol])
     torch.jit.save(scripted_primal_dual, 'scripted_primal_dual.pt')
     
     test = scripted_primal_dual(f, repeats, level, lmbda, nu, tol)
