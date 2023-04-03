@@ -5,6 +5,8 @@ from typing import Tuple, List, Dict
 from utils import * 
 import cv2
 from matplotlib import pyplot as plt
+from sklearn.cluster import KMeans
+
 
 
 class FDD():
@@ -149,7 +151,6 @@ class FDD():
         X2 = out[0].reshape(-1,1).squeeze(1)
         Z = np.stack([X1, X2], axis = 1)
 
-        from sklearn.cluster import KMeans
 
         kmeans = KMeans(n_clusters=2, random_state=0).fit(Z)
         nu = X1[kmeans.labels_ == 1].max()
