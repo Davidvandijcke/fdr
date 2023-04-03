@@ -10,30 +10,32 @@ class PrimalDual(torch.nn.Module):
 
         super(PrimalDual, self).__init__()
         
-        self.device = self.setDevice()
         torch.set_grad_enabled(False)
 
         
 
-    def setDevice(self):
-        if torch.cuda.is_available(): # cuda gpus
-            device = torch.device("cuda")
-            #torch.cuda.set_device(int(gpu_id))
-            torch.set_default_tensor_type('torch.cuda.FloatTensor')
-        elif torch.backends.mps.is_available(): # mac gpus
-            device = torch.device("mps")
-        elif torch.backends.mkl.is_available(): # intel cpus
-            device = torch.device("mkl")
-        torch.set_grad_enabled(True)
-        return device
+    # def setDevice(self):
+    #     if torch.cuda.is_available(): # cuda gpus
+    #         device = torch.device("cuda")
+    #         #torch.cuda.set_device(int(gpu_id))
+    #         torch.set_default_tensor_type('torch.cuda.FloatTensor')
+    #     elif torch.backends.mps.is_available(): # mac gpus
+    #         device = torch.device("mps")
+    #     elif torch.backends.mkl.is_available(): # intel cpus
+    #         device = torch.device("mkl")
+    #     torch.set_grad_enabled(True)
+    #     return device
             
-    def forward(self, f, repeats, l, lmbda, nu, tol):
+    def forward(self, f, repeats, l, lmbda, nu, tol, dev):
     # Original __init__ code moved here (with 'self.' removed)
     
         # repeats = int(repeats_a)
         # l = int(level_a)
         # lmbda = float(lmbda_a)
         # nu = float(nu_a)
+        
+        self.device = dev #self.setDevice()
+
         
 
         # initialize parameters
@@ -329,7 +331,7 @@ if __name__ == "__main__":
     # model = PrimalDual()
     # test = model.forward(f, repeats, level, lmbda, nu, tol)
     
-    scripted_primal_dual = torch.jit.script(PrimalDual(), example_inputs = [f, repeats, level, lmbda, nu, tol])
+    scripted_primal_dual = torch.jit.script(PrimalDual(), example_inputs = [f, repeats, level, lmbda, nu, tol, dev])
     torch.jit.save(scripted_primal_dual, 'scripted_primal_dual.pt')
     
     test = scripted_primal_dual(f, repeats, level, lmbda, nu, tol)

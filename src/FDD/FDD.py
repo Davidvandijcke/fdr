@@ -29,8 +29,10 @@ class FDD():
         self.normalizeData() # scale data to unit hypercube
         self.castDataToGrid()
         
-        self.model = torch.jit.load("scripted_primal_dual.pt", map_location = self.device)
+        self.model = torch.jit.load("src/FDD/scripted_primal_dual.pt", map_location = self.device)
         
+        
+        self.model = self.model.to(self.device)
         # TODO: exclude duplicate points (there shouldnt be any cause the variables are assumed to be continuous but anyway)
         
 
@@ -314,7 +316,7 @@ if __name__ == "__main__":
     g = DeviceMode(torch.device(dev))
     g.__enter__()
 
-    image = "marylin.png"
+    image = "resources/images/marylin.png"
     mIn = cv2.imread(image, (0))
     mIn = mIn.astype(np.float32)
     mIn /= 255
