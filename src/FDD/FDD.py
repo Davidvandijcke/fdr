@@ -90,7 +90,7 @@ class FDD():
         xmax = np.max(self.X, axis = 0)
         
         # set up grid
-        grid_x = np.meshgrid(*[np.arange(0, xmax[i], self.resolution) for i in range(X.shape[1])])
+        grid_x = np.meshgrid(*[np.arange(0, xmax[i], self.resolution) for i in range(self.X.shape[1])])
         grid_x = np.stack(grid_x, axis = -1)
         if self.Y.ndim > 1: # account for vector-valued outcomes
             grid_y = np.zeros(list(grid_x.shape[:-1]) + [self.Y.shape[1]])
@@ -370,7 +370,7 @@ if __name__ == "__main__":
     nu = X1[kmeans.labels_ == 1].max()
 
     model = FDD(Y, X, level = 16, lmbda = 1, nu = 0.05, iter = 1000, tol = 5e-5)
-    u, J, nrj, eps, it = model.run()
+    u, jumps, J_grid, nrj, eps, it = model.run()
     cv2.imwrite("result.png",u*255)
 
     plt.imshow(J)
