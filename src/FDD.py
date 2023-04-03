@@ -85,18 +85,18 @@ class FDD():
         qile = np.quantile(distances, 0.005) # get 0.5% quantile
         
         # pythagoras
-        resolution = qile # take as side-length the 0.5% quantile of distances between points
+        self.resolution = qile # take as side-length the 0.5% quantile of distances between points
         
         xmax = np.max(self.X, axis = 0)
         
         # set up grid
-        grid_x = np.meshgrid(*[np.arange(0, xmax[i] + resolution, resolution) for i in range(X.shape[1])])
+        grid_x = np.meshgrid(*[np.arange(0, xmax[i], self.resolution) for i in range(X.shape[1])])
         grid_x = np.stack(grid_x, axis = -1)
         if self.Y.ndim > 1: # account for vector-valued outcomes
             grid_y = np.zeros(list(grid_x.shape[:-1]) + [self.Y.shape[1]])
         else:
             grid_y = np.zeros(list(grid_x.shape[:-1]))
-
+        grid_x_og = np.empty(list(grid_x.shape[:-1]), dtype = object) # assign original x values as well for later
 
         # find closest data point for each point on grid and assign value
         # Iterate over the grid cells
@@ -107,10 +107,14 @@ class FDD():
             closest_seed = np.argmin(distances)
             # Assign the value of the corresponding data point to the grid cell
             grid_y[it.multi_index] = self.Y[closest_seed] #.min()
+
+            # assign original x value
+            grid_x_og[it.multi_index] = tuple(self.X[closest_seed,:])
         
         if self.Y.ndim == 1:
             grid_y = grid_y.reshape(grid_y.shape + (1,))
-            
+
+        self.grid_x_og = grid_x_og
         self.grid_x = grid_x
         self.grid_y = grid_y
         
@@ -134,12 +138,110 @@ class FDD():
         
         return h_img
     
+    def k_means_boundary(self, u):
+        # histogram of gradient norm
+        test = np.linalg.norm(forward_differences(mIn, D = len(mIn.shape)), axis = 0)
+        out = plt.hist(test)
+
+        X1 = np.tile(out[1][1:], out[0].shape[0])
+        X2 = out[0].reshape(-1,1).squeeze(1)
+        Z = np.stack([X1, X2], axis = 1)
+
+        from sklearn.cluster import KMeans
+
+        kmeans = KMeans(n_clusters=2, random_state=0).fit(Z)
+        nu = X1[kmeans.labels_ == 1].max()
+        
+    def boundaryGridToData(self, J_grid):
+        # get the indices of the J_grid where J_grid is 1
+        k = np.array(np.where(J_grid == 1))
+        
+        distances = [] # TODO: can't jump to another boundary point
+        k_shifts = []
+        for d in range(k.shape[0]):
+            
+            # take the forward difference along one dimensions
+            k_shift = k.copy()
+            k_shift[d] = np.where(k_shift[d] == J_grid.shape[d] - 1, # if at the edge of the domain, don't shift
+                                  k_shift[d], k_shift[d] + 1) 
+            k_shifts.append(k_shift)
+            
+            # calculate distance between points and store for later comparison
+            np_array1 = np.array([list(t) for t in self.grid_x_og[tuple(k)]])
+            np_array2 = np.array([list(t) for t in self.grid_x_og[tuple(k_shift)]])
+
+            distance = np.sqrt(np.sum((np_array1 - np_array2)**2, axis=-1))
+            
+            # find all columns in k_shift that are also in k, we don't want to jump to another boundary point
+            matching_rows = np.all(k_shift.T[:, np.newaxis] == k.T, axis=-1).any(axis=1)
+            distance[matching_rows] = np.inf
+
+            distances.append(distance) # filter out the points on the boundary that are the same
+            
+        distances = np.array(distances)
+        distances = np.where(distances == 0, np.inf, distances)
+        
+        # filter out columns where all the elements are inf, these will be "thick" boundary points
+        idx = ~np.all(distances == np.inf, axis=0)
+        distances = distances[:, idx]
+        k_shifts = np.array(k_shifts)
+        k_shifts = k_shifts[:, :, idx]
+        k = k[:,idx]
+        idx = np.argmin(distances, axis = 0)
+        
+        closest_points = k_shifts[idx, :, np.arange(k_shifts.shape[2])] # these are the coordinates of the boundary points
+        midpoints = (k.T + closest_points) / 2
+
+        # get jumpto points
+        matching_rows = np.all(self.X_raw[:, np.newaxis] == closest_points, axis=-1)
+        matching_indices = np.where(matching_rows)[0]
+        Y_jumpto = self.Y_raw[matching_indices]
+        
+        # get jumpfrom points
+        matching_rows = np.all(self.X_raw[:, np.newaxis] == np.transpose(k), axis=-1)
+        matching_indices = np.where(matching_rows)[0]
+        Y_jumpfrom = self.Y_raw[matching_indices]
+        
+        # jump size
+        jumpsize = Y_jumpto - Y_jumpfrom
+        
+        # create named array to return
+        rays = [midpoints[:,d] for d in range(midpoints.shape[1])] + [Y_jumpfrom, Y_jumpto, jumpsize]
+        names = ["X_" + str(d) for d in range(midpoints.shape[1])] + ["Y_jumpto", "Y_jumpfrom", "Y_jumpsize"]
+        jumps = np.core.records.fromarrays(rays, names=names)
+        
+        return jumps
+        
     def boundary(self, u):
+        
         u_diff = self.forward_differences(u, D = len(u.shape))
-        resolution = np.max(self.X, axis = 0)[0] / self.grid_x.shape[0]
-        u_diff = u_diff / resolution
+        u_diff = u_diff / self.resolution # scale FD by side length
         u_norm = np.linalg.norm(u_diff, axis = 0, ord = 2) # 2-norm
-        return (u_norm >= np.sqrt(self.nu)).astype(int)
+
+        plt.ioff()  # Turn off interactive mode to prevent the figure from being displayed
+        out = plt.hist(u_norm)
+        plt.close()  # Close the figure to free up memory
+
+        X1 = np.tile(out[1][1:], out[0].shape[0])
+        X2 = out[0].reshape(-1,1).squeeze(1)
+        Z = np.stack([X1, X2], axis = 1)
+
+        # the histogram is "bimodal" (one large cluster and a bunch of smaller ones), so we use k-means to find the edge of the first "jump" cluster
+        # TODO: averages instead of closest points
+        kmeans = KMeans(n_clusters=2, random_state=0, n_init = "auto").fit(Z)
+        nu = X1[kmeans.labels_ == 1].max()
+        
+        # find the boundary on the grid by comparing the gradient norm to the threshold
+        J_grid = (u_norm >= nu).astype(int)
+        
+        ## find the boundary on the point cloud
+        jumps = self.boundaryGridToData(J_grid)
+        
+        # test_grid = np.zeros(self.grid_y.shape)
+        # for row in jumps:
+        #     test_grid[tuple(row)[:-2]] = 1
+
+        return (J_grid, jumps)
     
     #def treatmentEffects(self, u, J):
         
@@ -182,11 +284,13 @@ class FDD():
         nrj = nrj.cpu().detach().numpy()
         eps = eps.cpu().detach().numpy()
         
-        u = self.isosurface(v)
+        u = self.isosurface(v) 
         
-        J = self.boundary(u)
+        J_grid, jumps = self.boundary(u)
         
-        return (u, J, nrj, eps, it)
+        # renormalize u
+        
+        return (u, jumps, J_grid, nrj, eps, it)
         
 
         
@@ -265,7 +369,7 @@ if __name__ == "__main__":
     kmeans = KMeans(n_clusters=2, random_state=0).fit(Z)
     nu = X1[kmeans.labels_ == 1].max()
 
-    model = FDD(Y, X, level = 16, lmbda = 0.1, nu = 5, iter = 1000, tol = 5e-5)
+    model = FDD(Y, X, level = 16, lmbda = 1, nu = 0.05, iter = 1000, tol = 5e-5)
     u, J, nrj, eps, it = model.run()
     cv2.imwrite("result.png",u*255)
 
@@ -288,7 +392,7 @@ if __name__ == "__main__":
     # get new boundary
     J_new = boundary(u, nu = nu**2) # the squared is just cause we're taking the square root
 
-    
+    plt.imshow(J_new)
 
     # plt.hist(test.reshape(-1,1)[kmeans.labels_ == 2], bins = 100)
 
