@@ -10,7 +10,7 @@ from sklearn.cluster import KMeans
 
 
 class FDD():
-    def __init__(self, Y : np.array, X : np.array, level : int=16, 
+    def __init__(self, Y : np.array, X : np.array, pick_nu : str="auto", level : int=16, 
                  lmbda : float=1, nu : float=0.01, iter : int=1000, tol : float=5e-5, rectangle : bool=False, 
                  qtile : float=0.05) -> None:
 
@@ -24,7 +24,6 @@ class FDD():
 
         self.level = level
         self.lmbda = lmbda
-        self.nu = nu
         self.iter = iter
         self.tol = tol
         self.rectangle = rectangle
@@ -32,6 +31,14 @@ class FDD():
         
         self.normalizeData() # scale data to unit hypercube
         self.castDataToGrid()
+        
+        # if pick_nu == "auto":
+        #     u_diff = self.forward_differences(self.grid_y, D = len(self.grid_y.shape))
+        #     u_diff = u_diff / self.resolution # scale FD by side length
+        #     u_norm = np.linalg.norm(u_diff, axis = 0, ord = 2) # 2-norm
+        #     self.nu = self.pickKMeans(u_norm)
+        # else:
+        self.nu = nu
         
         self.model = torch.jit.load("src/FDD/scripted_primal_dual.pt", map_location = self.device)
         
@@ -224,13 +231,8 @@ class FDD():
         jumps = np.core.records.fromarrays(rays, names=names)
         
         return jumps
-        
-    def boundary(self, u):
-        
-        u_diff = self.forward_differences(u, D = len(u.shape))
-        u_diff = u_diff / self.resolution # scale FD by side length
-        u_norm = np.linalg.norm(u_diff, axis = 0, ord = 2) # 2-norm
-
+    
+    def pickKMeans(self, u_norm):
         plt.ioff()  # Turn off interactive mode to prevent the figure from being displayed
         out = plt.hist(u_norm)
         plt.close()  # Close the figure to free up memory
@@ -242,7 +244,14 @@ class FDD():
         # the histogram is "bimodal" (one large cluster and a bunch of smaller ones), so we use k-means to find the edge of the first "jump" cluster
         # TODO: averages instead of closest points
         kmeans = KMeans(n_clusters=2, random_state=0, n_init = "auto").fit(Z)
-        nu = X1[kmeans.labels_ == 1].max()
+        
+    def boundary(self, u):
+        
+        u_diff = self.forward_differences(u, D = len(u.shape))
+        u_diff = u_diff / self.resolution # scale FD by side length
+        u_norm = np.linalg.norm(u_diff, axis = 0, ord = 2) # 2-norm
+
+        nu = self.pickKMeans(u_norm)
         
         # find the boundary on the grid by comparing the gradient norm to the threshold
         J_grid = (u_norm >= nu).astype(int)

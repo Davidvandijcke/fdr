@@ -142,7 +142,7 @@ class PrimalDual(torch.nn.Module):
             #     else:
             #         zeros_shape.append(ubar.shape[j])
             zeros = torch.zeros(zeros_shape, device=ubar.device)
-            diff = torch.cat((torch.diff(ubar, dim=dim), zeros), dim=dim)
+            diff = torch.cat((torch.diff(ubar, dim=dim), zeros), dim=dim) / (1 / ubar.shape[0])
             diffs.append(diff)
 
         # Stack the results along a new dimension (first dimension)
@@ -158,7 +158,7 @@ class PrimalDual(torch.nn.Module):
         ux = self.forward_differences(ubar, len(dims)-1)
         # u1 = torch.cat((torch.diff(ubar[...], dim=0), torch.zeros_like(ubar[:1,...], dtype = torch.float16)), dim = 0)
         # (u1 == ux[0,...]).all()
-        ut = torch.cat((torch.diff(ubar, dim=-1), torch.zeros_like(ubar[...,:1], dtype = torch.float32)), dim = -1)
+        ut = (torch.cat((torch.diff(ubar, dim=-1), torch.zeros_like(ubar[...,:1], dtype = torch.float32)), dim = -1)) / (1 / ubar.shape[0])
         
         musum_list = []
 
@@ -266,7 +266,8 @@ class PrimalDual(torch.nn.Module):
         
         # take backward differences
         dx = self.backward_differences(px, px.size(dim = 0))
-        dt = torch.cat((pt[...,:-1], torch.zeros(dims + [1], device = u.device)), dim=-1) - torch.cat((torch.zeros(dims + [1], device = u.device), pt[...,:-1]), dim=-1) 
+        dt = torch.cat((pt[...,:-1], torch.zeros(dims + [1], device = u.device)), dim=-1) - \
+            torch.cat((torch.zeros(dims + [1], device = u.device), pt[...,:-1]), dim=-1) / (1 / pt.shape[0])
         
         D = temp+tauu*(torch.sum(dx, dim=0)+dt)
         u = torch.clamp(D, min=0, max=1)
@@ -288,7 +289,7 @@ class PrimalDual(torch.nn.Module):
 
             before_cat = torch.cat((p[i].narrow(i, 0, p[i].shape[i] - 1), zeros), dim=i)
             after_cat = torch.cat((zeros, p[i].narrow(i, 0, p[i].shape[i] - 1)), dim=i)
-            diff = before_cat - after_cat
+            diff = (before_cat - after_cat) / (1 / p.shape[1])
             output.append(diff)
 
         result = torch.stack(output, dim=0)
@@ -335,6 +336,6 @@ if __name__ == "__main__":
     scripted_primal_dual = torch.jit.script(pd, example_inputs = [f, repeats, level, lmbda, nu, tol])
     torch.jit.save(scripted_primal_dual, 'scripted_primal_dual.pt')
     
-    test = scripted_primal_dual(f, repeats, level, lmbda, nu, tol)
+    # test = scripted_primal_dual(f, repeats, level, lmbda, nu, tol)
     
     
