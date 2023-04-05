@@ -258,7 +258,7 @@ class FDD():
         if self.pick_nu == "kmeans":
             nu = self.pickKMeans(u_norm)
         else:
-            nu = self.nu
+            nu = np.sqrt(self.nu)
         
         # find the boundary on the grid by comparing the gradient norm to the threshold
         J_grid = (u_norm >= nu).astype(int)
