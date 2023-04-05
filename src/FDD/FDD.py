@@ -10,7 +10,7 @@ from sklearn.cluster import KMeans
 
 
 class FDD():
-    def __init__(self, Y : np.array, X : np.array, pick_nu : str="auto", level : int=16, 
+    def __init__(self, Y : np.array, X : np.array, pick_nu : str="MS", level : int=16, 
                  lmbda : float=1, nu : float=0.01, iter : int=1000, tol : float=5e-5, rectangle : bool=False, 
                  qtile : float=0.05) -> None:
 
@@ -39,6 +39,7 @@ class FDD():
         #     self.nu = self.pickKMeans(u_norm)
         # else:
         self.nu = nu
+        self.pick_nu = pick_nu
         
         self.model = torch.jit.load("src/FDD/scripted_primal_dual.pt", map_location = self.device)
         
@@ -254,7 +255,10 @@ class FDD():
         u_diff = u_diff / self.resolution # scale FD by side length
         u_norm = np.linalg.norm(u_diff, axis = 0, ord = 2) # 2-norm
 
-        nu = self.pickKMeans(u_norm)
+        if self.pick_nu == "kmeans":
+            nu = self.pickKMeans(u_norm)
+        else:
+            nu = self.nu
         
         # find the boundary on the grid by comparing the gradient norm to the threshold
         J_grid = (u_norm >= nu).astype(int)
