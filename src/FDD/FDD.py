@@ -254,10 +254,10 @@ class FDD():
         u_diff = u_diff / self.resolution # scale FD by side length
         u_norm = np.linalg.norm(u_diff, axis = 0, ord = 2) # 2-norm
 
-        # nu = self.pickKMeans(u_norm)
+        nu = self.pickKMeans(u_norm)
         
         # find the boundary on the grid by comparing the gradient norm to the threshold
-        J_grid = (u_norm >= np.sqrt(self.nu)).astype(int)
+        J_grid = (u_norm >= nu).astype(int)
         
         ## find the boundary on the point cloud
         jumps = self.boundaryGridToData(J_grid, u)
@@ -476,7 +476,7 @@ if __name__ == "__main__":
     X = data.copy()
     Y = grid_sample.copy().flatten()
     # and run the FDD command
-    model = FDD(Y, X, level = 16, lmbda = 1, nu = 0.1, iter = 1000, tol = 5e-5, qtile = 0.1)
+    model = FDD(Y, X, level = 16, lmbda = 1, nu = 8, iter = 1000, tol = 5e-5, qtile = 0.1)
     u, jumps, J_grid, nrj, eps, it = model.run()
 
     plt.imshow(J_grid)
