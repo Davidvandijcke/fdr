@@ -35,11 +35,13 @@ class PrimalDual(torch.nn.Module):
         # nu = float(nu_a)
         
         dev = f.device
+        res = torch.tensor(1 / f.shape[0], device = dev)
         
         # initialize parameters
-        nrj = torch.tensor(0, device=dev)
-        tauu = torch.tensor(1.0 / 6.0, device=dev)
-        sigmap = torch.tensor(1.0 / (3.0 + l), device=dev)
+        nrj = torch.tensor(0, device=dev) 
+        tw = torch.tensor(12, dtype=torch.float32, device = dev)
+        tauu =  torch.tensor(res * 1.0 / 6.0, device=dev)
+        sigmap = torch.tensor((1.0 / (3.0 + l)) *res, device=dev)
         sigmas = torch.tensor(1.0, device=dev)
 
         # get image dimensions
@@ -49,7 +51,7 @@ class PrimalDual(torch.nn.Module):
         
         # s1, s2, mu1, mu2, mun1, mun2, mubar1, mubar2 dimension
         proj = int(l * (l - 1) / 2 + l)  # see eq. 4.24 in thesis -- number of non-local constraint sets
-        tau = 1.0 / (2.0 + (proj/4.0)) # TODO: take out of loop
+        tau =  (1.0 / (2.0 + (proj/4.0))) 
 
         
         # allocate memory on device
@@ -142,7 +144,7 @@ class PrimalDual(torch.nn.Module):
             #     else:
             #         zeros_shape.append(ubar.shape[j])
             zeros = torch.zeros(zeros_shape, device=ubar.device)
-            diff = torch.cat((torch.diff(ubar, dim=dim), zeros), dim=dim) / (1 / ubar.shape[0])
+            diff = torch.cat((torch.diff(ubar, dim=dim), zeros), dim=dim)  / (1 / ubar.shape[0])
             diffs.append(diff)
 
         # Stack the results along a new dimension (first dimension)
@@ -158,7 +160,8 @@ class PrimalDual(torch.nn.Module):
         ux = self.forward_differences(ubar, len(dims)-1)
         # u1 = torch.cat((torch.diff(ubar[...], dim=0), torch.zeros_like(ubar[:1,...], dtype = torch.float16)), dim = 0)
         # (u1 == ux[0,...]).all()
-        ut = (torch.cat((torch.diff(ubar, dim=-1), torch.zeros_like(ubar[...,:1], dtype = torch.float32)), dim = -1)) / (1 / ubar.shape[0])
+        ut = (torch.cat((torch.diff(ubar, dim=-1), \
+                         torch.zeros_like(ubar[...,:1], dtype = torch.float32)), dim = -1))   / (1 / ubar.shape[-1])
         
         musum_list = []
 
@@ -266,8 +269,8 @@ class PrimalDual(torch.nn.Module):
         
         # take backward differences
         dx = self.backward_differences(px, px.size(dim = 0))
-        dt = torch.cat((pt[...,:-1], torch.zeros(dims + [1], device = u.device)), dim=-1) - \
-            torch.cat((torch.zeros(dims + [1], device = u.device), pt[...,:-1]), dim=-1) / (1 / pt.shape[0])
+        dt = (torch.cat((pt[...,:-1], torch.zeros(dims + [1], device = u.device)), dim=-1) - \
+            torch.cat((torch.zeros(dims + [1], device = u.device), pt[...,:-1]), dim=-1))  / (1 / pt.shape[-1])
         
         D = temp+tauu*(torch.sum(dx, dim=0)+dt)
         u = torch.clamp(D, min=0, max=1)
@@ -327,8 +330,16 @@ if __name__ == "__main__":
     nu = torch.tensor(0.1)
     tol = torch.tensor(1e-5)
     
+    # import numpy as np
+    # import cv2
+    # image = "resources/images/marylin.png"
+    # mIn = cv2.imread(image, (0))
+    # mIn = mIn.astype(np.float32)
+    # mIn /= 255
+    # f = torch.tensor(mIn, device = dev)
+    
     # model = PrimalDual()
-    # test = model.forward(f, repeats, level, lmbda, nu, tol)
+    # u, nrj, eps, it = model.forward(f, repeats, level, lmbda, nu, tol)
     
     pd = PrimalDual()
     pd = pd.to(dev)
