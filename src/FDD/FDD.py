@@ -12,7 +12,7 @@ from sklearn.cluster import KMeans
 class FDD():
     def __init__(self, Y : np.array, X : np.array, pick_nu : str="MS", level : int=16, 
                  lmbda : float=1, nu : float=0.01, iter : int=1000, tol : float=5e-5, rectangle : bool=False, 
-                 qtile : float=0.05) -> None:
+                 qtile : float=0.05, image : bool=False) -> None:
 
         self.device = self.setDevice()
         torch.set_grad_enabled(False)
@@ -21,7 +21,8 @@ class FDD():
         self.X_raw = X.copy()
         self.Y = Y.copy() # arrays I'll pass to PyTorch
         self.X = X.copy()
-
+        
+        self.image = image
         self.level = level
         self.lmbda = lmbda
         self.iter = iter
@@ -30,7 +31,14 @@ class FDD():
         self.qtile = qtile
         
         self.normalizeData() # scale data to unit hypercube
-        self.castDataToGrid()
+        
+        if self.image:
+            self.grid_y = np.expand_dims(Y.copy(), -1)
+            self.grid_y / np.max(self.grid_y) # TODO allow for 3d and color images
+            self.grid_x, self.grid_x_og = X.copy(), X.copy()
+            self.resolution = 1 / np.max(self.grid_y.shape)
+        else:
+            self.castDataToGrid()
         
         # if pick_nu == "auto":
         #     u_diff = self.forward_differences(self.grid_y, D = len(self.grid_y.shape))
@@ -346,75 +354,79 @@ if __name__ == "__main__":
     
     #------ test 1
 
-    # image = "resources/images/ladama.png"
-    # mIn = cv2.imread(image, (0))
-    # mIn = mIn.astype(np.float32)
-    # mIn /= 255
+    image = "resources/images/marylin.png"
+    mIn = cv2.imread(image, (0))
+    mIn = mIn.astype(np.float32)
+    mIn /= 255
     
     
-    # Y = mIn.flatten()
-    # #Y = np.stack([Y, Y], axis = 1)
-    # # get labels of grid points associated with Y values in mIn
-    # X = np.stack([np.tile(np.arange(0, mIn.shape[0], 1), mIn.shape[1]), np.repeat(np.arange(0, mIn.shape[0], 1), mIn.shape[1])], axis = 1)
+    Y = mIn.copy()# .flatten()
+    #Y = np.stack([Y, Y], axis = 1)
+    # get labels of grid points associated with Y values in mIn
+    X = np.stack(np.meshgrid(*[np.arange(Y.shape[1]), np.arange(Y.shape[0])]), axis = -1)
+    #X = np.stack([np.tile(np.arange(0, mIn.shape[0], 1), mIn.shape[1]), np.repeat(np.arange(0, mIn.shape[0], 1), mIn.shape[1])], axis = 1)
     
     # # reshuffle Y and X in the same way so that it resembles normal data
     # idx = np.random.permutation(Y.shape[0])
     # Y = Y[idx]
     # X = X[idx]
             
-    # def forward_differences(ubar, D : int):
+    def forward_differences(ubar, D : int):
 
-    #     diffs = []
+        diffs = []
 
-    #     for dim in range(int(D)):
-    #         #zeros_shape = torch.jit.annotate(List[int], [])
-    #         zeros_shape = list(ubar.shape)
-    #         zeros_shape[dim] = 1
-    #         # for j in range(ubar.dim()): 
-    #         #     if j == dim:
-    #         #         zeros_shape.append(1)
-    #         #     else:
-    #         #         zeros_shape.append(ubar.shape[j])
-    #         zeros = np.zeros(zeros_shape)
-    #         diff = np.concatenate((np.diff(ubar, axis=dim), zeros), axis=dim)
-    #         diffs.append(diff)
-    #                 # Stack the results along a new dimension (first dimension)
-    #     u_star = np.stack(diffs, axis=0)
+        for dim in range(int(D)):
+            #zeros_shape = torch.jit.annotate(List[int], [])
+            zeros_shape = list(ubar.shape)
+            zeros_shape[dim] = 1
+            # for j in range(ubar.dim()): 
+            #     if j == dim:
+            #         zeros_shape.append(1)
+            #     else:
+            #         zeros_shape.append(ubar.shape[j])
+            zeros = np.zeros(zeros_shape)
+            diff = np.concatenate((np.diff(ubar, axis=dim), zeros), axis=dim)
+            diffs.append(diff)
+                    # Stack the results along a new dimension (first dimension)
+        u_star = np.stack(diffs, axis=0)
 
-    #     return u_star
+        return u_star
     
-    # def boundary(u, nu):
-    #     u_diff = forward_differences(u, D = len(u.shape))
-    #     u_norm = np.linalg.norm(u_diff, axis = 0, ord = 2) # 2-norm
-    #     return (u_norm >= np.sqrt(nu)).astype(int)
+    def boundary(u, nu):
+        u_diff = forward_differences(u, D = len(u.shape))
+        u_norm = np.linalg.norm(u_diff, axis = 0, ord = 2) # 2-norm
+        return (u_norm >= np.sqrt(nu)).astype(int)
     
 
-    # # histogram of gradient norm
-    # test = np.linalg.norm(forward_differences(mIn, D = len(mIn.shape)), axis = 0)
-    # out = plt.hist(test)
+    # histogram of gradient norm
+    test = np.linalg.norm(forward_differences(mIn, D = len(mIn.shape)), axis = 0)
+    out = plt.hist(test)
 
-    # X1 = np.tile(out[1][1:], out[0].shape[0])
-    # X2 = out[0].reshape(-1,1).squeeze(1)
-    # Z = np.stack([X1, X2], axis = 1)
+    X1 = np.tile(out[1][1:], out[0].shape[0])
+    X2 = out[0].reshape(-1,1).squeeze(1)
+    Z = np.stack([X1, X2], axis = 1)
 
-    # from sklearn.cluster import KMeans
+    from sklearn.cluster import KMeans
 
-    # kmeans = KMeans(n_clusters=2, random_state=0).fit(Z)
-    # nu = X1[kmeans.labels_ == 1].max()
+    kmeans = KMeans(n_clusters=2, random_state=0).fit(Z)
+    nu = X1[kmeans.labels_ == 1].max()
 
-    # model = FDD(Y, X, level = 16, lmbda = 1, nu = 1, iter = 2000, tol = 5e-5)
-    # u, jumps, J_grid, nrj, eps, it = model.run()
-    # cv2.imwrite("result.png",u*255)
+    model = FDD(Y, X, level = 16, lmbda = 50, nu = 0.001, iter = 2000, tol = 5e-5, image=True)
+    u, jumps, J_grid, nrj, eps, it = model.run()
+    cv2.imwrite("result.png",u*255)
     
-    # plt.imshow(J_grid)
-    # plt.show()
+    plt.imshow(u)
+    plt.show()
+    
+    plt.imshow(J_grid)
+    plt.show()
 
-    # plt.imshow(J)
+    # histogram of gradient norm
 
-    # # histogram of gradient norm
-
-    # test = np.linalg.norm(forward_differences(u, D = len(u.shape)), axis = 0)
-    # out = plt.hist(test)
+    test = np.linalg.norm(forward_differences(u, D = len(u.shape)), axis = 0)
+    out = plt.hist(test)
+    #plt.show()
+    plt.savefig("resources/images/hist.png")
 
     # X = np.tile(out[1][1:], out[0].shape[0])
     # Y = out[0].reshape(-1,1).squeeze(1)
@@ -445,46 +457,46 @@ if __name__ == "__main__":
     
     
     
-    # #------- test2
+    # # #------- test2
     
-    # Generate some random data points from a discontinuous function
-    np.random.seed(0)
-    data = np.random.rand(1000, 2) # draw 1000 2D points from a uniform
+    # # Generate some random data points from a discontinuous function
+    # np.random.seed(0)
+    # data = np.random.rand(1000, 2) # draw 1000 2D points from a uniform
 
-    # Create the grid
-    # Define the grid dimensions and resolution
-    xmin, xmax = 0, 1
-    ymin, ymax = 0, 1
-    resolution = 0.01 # 100 by 100 grid
-    x, y = np.meshgrid(np.arange(xmin, xmax, resolution), np.arange(ymin, ymax, resolution))
-    grid = np.dstack((x, y))
-    grid_f = np.zeros(grid.shape[:2])
+    # # Create the grid
+    # # Define the grid dimensions and resolution
+    # xmin, xmax = 0, 1
+    # ymin, ymax = 0, 1
+    # resolution = 0.01 # 100 by 100 grid
+    # x, y = np.meshgrid(np.arange(xmin, xmax, resolution), np.arange(ymin, ymax, resolution))
+    # grid = np.dstack((x, y))
+    # grid_f = np.zeros(grid.shape[:2])
 
-    def f(x,y):
-        temp = np.sqrt((x-1/2)**2 + (y-1/2)**2)
-        if temp < 1/4:
-            return temp
-        else:
-            return temp + 1/8
+    # def f(x,y):
+    #     temp = np.sqrt((x-1/2)**2 + (y-1/2)**2)
+    #     if temp < 1/4:
+    #         return temp
+    #     else:
+    #         return temp + 1/8
 
-    # Compute the function values on the grid
-    for i in range(grid.shape[0]):
-        for j in range(grid.shape[1]):
-            grid_f[i, j] = f(grid[i, j][0], grid[i, j][1])
+    # # Compute the function values on the grid
+    # for i in range(grid.shape[0]):
+    #     for j in range(grid.shape[1]):
+    #         grid_f[i, j] = f(grid[i, j][0], grid[i, j][1])
             
-    # now sample the function values on the data points
-    grid_sample = np.zeros((data.shape[0],1))
-    for i in range(data.shape[0]):
-            grid_sample[i] = f(data[i,0], data[i,1])
+    # # now sample the function values on the data points
+    # grid_sample = np.zeros((data.shape[0],1))
+    # for i in range(data.shape[0]):
+    #         grid_sample[i] = f(data[i,0], data[i,1])
 
-    X = data.copy()
-    Y = grid_sample.copy().flatten()
-    # and run the FDD command
-    model = FDD(Y, X, level = 16, lmbda = 1, nu = 8, iter = 1000, tol = 5e-5, qtile = 0.1)
-    u, jumps, J_grid, nrj, eps, it = model.run()
+    # X = data.copy()
+    # Y = grid_sample.copy().flatten()
+    # # and run the FDD command
+    # model = FDD(Y, X, level = 16, lmbda = 1, nu = 8, iter = 1000, tol = 5e-5, qtile = 0.1)
+    # u, jumps, J_grid, nrj, eps, it = model.run()
 
-    plt.imshow(J_grid)
-    plt.show()
+    # plt.imshow(J_grid)
+    # plt.show()
 
 
         
