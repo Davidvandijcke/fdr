@@ -34,8 +34,9 @@ class FDD():
         
         if self.image:
             self.grid_y = np.expand_dims(Y.copy(), -1)
-            self.grid_y / np.max(self.grid_y) # TODO allow for 3d and color images
-            self.grid_x, self.grid_x_og = X.copy(), X.copy()
+            self.grid_y = self.grid_y / np.max(self.grid_y) - np.min(self.grid_y) # TODO allow for 3d and color images
+            X_temp = X.copy() / np.max(X.reshape((-1, X.shape[-1])), axis = 0)
+            self.grid_x, self.grid_x_og = X_temp.copy(), X_temp.copy()
             self.resolution = 1 / np.max(self.grid_y.shape)
         else:
             self.castDataToGrid()
@@ -411,7 +412,7 @@ if __name__ == "__main__":
     kmeans = KMeans(n_clusters=2, random_state=0).fit(Z)
     nu = X1[kmeans.labels_ == 1].max()
 
-    model = FDD(Y, X, level = 16, lmbda = 100, nu = 0.004, iter = 10000, tol = 5e-5, 
+    model = FDD(Y, X, level = 16, lmbda = 1, nu = 0.001, iter = 10000, tol = 5e-5, 
                 image=True, pick_nu = "kmeans")
     u, jumps, J_grid, nrj, eps, it = model.run()
     cv2.imwrite("result.png",u*255)

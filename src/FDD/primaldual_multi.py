@@ -240,7 +240,7 @@ class PrimalDual(torch.nn.Module):
         norm = torch.sqrt(torch.sum(mx * mx, dim = 0))
         
         mask = (norm > (nu )) # * sx.shape[1]
-        sx = torch.where(torch.stack([mask] * mx.size(dim = 0), dim=0), mx * nu / norm, mx)
+        sx = torch.where(torch.stack([mask] * mx.size(dim = 0), dim=0), mx * nu / norm, mx) # TODO sx.shape[1]?
         
         return sx
 
