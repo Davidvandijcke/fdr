@@ -10,7 +10,7 @@ from sklearn.cluster import KMeans
 
 
 class FDD():
-    def __init__(self, Y : np.array, X : np.array, pick_nu : str="MS", level : int=16, 
+    def __init__(self, Y : np.array, X : np.array, pick_nu : str="kmeans", level : int=16, 
                  lmbda : float=1, nu : float=0.01, iter : int=1000, tol : float=5e-5, rectangle : bool=False, 
                  qtile : float=0.05, image : bool=False) -> None:
 
@@ -411,15 +411,27 @@ if __name__ == "__main__":
     kmeans = KMeans(n_clusters=2, random_state=0).fit(Z)
     nu = X1[kmeans.labels_ == 1].max()
 
-    model = FDD(Y, X, level = 16, lmbda = 50, nu = 0.001, iter = 2000, tol = 5e-5, image=True)
+    model = FDD(Y, X, level = 16, lmbda = 100, nu = 0.004, iter = 10000, tol = 5e-5, 
+                image=True, pick_nu = "kmeans")
     u, jumps, J_grid, nrj, eps, it = model.run()
     cv2.imwrite("result.png",u*255)
+    
+    model.pick_nu = "kmeans"
+    J_grid, jumps = model.boundary(u)
     
     plt.imshow(u)
     plt.show()
     
     plt.imshow(J_grid)
     plt.show()
+    
+    # plot image with boundary
+    plt.imshow(u, cmap = "gray")
+    test = J_grid.copy().astype(np.float32)
+    test[test == 0] = np.nan
+    plt.imshow(test, cmap='autumn', interpolation='none')
+    #plt.show()
+    plt.savefig("resources/images/marylin_segmented.png")
 
     # histogram of gradient norm
 
