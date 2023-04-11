@@ -265,7 +265,7 @@ class FDD():
     def boundary(self, u):
         
         u_diff = self.forward_differences(u, D = len(u.shape))
-        u_diff = u_diff / self.resolution # scale FD by side length
+        u_diff = u_diff # / self.resolution # scale FD by side length
         u_norm = np.linalg.norm(u_diff, axis = 0, ord = 2) # 2-norm
 
         if self.pick_nu == "kmeans":
