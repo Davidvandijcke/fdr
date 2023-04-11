@@ -12,7 +12,7 @@ from sklearn.cluster import KMeans
 class FDD():
     def __init__(self, Y : np.array, X : np.array, pick_nu : str="kmeans", level : int=16, 
                  lmbda : float=1, nu : float=0.01, iter : int=1000, tol : float=5e-5, rectangle : bool=False, 
-                 qtile : float=0.05, image : bool=False) -> None:
+                 qtile : float=0.05, image : bool=False, grid : bool=False) -> None:
 
         self.device = self.setDevice()
         torch.set_grad_enabled(False)
@@ -23,6 +23,7 @@ class FDD():
         self.X = X.copy()
         
         self.image = image
+        self.grid = grid
         self.level = level
         self.lmbda = lmbda
         self.iter = iter
@@ -109,7 +110,10 @@ class FDD():
         
         # pythagoras
         
-        self.resolution = 2*  qile / np.sqrt(2) # on average, points fall in center of grid cell, then use Pythagoras to get resolution
+        if self.grid:
+            self.resolution = qile
+        else:
+            self.resolution = 2*  qile / np.sqrt(2) # on average, points fall in center of grid cell, then use Pythagoras to get resolution
         
         xmax = np.max(self.X, axis = 0)
         
@@ -412,8 +416,9 @@ if __name__ == "__main__":
     kmeans = KMeans(n_clusters=2, random_state=0).fit(Z)
     nu = X1[kmeans.labels_ == 1].max()
 
-    model = FDD(Y, X, level = 16, lmbda = 1, nu = 0.001, iter = 10000, tol = 5e-5, 
+    model = FDD(Y, X, level = 16, lmbda = 0.5, nu = 0.001, iter = 10000, tol = 5e-5, 
                 image=True, pick_nu = "kmeans")
+    model.lmbda = 5
     u, jumps, J_grid, nrj, eps, it = model.run()
     cv2.imwrite("result.png",u*255)
     
@@ -431,7 +436,7 @@ if __name__ == "__main__":
     test = J_grid.copy().astype(np.float32)
     test[test == 0] = np.nan
     plt.imshow(test, cmap='autumn', interpolation='none')
-    #plt.show()
+    plt.show()
     plt.savefig("resources/images/marylin_segmented.png")
 
     # histogram of gradient norm
