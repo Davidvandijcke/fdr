@@ -152,7 +152,7 @@ class FDD():
         n = self.Y.shape[0]
         
         if self.resolution is None:
-            self.resolution = np.sqrt(1/n)
+            self.resolution = 1/int(np.sqrt(n)) # int so we get a natural number of grid cells
         
         xmax = np.max(self.X, axis = 0)
         
@@ -181,6 +181,7 @@ class FDD():
         for i, index_tuple in enumerate(indices):
             index = tuple(index_tuple)
             if np.all(index < grid_y.shape):
+                # add  Y value to grid cell
                 grid_y[index] += self.Y[i]
                 counts[index] += 1
                 grid_x_og[index].append(self.X[i])
@@ -194,7 +195,7 @@ class FDD():
         empty_cells = np.where(counts == 0)
         empty_cell_coordinates = np.vstack([empty_cells[i] for i in range(self.X.shape[1])]).T * self.resolution
         if empty_cell_coordinates.size > 0:
-            tree = cKDTree(X)
+            tree = cKDTree(self.X)
             _, closest_indices = tree.query(empty_cell_coordinates, k=1)
             closest_Y_values = self.Y[closest_indices]
 
@@ -251,29 +252,106 @@ class FDD():
         
     def boundaryGridToData(self, J_grid, u):
         # get the indices of the J_grid where J_grid is 1
+        
+
+        k = np.array(np.where(J_grid == 1))
+
+        # Store the average points
+        Y_jumpfrom = []
+        Y_jumpto = []
+        Y_jumpsize = []
+        Y_boundary = []
+        
+        # scale u back to get correct jump sizes
+        u_scaled = u * np.max(self.Y_raw, axis = 0)
+
+        # Iterate over the boundary points
+        for i in range(k.shape[1]):
+            
+            origin_points = []
+            dest_points = []
+
+            # Get the coordinates of the current boundary point
+            point = k[:, i]
+
+            # Initialize a list to store the neighboring hypervoxels
+            neighbors = []
+
+            # Iterate through all dimensions
+            for d in range(k.shape[0]):
+
+                # Calculate the down-right neighbor along the current dimension
+                neighbor = point.copy()
+                if neighbor[d] < J_grid.shape[d] - 1:
+                    neighbor[d] += 1
+
+                    # Check if the neighbor is not a boundary point
+                    if J_grid[tuple(neighbor)] != 1:
+                        neighbors.append(neighbor)
+
+            # Check if there are any valid neighbors
+            if neighbors:
+                
+                # origin_points
+                origin_points = self.grid_x_og[tuple(point)]
+                Yjumpfrom = self.grid_y[tuple(point)]
+                if len(origin_points) == 0:
+                    origin_points = self.grid_x[tuple(point)]
+                    
+                # jumpfrom point
+                origin_points = np.stack(origin_points).squeeze()
+                jumpfrom = np.mean(origin_points, axis = 0)
+
+                # jumpto point
+                for i in range(len(neighbors)):
+                    
+                
+                    pointslist = [self.grid_x_og[tuple(neighbors[i])] for i in range(len(neighbors))]
+                
+                if not np.stack(pointslist).any():
+                    pointslist = [self.grid_x[tuple(neighbors[i])] for i in range(len(neighbors))]
+                
+                Yjumpto = np.mean([self.grid_y[tuple(neighbors[i])] for i in range(len(neighbors))])
+                dest_points = np.stack(pointslist).squeeze()
+                jumpto = np.mean(dest_points, axis = 0)
+                
+                # append to lists
+                Y_boundary.append((jumpfrom + jumpto) / 2)
+                Y_jumpfrom.append(Yjumpfrom)
+                Y_jumpto.append(Yjumpto)
+                Y_jumpsize.append(Yjumpto - Yjumpfrom)
+                
+                
+                
+                
+
+        # Convert the result list to a numpy array
+        avg_points = np.array(avg_points)
+
+        
+        
+        
+        
+        ##############################
         k = np.array(np.where(J_grid == 1))
                 
         distances = [] # TODO: can't jump to another boundary point
         k_shifts = []
+
+        
         for d in range(k.shape[0]):
             
-            # take the forward difference along one dimensions
+            # take the forward difference along one dimension
             k_shift = k.copy()
             k_shift[d] = np.where(k_shift[d] == J_grid.shape[d] - 1, # if at the edge of the domain, don't shift
                                   k_shift[d], k_shift[d] + 1) 
             k_shifts.append(k_shift)
             
-            # calculate distance between points and store for later comparison
-            np_array1 = np.array([list(t) for t in self.grid_x_og[tuple(k)]])
-            np_array2 = np.array([list(t) for t in self.grid_x_og[tuple(k_shift)]])
-
-            distance = np.sqrt(np.sum((np_array1 - np_array2)**2, axis=-1))
-            
             # find all columns in k_shift that are also in k, we don't want to jump to another boundary point
             matching_rows = np.all(k_shift.T[:, np.newaxis] == k.T, axis=-1).any(axis=1)
-            distance[matching_rows] = np.inf
-
-            distances.append(distance) # filter out the points on the boundary that are the same
+            
+            
+            
             
         distances = np.array(distances)
         distances = np.where(distances == 0, np.inf, distances)
