@@ -166,7 +166,7 @@ class FDD():
         grid_x_og = np.empty(list(grid_x.shape[:-1]), dtype = object) # assign original x values as well for later
         
         # Get the indices of the grid cells for each data point
-        indices = [(np.clip(self.X[:, i] // self.resolution, 0, grid_y.shape[i] - 1)).astype(int) for i in range(self.X.shape[1])]
+        indices = [(np.clip(self.X[:, i] // self.resolution, 0, grid_y.shape[i] - 1)).astype(int) for i in reversed(range(self.X.shape[1]))]
         indices = np.array(indices).T
 
         # Create a count array to store the number of data points in each cell
@@ -177,11 +177,14 @@ class FDD():
             grid_x_og[index] = []
         
 
+
         # Iterate through the data points and accumulate their values in grid_y and grid_x_og
         for i, index_tuple in enumerate(indices):
             index = tuple(index_tuple)
             if np.all(index < grid_y.shape):
                 # add  Y value to grid cell
+                # print(index)
+                # print(i)
                 grid_y[index] += self.Y[i]
                 counts[index] += 1
                 grid_x_og[index].append(self.X[i])
@@ -261,6 +264,8 @@ class FDD():
         Y_jumpto = []
         Y_jumpsize = []
         Y_boundary = []
+        X_jumpfrom = []
+        X_jumpto = []
         
         # scale u back to get correct jump sizes
         u_scaled = u * np.max(self.Y_raw, axis = 0)
@@ -322,6 +327,8 @@ class FDD():
                 Y_jumpfrom.append(Yjumpfrom)
                 Y_jumpto.append(Yjumpto)
                 Y_jumpsize.append(Yjumpto - Yjumpfrom)
+                X_jumpfrom.append(jumpfrom)
+                X_jumpto.append(jumpto)
                 
         Y_boundary = np.stack(Y_boundary)
         Y_jumpfrom = np.stack(Y_jumpfrom)
