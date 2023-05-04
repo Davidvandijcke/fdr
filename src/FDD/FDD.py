@@ -195,7 +195,7 @@ class FDD():
         empty_cells = np.where(counts == 0)
         empty_cell_coordinates = np.vstack([empty_cells[i] for i in range(self.X.shape[1])]).T * self.resolution
         if empty_cell_coordinates.size > 0:
-            tree = cKDTree(self.X)
+            tree = cKDTree(self.X + self.resolution / 2) # get centerpoints of hypervoxels
             _, closest_indices = tree.query(empty_cell_coordinates, k=1)
             closest_Y_values = self.Y[closest_indices]
 
@@ -294,26 +294,28 @@ class FDD():
                 
                 # origin_points
                 origin_points = self.grid_x_og[tuple(point)]
-                Yjumpfrom = self.grid_y[tuple(point)]
+                Yjumpfrom = float(self.grid_y[tuple(point)])
                 if len(origin_points) == 0:
-                    origin_points = self.grid_x[tuple(point)]
+                    origin_points = self.grid_x[tuple(point)] + self.resolution / 2
                     
                 # jumpfrom point
                 origin_points = np.stack(origin_points).squeeze()
-                jumpfrom = np.mean(origin_points, axis = 0)
+                if origin_points.ndim > 1: # if there are multiple points in the hypervoxel, take the mean
+                    jumpfrom = np.mean(origin_points, axis = 0)
+                else:
+                    jumpfrom = origin_points
 
                 # jumpto point
-                for i in range(len(neighbors)):
-                    
-                
-                    pointslist = [self.grid_x_og[tuple(neighbors[i])] for i in range(len(neighbors))]
-                
-                if not np.stack(pointslist).any():
-                    pointslist = [self.grid_x[tuple(neighbors[i])] for i in range(len(neighbors))]
-                
-                Yjumpto = np.mean([self.grid_y[tuple(neighbors[i])] for i in range(len(neighbors))])
-                dest_points = np.stack(pointslist).squeeze()
-                jumpto = np.mean(dest_points, axis = 0)
+                pointslist = [self.grid_x_og[tuple(neighbors[j])] if self.grid_x_og[tuple(neighbors[j])] != []  # if grid cell is empty, assign centerpoint
+                              else [self.grid_x[tuple(neighbors[j])] + self.resolution / 2] for j in range(len(neighbors))]
+                counts = [len(pointslist[j]) for j in range(len(neighbors))]
+                total = sum(counts)
+                Yjumpto = np.sum([(self.grid_y[tuple(neighbors[j])] * counts[j]) / total for j in range(len(neighbors))]) # proper unweighted average of the y values
+                dest_points = np.stack([item for sublist in pointslist for item in sublist]).squeeze()
+                if dest_points.ndim > 1: # if there are multiple points in the hypervoxel, take the mean
+                    jumpto = np.mean(dest_points, axis = 0)
+                else:
+                    jumpto = dest_points
                 
                 # append to lists
                 Y_boundary.append((jumpfrom + jumpto) / 2)
@@ -321,78 +323,79 @@ class FDD():
                 Y_jumpto.append(Yjumpto)
                 Y_jumpsize.append(Yjumpto - Yjumpfrom)
                 
+        Y_boundary = np.stack(Y_boundary)
+        Y_jumpfrom = np.stack(Y_jumpfrom)
+        Y_jumpto = np.stack(Y_jumpto)
+        Y_jumpsize = np.stack(Y_jumpsize)
+        
                 
-                
-                
-
-        # Convert the result list to a numpy array
-        avg_points = np.array(avg_points)
-
-        
-        
-        
-        
-        ##############################
-        k = np.array(np.where(J_grid == 1))
-                
-        distances = [] # TODO: can't jump to another boundary point
-        k_shifts = []
-
-        
-        for d in range(k.shape[0]):
-            
-            # take the forward difference along one dimension
-            k_shift = k.copy()
-            k_shift[d] = np.where(k_shift[d] == J_grid.shape[d] - 1, # if at the edge of the domain, don't shift
-                                  k_shift[d], k_shift[d] + 1) 
-            k_shifts.append(k_shift)
-            
-            # find all columns in k_shift that are also in k, we don't want to jump to another boundary point
-            matching_rows = np.all(k_shift.T[:, np.newaxis] == k.T, axis=-1).any(axis=1)
-            
-            
-            
-            
-        distances = np.array(distances)
-        distances = np.where(distances == 0, np.inf, distances)
-        
-        # filter out columns where all the elements are inf, these will be "thick" boundary points
-        idx = ~np.all(distances == np.inf, axis=0)
-        distances = distances[:, idx]
-        k_shifts = np.array(k_shifts)
-        k_shifts = k_shifts[:, :, idx]
-        k = k[:,idx]
-        idx = np.argmin(distances, axis = 0)
-        
-        closest_points = k_shifts[idx, :, np.arange(k_shifts.shape[2])] # these are the coordinates of the jump to points
-        midpoints = (k.T + closest_points) / 2 # these are the estimated boundary points
-        
-        #closest_points = ((closest_points / self.grid_x.shape[:-1])) 
-
-        # get jumpto points
-        # matching_rows = np.all(self.X_raw[:, np.newaxis] == closest_points, axis=-1)
-        # matching_indices = np.where(matching_rows)[0]
-        
-        # first scale u back
-        u_scaled = u *  np.max(self.Y_raw, axis = 0)
-        
-        # get the points of self.grid_x_og with the index (x,y) for each row [x,y] in closest_points
-        closest_x = np.array([self.grid_x_og[tuple(i)] for i in closest_points])
-        Y_jumpto =  np.array([u_scaled[tuple(i)] for i in closest_points])
-        
-        # get jumpfrom points
-        closest_x_shift = np.array([self.grid_x_og[tuple(i)] for i in k.T])
-        Y_jumpfrom =  np.array([u_scaled[tuple(i)] for i in k.T])
-        
-        # jump size
-        jumpsize = Y_jumpto - Y_jumpfrom
-        
         # create named array to return
-        rays = [midpoints[:,d] for d in range(midpoints.shape[1])] + [Y_jumpfrom, Y_jumpto, jumpsize]
-        names = ["X_" + str(d) for d in range(midpoints.shape[1])] + ["Y_jumpfrom", "Y_jumpto", "Y_jumpsize"]
+        rays = [Y_boundary[:,d] for d in range(Y_boundary.shape[1])] + [Y_jumpfrom, Y_jumpto, Y_jumpsize]
+        names = ["X_" + str(d) for d in range(Y_boundary.shape[1])] + ["Y_jumpfrom", "Y_jumpto", "Y_jumpsize"]
         jumps = np.core.records.fromarrays(rays, names=names)
-        
+                
         return jumps
+
+        # ##############################
+        # k = np.array(np.where(J_grid == 1))
+                
+        # distances = [] # TODO: can't jump to another boundary point
+        # k_shifts = []
+
+        
+        # for d in range(k.shape[0]):
+            
+        #     # take the forward difference along one dimension
+        #     k_shift = k.copy()
+        #     k_shift[d] = np.where(k_shift[d] == J_grid.shape[d] - 1, # if at the edge of the domain, don't shift
+        #                           k_shift[d], k_shift[d] + 1) 
+        #     k_shifts.append(k_shift)
+            
+        #     # find all columns in k_shift that are also in k, we don't want to jump to another boundary point
+        #     matching_rows = np.all(k_shift.T[:, np.newaxis] == k.T, axis=-1).any(axis=1)
+            
+            
+            
+            
+        # distances = np.array(distances)
+        # distances = np.where(distances == 0, np.inf, distances)
+        
+        # # filter out columns where all the elements are inf, these will be "thick" boundary points
+        # idx = ~np.all(distances == np.inf, axis=0)
+        # distances = distances[:, idx]
+        # k_shifts = np.array(k_shifts)
+        # k_shifts = k_shifts[:, :, idx]
+        # k = k[:,idx]
+        # idx = np.argmin(distances, axis = 0)
+        
+        # closest_points = k_shifts[idx, :, np.arange(k_shifts.shape[2])] # these are the coordinates of the jump to points
+        # midpoints = (k.T + closest_points) / 2 # these are the estimated boundary points
+        
+        # #closest_points = ((closest_points / self.grid_x.shape[:-1])) 
+
+        # # get jumpto points
+        # # matching_rows = np.all(self.X_raw[:, np.newaxis] == closest_points, axis=-1)
+        # # matching_indices = np.where(matching_rows)[0]
+        
+        # # first scale u back
+        # u_scaled = u *  np.max(self.Y_raw, axis = 0)
+        
+        # # get the points of self.grid_x_og with the index (x,y) for each row [x,y] in closest_points
+        # closest_x = np.array([self.grid_x_og[tuple(i)] for i in closest_points])
+        # Y_jumpto =  np.array([u_scaled[tuple(i)] for i in closest_points])
+        
+        # # get jumpfrom points
+        # closest_x_shift = np.array([self.grid_x_og[tuple(i)] for i in k.T])
+        # Y_jumpfrom =  np.array([u_scaled[tuple(i)] for i in k.T])
+        
+        # # jump size
+        # jumpsize = Y_jumpto - Y_jumpfrom
+        
+        # # create named array to return
+        # rays = [midpoints[:,d] for d in range(midpoints.shape[1])] + [Y_jumpfrom, Y_jumpto, jumpsize]
+        # names = ["X_" + str(d) for d in range(midpoints.shape[1])] + ["Y_jumpfrom", "Y_jumpto", "Y_jumpsize"]
+        # jumps = np.core.records.fromarrays(rays, names=names)
+        
     
     def pickKMeans(self, u_norm):
         plt.ioff()  # Turn off interactive mode to prevent the figure from being displayed
