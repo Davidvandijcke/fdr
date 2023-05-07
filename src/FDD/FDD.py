@@ -337,17 +337,16 @@ class FDD():
             Y_jumpfrom = np.stack(Y_jumpfrom)
             Y_jumpto = np.stack(Y_jumpto)
             Y_jumpsize = np.stack(Y_jumpsize)
+            
+            # create named array to return
+            rays = [Y_boundary[:,d] for d in range(Y_boundary.shape[1])] + [Y_jumpfrom, Y_jumpto, Y_jumpsize]
+            names = ["X_" + str(d) for d in range(Y_boundary.shape[1])] + ["Y_jumpfrom", "Y_jumpto", "Y_jumpsize"]
+            jumps = np.core.records.fromarrays(rays, names=names)
         else:
-            Y_boundary = np.array([])
-            Y_jumpfrom = np.array([])
-            Y_jumpto = np.array([])
-            Y_jumpsize = np.array([])
+            jumps = None
         
                 
-        # create named array to return
-        rays = [Y_boundary[:,d] for d in range(Y_boundary.shape[1])] + [Y_jumpfrom, Y_jumpto, Y_jumpsize]
-        names = ["X_" + str(d) for d in range(Y_boundary.shape[1])] + ["Y_jumpfrom", "Y_jumpto", "Y_jumpsize"]
-        jumps = np.core.records.fromarrays(rays, names=names)
+ 
                 
         return jumps
 
