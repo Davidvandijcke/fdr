@@ -331,11 +331,17 @@ class FDD():
                 Y_jumpsize.append(Yjumpto - Yjumpfrom)
                 X_jumpfrom.append(jumpfrom)
                 X_jumpto.append(jumpto)
-                
-        Y_boundary = np.stack(Y_boundary)
-        Y_jumpfrom = np.stack(Y_jumpfrom)
-        Y_jumpto = np.stack(Y_jumpto)
-        Y_jumpsize = np.stack(Y_jumpsize)
+        
+        if Y_boundary:
+            Y_boundary = np.stack(Y_boundary)
+            Y_jumpfrom = np.stack(Y_jumpfrom)
+            Y_jumpto = np.stack(Y_jumpto)
+            Y_jumpsize = np.stack(Y_jumpsize)
+        else:
+            Y_boundary = np.array([])
+            Y_jumpfrom = np.array([])
+            Y_jumpto = np.array([])
+            Y_jumpsize = np.array([])
         
                 
         # create named array to return
