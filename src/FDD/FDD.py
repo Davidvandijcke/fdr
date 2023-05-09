@@ -529,6 +529,7 @@ class FDD():
                      tuple([tol, self.eps, f, repeats, level, self.grid_y, sigma_sq]),
                      options = {'disp' : True, 'maxiter' : 5}, bounds = [(1, None), (0, 1)])
         
+        return res
         
         
         
