@@ -472,14 +472,13 @@ class FDD():
         
         return (u, jumps, J_grid, nrj, eps, it)
     
-    def SURE_objective(self, theta, tol, eps, f, repeats, level, grid_y, sigma_sq):
+    def SURE_objective(self, theta, tol, eps, f, repeats, level, grid_y, sigma_sq, b):
         
         lmbda_torch = torch.tensor(theta[0], device = self.device, dtype = torch.float32)
         nu_torch = torch.tensor(theta[1], device = self.device, dtype = torch.float32)
         
         n = grid_y.shape[0]
         
-        b = torch.randn(f.shape, device = self.device)
         f_eps = f + b * eps
         
         v = self.model(f, repeats, level, lmbda_torch, nu_torch, tol)[0]
@@ -524,9 +523,12 @@ class FDD():
         
         #self.SURE_objective(self.lmbda, self.nu, tol, self.eps, f, repeats, level, self.grid_y, sigma_sq)
         
+        b = torch.randn(f.shape, device = self.device)
+
+        
         res = \
             minimize(self.SURE_objective, np.array([self.lmbda, self.nu]), 
-                     tuple([tol, self.eps, f, repeats, level, self.grid_y, sigma_sq]),
+                     tuple([tol, self.eps, f, repeats, level, self.grid_y, sigma_sq, b]),
                      options = {'disp' : True, 'maxiter' : 5}, bounds = [(1, None), (0, 1)])
         
         return res
