@@ -444,7 +444,7 @@ class FDD():
         return f, repeats, level, lmbda, nu, tol
     
     def processResults(self, results):
-        self.processResulits(results)
+        self.processResults(results)
         v, nrj, eps, it = results
         v = v.cpu().detach().numpy()
         nrj = nrj.cpu().detach().numpy()
