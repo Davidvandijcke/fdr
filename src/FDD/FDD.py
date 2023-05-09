@@ -529,6 +529,7 @@ class FDD():
         res = \
             minimize(self.SURE_objective, np.array([self.lmbda, self.nu]), 
                      tuple([tol, self.eps, f, repeats, level, self.grid_y, sigma_sq, b]),
+                     method = "Nelder-Mead",
                      options = {'disp' : True, 'maxiter' : 5}, bounds = [(1, None), (0, 1)])
         
         return res
