@@ -7,12 +7,15 @@ import cv2
 from matplotlib import pyplot as plt
 from sklearn.cluster import KMeans
 from scipy.spatial import cKDTree
+from scipy.optimize import minimize
+import pywt
 
 
 class FDD():
     def __init__(self, Y : np.array, X : np.array, pick_nu : str="kmeans", level : int=16, 
                  lmbda : float=1, nu : float=0.01, iter : int=1000, tol : float=5e-5, rectangle : bool=False, 
-                 qtile : float=0.05, image : bool=False, grid : bool=False, resolution : float=None) -> None:
+                 qtile : float=0.05, image : bool=False, grid : bool=False, resolution : float=None,
+                 eps : float = 0.1, wavelet : str = "db1") -> None:
 
         self.device = self.setDevice()
         torch.set_grad_enabled(False)
@@ -32,15 +35,16 @@ class FDD():
         self.qtile = qtile
         self.resolution = resolution
         
-        self.normalizeData() # scale data to unit hypercube
+        # SURE parameters
+        self.eps = eps
+        self.wavelet = wavelet
         
-        if self.image:
-            self.grid_y = np.expand_dims(Y.copy(), -1)
-            self.grid_y = self.grid_y / np.max(self.grid_y) - np.min(self.grid_y) # TODO allow for 3d and color images
-            X_temp = X.copy() / np.max(X.reshape((-1, X.shape[-1])), axis = 0)
-            self.grid_x, self.grid_x_og = X_temp.copy(), X_temp.copy()
-            self.resolution = 1 / np.max(self.grid_y.shape)
+        
+        if self.image: # if image, we don't scale -- assume between 0 and 1
+            self.castImageToGrid()
+            
         else:
+            self.normalizeData() # scale data to unit hypercube
             self.castDataToGrid()
         
         # if pick_nu == "auto":
@@ -71,7 +75,7 @@ class FDD():
             device = torch.device("mkl")
         torch.set_grad_enabled(True)
         return device
-    
+
     def normalizeData(self):
         
         min_y = np.min(self.Y, axis = 0)
@@ -89,6 +93,22 @@ class FDD():
             max_x = np.max(self.X, axis = 0)
             self.Y = self.Y / max_y
             self.X = self.X / max_x
+            
+    def castImageToGrid(self):
+        self.grid_y = np.expand_dims(Y.copy(), -1)
+        X_temp = X.copy() / (np.max(X)+1)  # / np.max(X.reshape((-1, X.shape[-1])), axis = 0)
+
+        self.grid_x = X_temp.copy() # , X_temp.copy()
+        
+        # assign original data points as tuples to align with case for non-image data
+        self.grid_x_og = np.empty(list(self.grid_x.shape[:-1]), dtype = object) # assign original x values as well for later
+
+        it = np.nditer(self.grid_x[...,0], flags = ['multi_index'])
+        for x in it:
+            idx = it.multi_index
+            self.grid_x_og[idx] = [self.grid_x[idx]]
+
+        self.resolution = (1-np.max(self.grid_x)) 
     
     def castDataToGridPoints(self):
         
@@ -253,6 +273,8 @@ class FDD():
         kmeans = KMeans(n_clusters=2, random_state=0).fit(Z)
         nu = X1[kmeans.labels_ == 1].max()
         
+        
+        
     def boundaryGridToData(self, J_grid, u):
         # get the indices of the J_grid where J_grid is 1
         
@@ -267,8 +289,6 @@ class FDD():
         X_jumpfrom = []
         X_jumpto = []
         
-        # scale u back to get correct jump sizes
-        u_scaled = u * np.max(self.Y_raw, axis = 0)
 
         # Iterate over the boundary points
         for i in range(k.shape[1]):
@@ -299,7 +319,7 @@ class FDD():
                 
                 # origin_points
                 origin_points = self.grid_x_og[tuple(point)]
-                Yjumpfrom = float(u_scaled[tuple(point)])
+                Yjumpfrom = float(u[tuple(point)])
                 if len(origin_points) == 0:
                     origin_points = self.grid_x[tuple(point)] + self.resolution / 2
                     
@@ -315,7 +335,7 @@ class FDD():
                               else [self.grid_x[tuple(neighbors[j])] + self.resolution / 2] for j in range(len(neighbors))]
                 counts = [len(pointslist[j]) for j in range(len(neighbors))]
                 total = sum(counts) # TODO: jump sizes on diagonal boundary sections are off
-                Yjumpto = np.sum([(u_scaled[tuple(neighbors[j])] * counts[j]) / total for j in range(len(neighbors))]) # proper unweighted average of the y values
+                Yjumpto = np.sum([(u[tuple(neighbors[j])] * counts[j]) / total for j in range(len(neighbors))]) # proper unweighted average of the y values
                 dest_points = np.stack([item for sublist in pointslist for item in sublist]).squeeze()
                 if dest_points.ndim > 1: # if there are multiple points in the hypervoxel, take the mean
                     jumpto = np.mean(dest_points, axis = 0)
@@ -345,70 +365,8 @@ class FDD():
         else:
             jumps = None
         
-                
- 
-                
         return jumps
 
-        # ##############################
-        # k = np.array(np.where(J_grid == 1))
-                
-        # distances = [] # TODO: can't jump to another boundary point
-        # k_shifts = []
-
-        
-        # for d in range(k.shape[0]):
-            
-        #     # take the forward difference along one dimension
-        #     k_shift = k.copy()
-        #     k_shift[d] = np.where(k_shift[d] == J_grid.shape[d] - 1, # if at the edge of the domain, don't shift
-        #                           k_shift[d], k_shift[d] + 1) 
-        #     k_shifts.append(k_shift)
-            
-        #     # find all columns in k_shift that are also in k, we don't want to jump to another boundary point
-        #     matching_rows = np.all(k_shift.T[:, np.newaxis] == k.T, axis=-1).any(axis=1)
-            
-            
-            
-            
-        # distances = np.array(distances)
-        # distances = np.where(distances == 0, np.inf, distances)
-        
-        # # filter out columns where all the elements are inf, these will be "thick" boundary points
-        # idx = ~np.all(distances == np.inf, axis=0)
-        # distances = distances[:, idx]
-        # k_shifts = np.array(k_shifts)
-        # k_shifts = k_shifts[:, :, idx]
-        # k = k[:,idx]
-        # idx = np.argmin(distances, axis = 0)
-        
-        # closest_points = k_shifts[idx, :, np.arange(k_shifts.shape[2])] # these are the coordinates of the jump to points
-        # midpoints = (k.T + closest_points) / 2 # these are the estimated boundary points
-        
-        # #closest_points = ((closest_points / self.grid_x.shape[:-1])) 
-
-        # # get jumpto points
-        # # matching_rows = np.all(self.X_raw[:, np.newaxis] == closest_points, axis=-1)
-        # # matching_indices = np.where(matching_rows)[0]
-        
-        # # first scale u back
-        # u_scaled = u *  np.max(self.Y_raw, axis = 0)
-        
-        # # get the points of self.grid_x_og with the index (x,y) for each row [x,y] in closest_points
-        # closest_x = np.array([self.grid_x_og[tuple(i)] for i in closest_points])
-        # Y_jumpto =  np.array([u_scaled[tuple(i)] for i in closest_points])
-        
-        # # get jumpfrom points
-        # closest_x_shift = np.array([self.grid_x_og[tuple(i)] for i in k.T])
-        # Y_jumpfrom =  np.array([u_scaled[tuple(i)] for i in k.T])
-        
-        # # jump size
-        # jumpsize = Y_jumpto - Y_jumpfrom
-        
-        # # create named array to return
-        # rays = [midpoints[:,d] for d in range(midpoints.shape[1])] + [Y_jumpfrom, Y_jumpto, jumpsize]
-        # names = ["X_" + str(d) for d in range(midpoints.shape[1])] + ["Y_jumpfrom", "Y_jumpto", "Y_jumpsize"]
-        # jumps = np.core.records.fromarrays(rays, names=names)
         
     
     def pickKMeans(self, u_norm):
@@ -474,18 +432,19 @@ class FDD():
         u_star = np.stack(diffs, axis=0)
 
         return u_star
+    
+    def arraysToTensors(self, y, iter, level, lmbda, nu, tol):
+        f = torch.tensor(y, device = self.device, dtype = torch.float32)
+        repeats = torch.tensor(iter, device = self.device, dtype = torch.int32)
+        level = torch.tensor(level, device = self.device, dtype = torch.int32)
+        lmbda = torch.tensor(lmbda, device = self.device, dtype = torch.float32)
+        nu = torch.tensor(nu, device = self.device, dtype = torch.float32)
+        tol = torch.tensor(tol, device = self.device, dtype = torch.float32)
         
-    def run(self):
-        
-        f = torch.tensor(self.grid_y, device = self.device, dtype = torch.float32)
-        repeats = torch.tensor(self.iter, device = self.device, dtype = torch.int32)
-        level = torch.tensor(self.level, device = self.device, dtype = torch.int32)
-        lmbda = torch.tensor(self.lmbda, device = self.device, dtype = torch.float32)
-        nu = torch.tensor(self.nu, device = self.device, dtype = torch.float32)
-        tol = torch.tensor(self.tol, device = self.device, dtype = torch.float32)
-        
-        results = self.model(f, repeats, level, lmbda, nu, tol)
-        
+        return f, repeats, level, lmbda, nu, tol
+    
+    def processResults(self, results):
+        self.processResulits(results)
         v, nrj, eps, it = results
         v = v.cpu().detach().numpy()
         nrj = nrj.cpu().detach().numpy()
@@ -493,13 +452,83 @@ class FDD():
         
         u = self.isosurface(v) 
         
+        # scale u back to get correct jump sizes
+        if not self.image:
+            u = u * np.max(self.Y_raw, axis = -1)
+        
         J_grid, jumps = self.boundary(u)
         
-        # renormalize u
+        return (u, jumps, J_grid, nrj, eps, it)
+    
+    
+    def run(self):
+        
+        f, repeats, level, lmbda, nu, tol = \
+            self.arraysToTensors(self.grid_y, self.iter, self.level, self.lmbda, self.nu, self.tol)
+        
+        results = self.model(f, repeats, level, lmbda, nu, tol)
+        
+        u, jumps, J_grid, nrj, eps, it = self.processResults(results)
         
         return (u, jumps, J_grid, nrj, eps, it)
+    
+    def SURE_objective(self, theta, tol, eps, f, repeats, level, grid_y, sigma_sq):
         
+        lmbda_torch = torch.tensor(theta[0], device = self.device, dtype = torch.float32)
+        nu_torch = torch.tensor(theta[1], device = self.device, dtype = torch.float32)
+        
+        n = grid_y.shape[0]
+        
+        b = torch.randn(f.shape, device = self.device)
+        f_eps = f + b * eps
+        
+        v = self.model(f, repeats, level, lmbda_torch, nu_torch, tol)[0]
+        v_eps = self.model(f_eps, repeats, level, lmbda_torch, nu_torch, tol)[0]
+        
+        u = self.isosurface(v.cpu().detach().numpy())
+        u_eps = self.isosurface(v_eps.cpu().detach().numpy())
+                
+        divf_y = np.dot(b.cpu().detach().numpy().squeeze().flatten(), u_eps.flatten() - u.flatten()) / eps
+        sure = np.mean(np.abs(u - u_eps)**2) - sigma_sq + 2 * sigma_sq * divf_y / n
+        
+        return sure
+    
+    def waveletDenoising(self, y):
+        
+        coeffs = pywt.wavedecn(y.squeeze(), self.wavelet)
+        
+        # Get detail coefficients at the finest scale
+        details = coeffs[-1]
 
+        # For 3D data, there are 7 sets of detail coefficients at each level:
+        # 'aad', 'ada', 'daa', 'aad', 'add', 'dda', 'daa', 'ddd'
+        # We'll calculate the MAD for each of them and then take the median of these values.
+
+        mad_values = []
+        for key in details.keys():
+            # Flatten the array to 1D for MAD calculation
+            coeff_arr = np.ravel(details[key])
+            med = np.median(coeff_arr)
+            mad = np.median(np.abs(coeff_arr - med))
+            mad_values.append(mad)
+
+        # Compute the estimated noise variance (sigma squared)
+        sigma = np.median(mad_values) / 0.6745
+        return sigma**2
+        
+        
+    def SURE(self):
+        f, repeats, level, lmbda, nu, tol = \
+            self.arraysToTensors(self.grid_y, self.iter, self.level, self.lmbda, self.nu, self.tol)
+        sigma_sq = self.waveletDenoising(self.grid_y)
+        
+        #self.SURE_objective(self.lmbda, self.nu, tol, self.eps, f, repeats, level, self.grid_y, sigma_sq)
+        
+        res = \
+            minimize(self.SURE_objective, np.array([self.lmbda, self.nu]), 
+                     tuple([tol, self.eps, f, repeats, level, self.grid_y, sigma_sq]),
+                     options = {'disp' : True, 'maxiter' : 5}, bounds = [(1, None), (0, 1)])
+        
         
         
         
@@ -524,22 +553,30 @@ if __name__ == "__main__":
     
     # #------ test 1
 
-    # image = "resources/images/marylin.png"
+    # image = "resources/images/dog.png"
     # mIn = cv2.imread(image, (0))
+    
+    # scale_percent = 10 # percent of original size
+    # width = int(mIn.shape[1] * scale_percent / 100)
+    # height = int(mIn.shape[0] * scale_percent / 100)
+    # dim = (width, height)
+    # mIn = cv2.resize(mIn, dim)
     # mIn = mIn.astype(np.float32)
+    
+    
     # mIn /= 255
     
     
-    # Y = mIn.copy().flatten()
+    # Y = mIn.copy() #.flatten()
     # #Y = np.stack([Y, Y], axis = 1)
     # # get labels of grid points associated with Y values in mIn
-    # #X = np.stack(np.meshgrid(*[np.arange(Y.shape[1]), np.arange(Y.shape[0])]), axis = -1)
-    # X = np.stack([np.tile(np.arange(0, mIn.shape[0], 1), mIn.shape[1]), np.repeat(np.arange(0, mIn.shape[0], 1), mIn.shape[1])], axis = 1)
+    # X = np.stack(np.meshgrid(*[np.arange(Y.shape[1]), np.arange(Y.shape[0])]), axis = -1)
+    # #X = np.stack([np.tile(np.arange(0, mIn.shape[0], 1), mIn.shape[1]), np.repeat(np.arange(0, mIn.shape[0], 1), mIn.shape[1])], axis = 1)
     
-    # # reshuffle Y and X in the same way so that it resembles normal data
-    # idx = np.random.permutation(Y.shape[0])
-    # Y = Y[idx]
-    # X = X[idx]
+    # # # reshuffle Y and X in the same way so that it resembles normal data
+    # # idx = np.random.permutation(Y.shape[0])
+    # # Y = Y[idx]
+    # # X = X[idx]
             
     # def forward_differences(ubar, D : int):
 
@@ -581,10 +618,12 @@ if __name__ == "__main__":
     # kmeans = KMeans(n_clusters=2, random_state=0).fit(Z)
     # nu = X1[kmeans.labels_ == 1].max()
 
-    # model = FDD(Y, X, level = 16, lmbda = 0.5, nu = 0.001, iter = 10000, tol = 5e-5, 
-    #             image=False, pick_nu = "kmeans")
+    # model = FDD(Y, X, level = 16, lmbda = 1, nu = 0.01, iter = 10000, tol = 5e-5, 
+    #             image=True, pick_nu = "MS")
     # model.lmbda = 5
-    # u, jumps, J_grid, nrj, eps, it = model.run()
+    # u, jumps, J_grid, nrj, eps, it = model.SURE()
+    
+    
     # cv2.imwrite("result.png",u*255)
     
     # model.pick_nu = "kmeans"
@@ -640,7 +679,7 @@ if __name__ == "__main__":
     
     
     
-    # #------- test2
+    #------- test2
     
     # Generate some random data points from a discontinuous function
     np.random.seed(0)
@@ -670,16 +709,16 @@ if __name__ == "__main__":
     # now sample the function values on the data points
     grid_sample = np.zeros((data.shape[0],1))
     for i in range(data.shape[0]):
-            grid_sample[i] = f(data[i,0], data[i,1])
+            grid_sample[i] = f(data[i,0], data[i,1]) + np.random.normal(0, 0.01)
 
     X = data.copy()
     Y = grid_sample.copy().flatten()
     # and run the FDD command
-    model = FDD(Y, X, level = 16, lmbda = 10, nu = 0.001, iter = 5000, tol = 5e-5, qtile = 0.1)
-    u, jumps, J_grid, nrj, eps, it = model.run()
+    model = FDD(Y, X, level = 16, lmbda = 10, nu = 0.001, iter = 5000, tol = 5e-5, qtile = 0.01)
+    u, jumps, J_grid, nrj, eps, it = model.SURE()
 
-    # plt.imshow(J_grid)
-    # plt.show()
+    plt.imshow(J_grid)
+    plt.show()
 
 
         
