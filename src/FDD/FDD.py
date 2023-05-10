@@ -530,8 +530,8 @@ class FDD():
         res = \
             minimize(self.SURE_objective, np.array([self.lmbda, self.nu]), 
                      tuple([tol, self.eps, f, repeats, level, self.grid_y, sigma_sq, b]),
-                     method = "Powell", tol = 1*10^(-2), 
-                     options = {'disp' : True, 'maxiter' : maxiter}, bounds = [(1, 500), (0, 1)])
+                     method = "Powell", tol = 1*10**(-3), 
+                     options = {'disp' : True, 'maxiter' : maxiter}, bounds = ((1, 500), (0, 1)))
         
         return res
         
