@@ -489,7 +489,7 @@ class FDD():
         u_eps = self.isosurface(v_eps.cpu().detach().numpy())
                 
         divf_y = np.dot(b.cpu().detach().numpy().squeeze().flatten(), u_eps.flatten() - u.flatten()) / eps
-        sure = np.mean(np.abs(u - u_eps)**2) - sigma_sq + 2 * sigma_sq * divf_y / n
+        sure = np.mean(np.abs(grid_y.flatten() - u.flatten())**2) - sigma_sq + 2 * sigma_sq * divf_y / n
         
         return sure
     
@@ -525,7 +525,6 @@ class FDD():
         #self.SURE_objective(self.lmbda, self.nu, tol, self.eps, f, repeats, level, self.grid_y, sigma_sq)
         
 
-        
         res = \
             minimize(self.SURE_objective, np.array([self.lmbda, self.nu]), 
                      tuple([tol, self.eps, f, repeats, level, self.grid_y, sigma_sq]),
