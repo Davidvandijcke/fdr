@@ -471,9 +471,8 @@ class FDD():
         
         return (u, jumps, J_grid, nrj, eps, it)
     
-    def SURE_objective(self, theta, tol, eps, f, repeats, level, grid_y, sigma_sq):
+    def SURE_objective(self, theta, tol, eps, f, repeats, level, grid_y, sigma_sq, b):
         
-        b = torch.randn(f.shape, device = self.device) 
         
         lmbda_torch = torch.tensor(theta[0], device = self.device, dtype = torch.float32)
         nu_torch = torch.tensor(theta[1], device = self.device, dtype = torch.float32)
@@ -525,11 +524,12 @@ class FDD():
         sigma_sq = self.waveletDenoising(self.grid_y)
         
         #self.SURE_objective(self.lmbda, self.nu, tol, self.eps, f, repeats, level, self.grid_y, sigma_sq)
-        
+        b = torch.randn(f.shape, device = self.device) 
+
 
         res = \
             minimize(self.SURE_objective, np.array([self.lmbda, self.nu]), 
-                     tuple([tol, self.eps, f, repeats, level, self.grid_y, sigma_sq]),
+                     tuple([tol, self.eps, f, repeats, level, self.grid_y, sigma_sq, b]),
                      method = "Powell", tol = 1*10^(-2), 
                      options = {'disp' : True, 'maxiter' : maxiter}, bounds = [(1, 500), (0, 1)])
         
