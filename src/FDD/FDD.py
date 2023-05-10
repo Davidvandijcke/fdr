@@ -519,7 +519,7 @@ class FDD():
         return sigma**2
         
         
-    def SURE(self):
+    def SURE(self, maxiter = 100):
         f, repeats, level, lmbda, nu, tol = \
             self.arraysToTensors(self.grid_y, self.iter, self.level, self.lmbda, self.nu, self.tol)
         sigma_sq = self.waveletDenoising(self.grid_y)
@@ -531,7 +531,7 @@ class FDD():
             minimize(self.SURE_objective, np.array([self.lmbda, self.nu]), 
                      tuple([tol, self.eps, f, repeats, level, self.grid_y, sigma_sq]),
                      method = "Nelder-Mead",
-                     options = {'disp' : True, 'maxiter' : 100}, bounds = [(1, None), (0, 1)])
+                     options = {'disp' : True, 'maxiter' : maxiter}, bounds = [(1, None), (0, 1)])
         
         return res
         
