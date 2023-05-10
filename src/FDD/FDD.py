@@ -15,7 +15,7 @@ class FDD():
     def __init__(self, Y : np.array, X : np.array, pick_nu : str="kmeans", level : int=16, 
                  lmbda : float=1, nu : float=0.01, iter : int=1000, tol : float=5e-5, rectangle : bool=False, 
                  qtile : float=0.05, image : bool=False, grid : bool=False, resolution : float=None,
-                 eps : float = 0.1, wavelet : str = "db1") -> None:
+                 eps : float = 0.01, wavelet : str = "db1") -> None:
 
         self.device = self.setDevice()
         torch.set_grad_enabled(False)
@@ -473,7 +473,7 @@ class FDD():
     
     def SURE_objective(self, theta, tol, eps, f, repeats, level, grid_y, sigma_sq):
         
-        b = torch.randn(f.shape, device = self.device) # TODO: bring inside opt
+        b = torch.randn(f.shape, device = self.device) 
         
         lmbda_torch = torch.tensor(theta[0], device = self.device, dtype = torch.float32)
         nu_torch = torch.tensor(theta[1], device = self.device, dtype = torch.float32)
@@ -488,8 +488,10 @@ class FDD():
         u = self.isosurface(v.cpu().detach().numpy())
         u_eps = self.isosurface(v_eps.cpu().detach().numpy())
                 
-        divf_y = np.dot(b.cpu().detach().numpy().squeeze().flatten(), u_eps.flatten() - u.flatten()) / eps
+        divf_y = np.real(np.vdot(b.cpu().detach().numpy().squeeze().flatten(), 
+                                 u_eps.flatten() - u.flatten())) / (eps)
         sure = np.mean(np.abs(grid_y.flatten() - u.flatten())**2) - sigma_sq + 2 * sigma_sq * divf_y / n
+        # TODO: should be euclidean norm
         
         return sure
     
