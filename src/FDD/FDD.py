@@ -399,6 +399,11 @@ class FDD():
         # find the boundary on the grid by comparing the gradient norm to the threshold
         J_grid = (u_norm >= nu).astype(int)
         
+                
+        # scale u back to get correct jump sizes
+        if not self.image:
+            u = u * np.max(self.Y_raw, axis = -1)
+        
         ## find the boundary on the point cloud
         jumps = self.boundaryGridToData(J_grid, u)
         
@@ -451,11 +456,12 @@ class FDD():
         
         u = self.isosurface(v) 
         
-        # scale u back to get correct jump sizes
-        if not self.image:
-            u = u * np.max(self.Y_raw, axis = -1)
         
         J_grid, jumps = self.boundary(u)
+        
+                # scale u back to get correct jump sizes
+        if not self.image:
+            u = u * np.max(self.Y_raw, axis = -1)
         
         return (u, jumps, J_grid, nrj, eps, it)
     
