@@ -725,8 +725,13 @@ if __name__ == "__main__":
     X = data.copy()
     Y = grid_sample.copy().flatten()
     # and run the FDD command
-    model = FDD(Y, X, level = 16, lmbda = 10, nu = 0.001, iter = 5000, tol = 5e-5, qtile = 0.01)
-    u, jumps, J_grid, nrj, eps, it = model.SURE()
+    model = FDD(Y, X, level = 16, lmbda = 1, nu = 0.05, iter = 5000, tol = 5e-5, qtile = 0.01,
+                pick_nu = "MS")
+    
+    import time
+    t0 = time.time()
+    u, jumps, J_grid, nrj, eps, it = model.run()
+    print(time.time() - t0)
 
     plt.imshow(J_grid)
     plt.show()

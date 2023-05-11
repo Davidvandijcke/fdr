@@ -40,9 +40,9 @@ class PrimalDual(torch.nn.Module):
         # initialize parameters
         nrj = torch.tensor(0, device=dev) 
         tw = torch.tensor(12, dtype=torch.float32, device = dev)
-        tauu =  torch.tensor(  1.0 / 6.0 * res, device=dev) # *res
-        sigmap = torch.tensor( (1.0 / (3.0 + l))  * res, device=dev) # *res
-        sigmas = torch.tensor(1.0, device=dev) 
+        tauu = torch.tensor(  1.0 / torch.sqrt(12) * res, device=dev)  # torch.tensor(  1.0 / 6.0 * res, device=dev) # *res
+        sigmap = torch.tensor( (1.0 / (torch.sqrt(12)))  * res, device=dev) # torch.tensor( (1.0 / (3.0 + l))  * res, device=dev) # *res
+        sigmas = torch.tensor( (1.0 / (torch.sqrt(12)))  * res, device=dev) # torch.tensor(1.0, device=dev) 
 
         # get image dimensions
         dim = len(f.size())
@@ -51,7 +51,7 @@ class PrimalDual(torch.nn.Module):
         
         # s1, s2, mu1, mu2, mun1, mun2, mubar1, mubar2 dimension
         proj = int(l * (l - 1) / 2 + l)  # see eq. 4.24 in thesis -- number of non-local constraint sets
-        tau =  (1.0 / (2.0 + (proj/4.0)))  
+        tau = torch.tensor( (1.0 / (torch.sqrt(12)))  * res, device=dev) # (1.0 / (2.0 + (proj/4.0)))  
 
         
         # allocate memory on device
