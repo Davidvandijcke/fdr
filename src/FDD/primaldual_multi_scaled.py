@@ -43,7 +43,7 @@ class PrimalDual(torch.nn.Module):
         # for scaling, multiply by res, not sqrt(res) bcs L^2 and we take the res out of the power
         tauu = torch.tensor(  1.0 / torch.sqrt(4 * f.ndim) * res, device=dev)  # torch.tensor(  1.0 / 6.0 * res, device=dev) # *res
         sigmap = torch.tensor( 1.0 / torch.sqrt(4 * f.ndim)  * res, device=dev) # torch.tensor( (1.0 / (3.0 + l))  * res, device=dev) # *res
-        sigmas = torch.tensor((1.0 / torch.sqrt(136)), device = dev) #  torch.tensor(1.0, device=dev) 
+        sigmas = torch.tensor(1.0, device = dev) #  torch.tensor(1.0, device=dev) 
 
         # acceleration
         gamma_u = torch.tensor(1, device=dev, dtype=torch.float32)
@@ -58,7 +58,7 @@ class PrimalDual(torch.nn.Module):
         
         # s1, s2, mu1, mu2, mun1, mun2, mubar1, mubar2 dimension
         proj = int(l * (l - 1) / 2 + l)  # see eq. 4.24 in thesis -- number of non-local constraint sets
-        tau = torch.tensor(1.0 / (proj) , device=dev) # (1.0 / (2.0 + (proj/4.0)))  
+        tau = torch.tensor(1.0 / proj , device=dev) # (1.0 / (2.0 + (proj/4.0)))  
 
         
         # allocate memory on device

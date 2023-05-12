@@ -552,7 +552,7 @@ class FDD():
         res = \
             minimize(self.SURE_objective, np.array([self.lmbda, self.nu]), 
                      tuple([tol, self.eps, f, repeats, level, self.grid_y, sigma_sq, b]),
-                     method = "Powell", tol = 1*10**(-3), 
+                     method = "Powell", tol = 1*10**(-5), 
                      options = {'disp' : True, 'maxiter' : maxiter}, bounds = ((0, 500), (0, 1)))
         
         return res
@@ -741,7 +741,7 @@ if __name__ == "__main__":
     X = data.copy()
     Y = grid_sample.copy().flatten()
     # and run the FDD command
-    model = FDD(Y, X, level = 16, lmbda = 50, nu = 0.02, iter = 5000, tol = 5e-5, qtile = 0.01,
+    model = FDD(Y, X, level = 16, lmbda = 1, nu = 0.02, iter = 5000, tol = 5e-5, qtile = 0.01,
                 pick_nu = "MS")
     
     import time
