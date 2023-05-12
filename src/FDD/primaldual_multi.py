@@ -41,8 +41,15 @@ class PrimalDual(torch.nn.Module):
         tw = torch.tensor(12, dtype=torch.float32, device = dev)
         tauu =  torch.tensor(  1.0 / 6.0, device=dev) # *res
         sigmap = torch.tensor( (1.0 / (3.0 + l)), device=dev) # *res
-        sigmas = torch.tensor(1.0, device=dev) 
+        sigmas = torch.tensor((1.0 / torch.sqrt(136)), device = dev) #  torch.tensor(1.0, device=dev) 
 
+        # acceleration
+        gamma_u = torch.tensor(1, device=dev)
+        gamma_mu = torch.tensor(1, device=dev)
+        theta_u = torch.tensor(1, device=dev)
+        theta_mu = torch.tensor(1, device=dev)
+        
+        
         # get image dimensions
         dim = len(f.size())
         
@@ -50,7 +57,7 @@ class PrimalDual(torch.nn.Module):
         
         # s1, s2, mu1, mu2, mun1, mun2, mubar1, mubar2 dimension
         proj = int(l * (l - 1) / 2 + l)  # see eq. 4.24 in thesis -- number of non-local constraint sets
-        tau =  (1.0 / (2.0 + (proj/4.0)))  
+        tau =  torch.tensor(1.0 / torch.sqrt(136))
 
 
         
@@ -124,11 +131,24 @@ class PrimalDual(torch.nn.Module):
                 if torch.le(nrj/(torch.prod(torch.tensor(dims[:-1] + [int(l)]))), tol): # if tolerance criterion is met,
                     it_total = it
                     break
+            #tauu, tau, sigmap, sigmas = self.updateStepSizes(tauu, tau, sigmap, sigmas, gamma_u, gamma_mu, theta_u, theta_mu) # update step sizes
  
             # if torch.equal(iter, repeats-1):
             #     print("debug")
         
         return (u, nrj, nrj/(torch.prod(torch.tensor(dims[:-1] + [int(l)]))), it_total)
+    
+    def updateStepSizes(self, tau_u, tau, sigma_p, sigma_s, gamma_u, gamma_mu, theta_u, theta_mu):
+        theta_u = 1 / torch.sqrt(2*gamma_u*tau_u)
+        theta_mu = 1 / torch.sqrt(2*gamma_mu*tau)
+        
+        # above 3 lines but remove self
+        tau_u = tau_u * theta_u
+        tau = tau * theta_mu
+        sigma_p = sigma_p / theta_u
+        sigma_s = sigma_s / theta_mu
+        
+        return tau_u, tau, sigma_p, sigma_s
         
     def forward_differences(self, ubar, D : int):
 

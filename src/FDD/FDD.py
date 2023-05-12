@@ -15,7 +15,7 @@ class FDD():
     def __init__(self, Y : np.array, X : np.array, pick_nu : str="kmeans", level : int=16, 
                  lmbda : float=1, nu : float=0.01, iter : int=1000, tol : float=5e-5, rectangle : bool=False, 
                  qtile : float=0.05, image : bool=False, grid : bool=False, resolution : float=None,
-                 eps : float = 0.01, wavelet : str = "db1") -> None:
+                 eps : float = 0.01, wavelet : str = "db1", scaled = False) -> None:
 
         self.device = self.setDevice()
         torch.set_grad_enabled(False)
@@ -35,10 +35,20 @@ class FDD():
         self.qtile = qtile
         self.resolution = resolution
         
+        # for acceleration
+        self.gamma = 1
+        self.theta_u = 1 # placeholder
+        self.theta_mu = 1
+        
         # SURE parameters
         self.eps = eps
         self.wavelet = wavelet
         
+        # scale gradients?
+        if scaled:
+            self.script = "scripted_primal_dual_scaled"
+        else:
+            self.script = "scripted_primal_dual"
         
         if self.image: # if image, we don't scale -- assume between 0 and 1
             self.castImageToGrid()
@@ -56,7 +66,7 @@ class FDD():
         self.nu = nu
         self.pick_nu = pick_nu
         
-        self.model = torch.jit.load("src/FDD/scripted_primal_dual.pt", map_location = self.device)
+        self.model = torch.jit.load("src/FDD/" + self.script + ".pt", map_location = self.device)
         
         
         self.model = self.model.to(self.device)
@@ -465,6 +475,9 @@ class FDD():
         
         return (u, jumps, J_grid, nrj, eps, it)
     
+
+        
+    
     
     def run(self):
         
@@ -537,7 +550,7 @@ class FDD():
             minimize(self.SURE_objective, np.array([self.lmbda, self.nu]), 
                      tuple([tol, self.eps, f, repeats, level, self.grid_y, sigma_sq, b]),
                      method = "Powell", tol = 1*10**(-3), 
-                     options = {'disp' : True, 'maxiter' : maxiter}, bounds = ((1, 500), (0, 1)))
+                     options = {'disp' : True, 'maxiter' : maxiter}, bounds = ((0, 500), (0, 1)))
         
         return res
         
@@ -725,7 +738,7 @@ if __name__ == "__main__":
     X = data.copy()
     Y = grid_sample.copy().flatten()
     # and run the FDD command
-    model = FDD(Y, X, level = 16, lmbda = 1, nu = 0.05, iter = 5000, tol = 5e-5, qtile = 0.01,
+    model = FDD(Y, X, level = 16, lmbda = 50, nu = 0.02, iter = 5000, tol = 5e-5, qtile = 0.01,
                 pick_nu = "MS")
     
     import time
@@ -733,7 +746,7 @@ if __name__ == "__main__":
     u, jumps, J_grid, nrj, eps, it = model.run()
     print(time.time() - t0)
 
-    plt.imshow(J_grid)
+    plt.imshow(u)
     plt.show()
 
 
