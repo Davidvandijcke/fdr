@@ -44,11 +44,6 @@ class FDD():
         self.eps = eps
         self.wavelet = wavelet
         
-        # scale gradients?
-        if scaled:
-            self.script = "scripted_primal_dual_scaled"
-        else:
-            self.script = "scripted_primal_dual"
         
         if self.image: # if image, we don't scale -- assume between 0 and 1
             self.castImageToGrid()
@@ -66,7 +61,14 @@ class FDD():
         self.nu = nu
         self.pick_nu = pick_nu
         
-        self.model = torch.jit.load("src/FDD/" + self.script + ".pt", map_location = self.device)
+        # scale gradients?
+        self.scaled = scaled
+        if self.scaled:
+            script = "scripted_primal_dual_scaled"
+        else:
+            script = "scripted_primal_dual"
+        
+        self.model = torch.jit.load("src/FDD/" + script + ".pt", map_location = self.device)
         
         
         self.model = self.model.to(self.device)
@@ -398,7 +400,8 @@ class FDD():
     def boundary(self, u):
         
         u_diff = self.forward_differences(u, D = len(u.shape))
-        u_diff = u_diff # / self.resolution # scale FD by side length
+        if not self.scaled:
+            u_diff = u_diff / self.resolution # scale FD by side length
         u_norm = np.linalg.norm(u_diff, axis = 0, ord = 2) # 2-norm
 
         if self.pick_nu == "kmeans":
@@ -553,7 +556,7 @@ class FDD():
             minimize(self.SURE_objective, np.array([self.lmbda, self.nu]), 
                      tuple([tol, self.eps, f, repeats, level, self.grid_y, sigma_sq, b]),
                      method = "Powell", tol = 1*10**(-3), 
-                     options = {'disp' : True, 'maxiter' : maxiter}, bounds = ((0, 2), (0, 1)))
+                     options = {'disp' : True, 'maxiter' : maxiter}, bounds = ((0, 500), (0, 1)))
         
         return res
         
