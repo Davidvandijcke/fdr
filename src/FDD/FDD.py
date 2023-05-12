@@ -492,7 +492,7 @@ class FDD():
     
     def SURE_objective(self, theta, tol, eps, f, repeats, level, grid_y, sigma_sq, b):
         
-        b = torch.randn(f.shape, device = self.device) 
+        #b = torch.randn(f.shape, device = self.device) 
 
         
         lmbda_torch = torch.tensor(theta[0], device = self.device, dtype = torch.float32)
