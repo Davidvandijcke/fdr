@@ -492,6 +492,8 @@ class FDD():
     
     def SURE_objective(self, theta, tol, eps, f, repeats, level, grid_y, sigma_sq, b):
         
+        b = torch.randn(f.shape, device = self.device) 
+
         
         lmbda_torch = torch.tensor(theta[0], device = self.device, dtype = torch.float32)
         nu_torch = torch.tensor(theta[1], device = self.device, dtype = torch.float32)
@@ -543,6 +545,7 @@ class FDD():
         sigma_sq = self.waveletDenoising(self.grid_y)
         
         #self.SURE_objective(self.lmbda, self.nu, tol, self.eps, f, repeats, level, self.grid_y, sigma_sq)
+
         b = torch.randn(f.shape, device = self.device) 
 
 
