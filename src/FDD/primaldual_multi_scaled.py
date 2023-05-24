@@ -12,19 +12,7 @@ class PrimalDual(torch.nn.Module):
         
         torch.set_grad_enabled(False)
 
-        
 
-    # def setDevice(self):
-    #     if torch.cuda.is_available(): # cuda gpus
-    #         device = torch.device("cuda")
-    #         #torch.cuda.set_device(int(gpu_id))
-    #         torch.set_default_tensor_type('torch.cuda.FloatTensor')
-    #     elif torch.backends.mps.is_available(): # mac gpus
-    #         device = torch.device("mps")
-    #     elif torch.backends.mkl.is_available(): # intel cpus
-    #         device = torch.device("mkl")
-    #     torch.set_grad_enabled(True)
-    #     return device
             
     def forward(self, f, repeats, l, lmbda, nu, tol):
     # Original __init__ code moved here (with 'self.' removed)
@@ -43,13 +31,18 @@ class PrimalDual(torch.nn.Module):
         # for scaling, multiply by res, not sqrt(res) bcs L^2 and we take the res out of the power
         tauu = torch.tensor(  1.0 / torch.sqrt(4 * f.ndim) * res, device=dev)  # torch.tensor(  1.0 / 6.0 * res, device=dev) # *res
         sigmap = torch.tensor( 1.0 / torch.sqrt(4 * f.ndim)  * res, device=dev) # torch.tensor( (1.0 / (3.0 + l))  * res, device=dev) # *res
-        sigmas = torch.tensor(1.0, device = dev) #  torch.tensor(1.0, device=dev) 
-
+        #sigmas = torch.tensor(1.0, device = dev) #  torch.tensor(1.0, device=dev) 
+        sigmas = torch.tensor( 1.0 / torch.sqrt(4 * f.ndim)  * res, device=dev) 
+        
         # acceleration
         gamma_u = torch.tensor(1, device=dev, dtype=torch.float32)
         gamma_mu = torch.tensor(1, device=dev, dtype=torch.float32)
         theta_u = torch.tensor(1, device=dev, dtype=torch.float32)
         theta_mu = torch.tensor(1, device=dev, dtype=torch.float32)
+        
+        # adaptive step sizes
+        alpha = torch.tensor(0.95, device=dev, dtype=torch.float32)
+        eta = torch.tensor(0.95, device=dev, dtype=torch.float32)
 
         # get image dimensions
         dim = len(f.size())
@@ -58,8 +51,8 @@ class PrimalDual(torch.nn.Module):
         
         # s1, s2, mu1, mu2, mun1, mun2, mubar1, mubar2 dimension
         proj = int(l * (l - 1) / 2 + l)  # see eq. 4.24 in thesis -- number of non-local constraint sets
-        tau = torch.tensor(1.0 / proj , device=dev) # (1.0 / (2.0 + (proj/4.0)))  
-
+        #tau = torch.tensor(1.0 / proj , device=dev) # (1.0 / (2.0 + (proj/4.0)))  
+        tau = torch.tensor( 1.0 / proj, device=dev) 
         
         # allocate memory on device
         u = torch.zeros(dims + [int(l)], dtype=torch.float32, device=dev)
@@ -114,6 +107,8 @@ class PrimalDual(torch.nn.Module):
         
         # START loop
         for it in range(int(repeats)):
+            
+            u_old, mux_old, px_old, pt_old, sx_old = u.clone(), mux.clone(), px.clone(), pt.clone(), sx.clone()
 
             px, pt = self.parabola(px, pt, ubar, mux, lmbda, l, f, k_indices, dims, sigmap) # project onto parabola (set K)s
 
@@ -151,6 +146,19 @@ class PrimalDual(torch.nn.Module):
         sigma_s = sigma_s / theta_mu
         
         return tau_u, tau, sigma_p, sigma_s
+    
+    def adaptiveStepSizes(u, mux, px, pt, sx, u_old, mux_old, px_old, pt_old, sx_old,
+                          sigmap, sigmas, tauu, tau, alpha, eta):
+        c = 0.9
+        
+        u_norm = torch.linalg.vector_norm(u-u_old, ord=2)**2
+        mux_norm = torch.linalg.vector_norm(mux-mux_old, ord=2)**2
+        px_norm = torch.linalg.vector_norm(px-px_old, ord=2)**2
+        pt_norm = torch.linalg.vector_norm(pt-pt_old, ord=2)**2
+        sx_norm = torch.linalg.vector_norm(sx-sx_old, ord=2)**2
+        # backtrack = (c / (2*tauu) * u_norm + c / (2*tau) * mux_norm + 
+        #              c / (2*sigmap) * px_norm + c / (2*sigmas) * sx_norm) - 
+        #             2*()
     
     def forward_differences(self, ubar, D : int):
 

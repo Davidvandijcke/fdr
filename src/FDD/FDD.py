@@ -495,13 +495,13 @@ class FDD():
     
     def SURE_objective(self, theta, tol, eps, f, repeats, level, grid_y, sigma_sq, b):
         
-        #b = torch.randn(f.shape, device = self.device) 
+        b = torch.randn(f.shape, device = self.device) 
 
         
         lmbda_torch = torch.tensor(theta[0], device = self.device, dtype = torch.float32)
         nu_torch = torch.tensor(theta[1], device = self.device, dtype = torch.float32)
         
-        n = grid_y.shape[0]
+        n = grid_y.flatten().shape[0]
         
         f_eps = f + b * eps
         
@@ -518,6 +518,28 @@ class FDD():
         
         return sure
     
+    def gridSearch(self, theta, args):
+        lmbda_list = [1, 5, 10, 20, 50, 100, 300, 500]
+        nu_list = [0.001, 0.005, 0.01, 0.02 ,0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.09,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1]
+    
+        objlist = []
+        arglist = []
+        for lmbda in lmbda_list:
+            for nu in nu_list:
+                # perform a grid search on the SURE_objective, retain all the values
+                # and then pick the best one
+                objlist.append(self.SURE_objective(theta, *args))
+                arglist.append((lmbda, nu))
+        
+        # get index of minimum value
+        min_idx = np.argmin(objlist)
+        
+        # get args of minimum value
+        best_args = arglist[min_idx]
+        
+        return best_args
+            
+                
     def waveletDenoising(self, y):
         
         coeffs = pywt.wavedecn(y.squeeze(), self.wavelet)
@@ -525,24 +547,22 @@ class FDD():
         # Get detail coefficients at the finest scale
         details = coeffs[-1]
 
-        # For 3D data, there are 7 sets of detail coefficients at each level:
-        # 'aad', 'ada', 'daa', 'aad', 'add', 'dda', 'daa', 'ddd'
-        # We'll calculate the MAD for each of them and then take the median of these values.
-
-        mad_values = []
+        
+        wavs = []  
         for key in details.keys():
             # Flatten the array to 1D for MAD calculation
             coeff_arr = np.ravel(details[key])
-            med = np.median(coeff_arr)
-            mad = np.median(np.abs(coeff_arr - med))
-            mad_values.append(mad)
-
-        # Compute the estimated noise variance (sigma squared)
-        sigma = np.median(mad_values) / 0.6745
+            wavs.append(coeff_arr)
+        wavs = np.concatenate(wavs)
+        
+        mad = np.median(np.abs(wavs))
+        
+        sigma = mad / 0.6745
+        
         return sigma**2
         
         
-    def SURE(self, maxiter = 100):
+    def SURE(self, maxiter = 100, grid = True):
         f, repeats, level, lmbda, nu, tol = \
             self.arraysToTensors(self.grid_y, self.iter, self.level, self.lmbda, self.nu, self.tol)
         sigma_sq = self.waveletDenoising(self.grid_y)
@@ -551,12 +571,14 @@ class FDD():
 
         b = torch.randn(f.shape, device = self.device) 
 
-
-        res = \
-            minimize(self.SURE_objective, np.array([self.lmbda, self.nu]), 
-                     tuple([tol, self.eps, f, repeats, level, self.grid_y, sigma_sq, b]),
-                     method = "Powell", tol = 1*10**(-3), 
-                     options = {'disp' : True, 'maxiter' : maxiter}, bounds = ((0, 500), (0, 1)))
+        if not grid:
+            res = \
+                minimize(self.SURE_objective, np.array([self.lmbda, self.nu]), 
+                        tuple([tol, self.eps, f, repeats, level, self.grid_y, sigma_sq, b]),
+                        method = "Powell", tol = 1*10**(-3), 
+                        options = {'disp' : True, 'maxiter' : maxiter}, bounds = ((0, 10), (0, 1)))
+        else:
+            res = self.gridSearch(np.array([self.lmbda, self.nu]), tuple([tol, self.eps, f, repeats, level, self.grid_y, sigma_sq, b]))
         
         return res
         
@@ -713,7 +735,7 @@ if __name__ == "__main__":
     
     # Generate some random data points from a discontinuous function
     np.random.seed(0)
-    data = np.random.rand(1000, 2) # draw 1000 2D points from a uniform
+    data = np.random.rand(500, 2) # draw 1000 2D points from a uniform
 
     # Create the grid
     # Define the grid dimensions and resolution
@@ -739,16 +761,17 @@ if __name__ == "__main__":
     # now sample the function values on the data points
     grid_sample = np.zeros((data.shape[0],1))
     for i in range(data.shape[0]):
-            grid_sample[i] = f(data[i,0], data[i,1]) + np.random.normal(0, 0.01)
+            grid_sample[i] = f(data[i,0], data[i,1]) + np.random.normal(0, 0.08)
 
     X = data.copy()
     Y = grid_sample.copy().flatten()
     # and run the FDD command
-    model = FDD(Y, X, level = 16, lmbda = 1, nu = 0.02, iter = 5000, tol = 5e-5, qtile = 0.01,
-                pick_nu = "MS")
+    model = FDD(Y, X, level = 16, lmbda = 1, nu = 0.02, iter = 5000, tol = 5e-5, qtile = 0.08,
+                pick_nu = "MS", scaled = False)
     
     import time
     t0 = time.time()
+    model.SURE()
     u, jumps, J_grid, nrj, eps, it = model.run()
     print(time.time() - t0)
 
