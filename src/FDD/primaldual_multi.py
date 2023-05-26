@@ -29,6 +29,10 @@ class PrimalDual(torch.nn.Module):
     def forward(self, f, repeats, l, lmbda, nu, tol):
     # Original __init__ code moved here (with 'self.' removed)
     
+        from torch import Tensor
+        import torch
+        from typing import Tuple, List, Dict
+    
         # repeats = int(repeats_a)
         # l = int(level_a)
         # lmbda = float(lmbda_a)
@@ -41,8 +45,8 @@ class PrimalDual(torch.nn.Module):
         tw = torch.tensor(12, dtype=torch.float32, device = dev)
         tauu = torch.tensor(  1.0 / torch.sqrt(4 * f.ndim) , device=dev)  # torch.tensor(  1.0 / 6.0 * res, device=dev) # *res
         sigmap = torch.tensor( 1.0 / torch.sqrt(4 * f.ndim)  , device=dev) # torch.tensor( (1.0 / (3.0 + l))  * res, device=dev) # *res
-        #sigmas = torch.tensor(1.0, device = dev) #  torch.tensor(1.0, device=dev) 
-        sigmas = torch.tensor( 1.0 / torch.sqrt(4 * f.ndim)  , device=dev)
+        sigmas = torch.tensor(1.0, device = dev) #  torch.tensor(1.0, device=dev) 
+        #sigmas = torch.tensor( 1.0 / torch.sqrt(4 * f.ndim)  , device=dev)
 
         # acceleration
         gamma_u = torch.tensor(1, device=dev)

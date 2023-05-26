@@ -22,6 +22,7 @@ class PrimalDual(torch.nn.Module):
         # lmbda = float(lmbda_a)
         # nu = float(nu_a)
         
+        
         dev = f.device
         res = torch.tensor(1 / f.shape[0], device = dev)
         
@@ -31,8 +32,8 @@ class PrimalDual(torch.nn.Module):
         # for scaling, multiply by res, not sqrt(res) bcs L^2 and we take the res out of the power
         tauu = torch.tensor(  1.0 / torch.sqrt(4 * f.ndim) * res, device=dev)  # torch.tensor(  1.0 / 6.0 * res, device=dev) # *res
         sigmap = torch.tensor( 1.0 / torch.sqrt(4 * f.ndim)  * res, device=dev) # torch.tensor( (1.0 / (3.0 + l))  * res, device=dev) # *res
-        #sigmas = torch.tensor(1.0, device = dev) #  torch.tensor(1.0, device=dev) 
-        sigmas = torch.tensor( 1.0 / torch.sqrt(4 * f.ndim)  * res, device=dev) 
+        sigmas = torch.tensor(1.0, device = dev) #  torch.tensor(1.0, device=dev) 
+        #sigmas = torch.tensor( 1.0 / torch.sqrt(4 * f.ndim)  * res, device=dev) 
         
         # acceleration
         gamma_u = torch.tensor(1, device=dev, dtype=torch.float32)
