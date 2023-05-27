@@ -164,7 +164,7 @@ class PrimalDual(torch.nn.Module):
         #              c / (2*sigmap) * px_norm + c / (2*sigmas) * sx_norm) - 
         #             2*()
     
-    def forward_differences(self, ubar, D : int):
+    def forward_differences(self, ubar, D):
 
         diffs = []
 
@@ -188,7 +188,7 @@ class PrimalDual(torch.nn.Module):
 
 
     #@torch.jit.script
-    def parabola(self, px, pt, ubar, mux, lmbda, l, f, k_indices : Dict[int, List[int]], dims : List[int], sigmap):
+    def parabola(self, px, pt, ubar, mux, lmbda, l, f, k_indices, dims, sigmap):
 
         # take forward differences
         ux = self.forward_differences(ubar, len(dims)-1)
@@ -279,7 +279,7 @@ class PrimalDual(torch.nn.Module):
         return sx
 
     #@torch.jit.script
-    def mu(self, px, sx, mux, proj : int, l : int, k1_k2_combinations, tau : float):
+    def mu(self, px, sx, mux, proj, l, k1_k2_combinations, tau):
 
         # t1 = torch.stack(tuple([p1[:,:,:,k[0].item():(k[1].item()+1)].sum(dim=3) for k in k1_k2_combinations]), dim=-1)
         # t2 = torch.stack(tuple([p2[:,:,:,k[0].item():(k[1].item()+1)].sum(dim=3) for k in k1_k2_combinations]), dim=-1)
@@ -297,7 +297,7 @@ class PrimalDual(torch.nn.Module):
         return mux, mubarx
 
     #@torch.jit.script
-    def clipping(self, px, pt, u, tauu, dims : List[int], l):
+    def clipping(self, px, pt, u, tauu, dims, l):
         
         temp = u.detach().clone()
         
@@ -314,7 +314,7 @@ class PrimalDual(torch.nn.Module):
         return u, ubar
     
     
-    def backward_differences(self, p, dims : int):
+    def backward_differences(self, p, dims):
         output = []
 
         for i in range(dims):
