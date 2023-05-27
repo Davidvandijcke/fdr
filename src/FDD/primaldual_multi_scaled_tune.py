@@ -6,18 +6,16 @@ from utils import *
 
 
 class PrimalDual(torch.nn.Module):
-    def __init__(self, lmbda, nu) -> None:
+    def __init__(self) -> None:
 
         super(PrimalDual, self).__init__()
         
-        self.lmbda = lmbda
-        self.nu = nu
         
         torch.set_grad_enabled(False)
 
 
             
-    def forward(self, f, repeats, l, tol):
+    def forward(self, f, repeats, l, lmbda, nu, tol):
     # Original __init__ code moved here (with 'self.' removed)
     
         # repeats = int(repeats_a)

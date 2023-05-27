@@ -9,16 +9,17 @@ from sklearn.cluster import KMeans
 from scipy.spatial import cKDTree
 from scipy.optimize import minimize
 import pywt
-from primaldual_multi_scaled_tune import PrimalDual
+from .primaldual_multi_scaled_tune import PrimalDual
+from .utils import setDevice
 
 
 class FDD():
     def __init__(self, Y : np.array, X : np.array, pick_nu : str="kmeans", level : int=16, 
                  lmbda : float=1, nu : float=0.01, iter : int=1000, tol : float=5e-5, rectangle : bool=False, 
                  qtile : float=0.05, image : bool=False, grid : bool=False, resolution : float=None,
-                 eps : float = 0.01, wavelet : str = "db1", scaled = False) -> None:
+                 scaled = False) -> None:
 
-        self.device = self.setDevice()
+        self.device = setDevice()
         torch.set_grad_enabled(False)
         
         self.Y_raw = Y.copy() # retain original data
@@ -41,9 +42,6 @@ class FDD():
         self.theta_u = 1 # placeholder
         self.theta_mu = 1
         
-        # SURE parameters
-        self.eps = eps
-        self.wavelet = wavelet
         
         
         if self.image: # if image, we don't scale -- assume between 0 and 1
@@ -75,19 +73,6 @@ class FDD():
         self.model = self.model.to(self.device)
         # TODO: exclude duplicate points (there shouldnt be any cause the variables are assumed to be continuous but anyway)
         
-
-        
-    def setDevice(self):
-        if torch.cuda.is_available(): # cuda gpus
-            device = torch.device("cuda")
-            #torch.cuda.set_device(int(gpu_id))
-            torch.set_default_tensor_type('torch.cuda.FloatTensor')
-        elif torch.backends.mps.is_available(): # mac gpus
-            device = torch.device("mps")
-        elif torch.backends.mkl.is_available(): # intel cpus
-            device = torch.device("mkl")
-        torch.set_grad_enabled(True)
-        return device
 
     def normalizeData(self):
         
@@ -494,147 +479,12 @@ class FDD():
         
         return (u, jumps, J_grid, nrj, eps, it)
     
-    def SURE_objective(self, theta, tol, eps, f, repeats, level, grid_y, sigma_sq, b, R=5):
-        
-        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-        sure = []
-
-        lmbda_torch = torch.tensor(theta[0], device = self.device, dtype = torch.float32)
-        nu_torch = torch.tensor(theta[1], device = self.device, dtype = torch.float32)
-        n = grid_y.size # flatten().shape[0]
-        v = self.model(f, repeats, level, lmbda_torch, nu_torch, tol)[0]
-        u = self.isosurface(v.cpu().detach().numpy())
-
-        u_dist = np.mean(np.abs(grid_y.flatten() - u.flatten())**2)
-
-        for r in range(R):
-
-            bt = b[...,r]
-            f_eps = f + bt * eps
-            f_eps = torch.clamp(f_eps, min = 0, max = 1)
-
-            v_eps = self.model(f_eps, repeats, level, lmbda_torch, nu_torch, tol)[0]
-            u_eps = self.isosurface(v_eps.cpu().detach().numpy())
-
-            divf_y = np.real(np.vdot(bt.cpu().detach().numpy().squeeze().flatten(), 
-                                    u_eps.flatten() - u.flatten())) / (eps)
-            sure.append(u_dist - sigma_sq + 2 * sigma_sq * divf_y / n)
-            # TODO: should be euclidean norm
-            sure = np.mean(sure)
-
-        return sure
-    
-    def SURE_objective_tune(self, theta, tol, eps, f, repeats, level, grid_y, sigma_sq, b, R=5):
-    
-        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-
-        sure = []
-
-        lmbda_torch = torch.tensor(theta[0], device = self.device, dtype = torch.float32)
-        nu_torch = torch.tensor(theta[1], device = self.device, dtype = torch.float32)
-        n = grid_y.size # flatten().shape[0]
-        v = PrimalDual.forward(f, repeats, level, lmbda_torch, nu_torch, tol)[0]
-        u = self.isosurface(v.cpu().detach().numpy())
-
-        u_dist = np.mean(np.abs(grid_y.flatten() - u.flatten())**2)
-
-        for r in range(R):
-
-            bt = b[...,r]
-            f_eps = f + bt * eps
-            f_eps = torch.clamp(f_eps, min = 0, max = 1)
-
-            v_eps = PrimalDual.forward(f_eps, repeats, level, lmbda_torch, nu_torch, tol)[0]
-            u_eps = self.isosurface(v_eps.cpu().detach().numpy())
-
-            divf_y = np.real(np.vdot(bt.cpu().detach().numpy().squeeze().flatten(), 
-                                    u_eps.flatten() - u.flatten())) / (eps)
-            sure.append(u_dist - sigma_sq + 2 * sigma_sq * divf_y / n)
-            # TODO: should be euclidean norm
-            sure = np.mean(sure)
-
-        return sure
-    
-    def gridSearch(self, theta, args):
-        lmbda_list = [1, 5, 10, 20, 50, 100, 300, 500]
-        nu_list = [0.001, 0.005, 0.01, 0.02 ,0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.09,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1]
-    
-        objlist = []
-        arglist = []
-        for lmbda in lmbda_list:
-            for nu in nu_list:
-                # perform a grid search on the SURE_objective, retain all the values
-                # and then pick the best one
-                theta = np.array([lmbda, nu])
-                objlist.append(self.SURE_objective(theta, *args))
-                arglist.append((lmbda, nu))
-        
-        # get index of minimum value
-        min_idx = np.argmin(objlist)
-        
-        # get args of minimum value
-        best_args = arglist[min_idx]
-        
-        return best_args
-            
-                
-    def waveletDenoising(self, y):
-        
-        coeffs = pywt.wavedecn(y.squeeze(), self.wavelet)
-        
-        # Get detail coefficients at the finest scale
-        details = coeffs[-1]
-
-        
-        wavs = []  
-        for key in details.keys():
-            # Flatten the array to 1D for MAD calculation
-            coeff_arr = np.ravel(details[key])
-            wavs.append(coeff_arr)
-        wavs = np.concatenate(wavs)
-        
-        mad = np.median(np.abs(wavs))
-        
-        sigma = mad / 0.6745
-        
-        return sigma**2
-        
-        
-    def SURE(self, maxiter = 100, grid = True):
-        f, repeats, level, lmbda, nu, tol = \
-            self.arraysToTensors(self.grid_y, self.iter, self.level, self.lmbda, self.nu, self.tol)
-        sigma_sq = self.waveletDenoising(self.grid_y)
-        
-        #self.SURE_objective(self.lmbda, self.nu, tol, self.eps, f, repeats, level, self.grid_y, sigma_sq)
-
-        b = torch.randn(f.shape, device = self.device) 
-
-        if not grid:
-            res = \
-                minimize(self.SURE_objective, np.array([self.lmbda, self.nu]), 
-                        tuple([tol, self.eps, f, repeats, level, self.grid_y, sigma_sq, b]),
-                        method = "Powell", tol = 1*10**(-3), 
-                        options = {'disp' : True, 'maxiter' : maxiter}, bounds = ((0, 10), (0, 1)))
-        else:
-            res = self.gridSearch(np.array([self.lmbda, self.nu]), tuple([tol, self.eps, f, repeats, level, self.grid_y, sigma_sq, b]))
-        
-        return res
         
         
         
 if __name__ == "__main__":
-    def setDevice():
-        if torch.cuda.is_available(): # cuda gpus
-            device = torch.device("cuda")
-            #torch.cuda.set_device(int(gpu_id))
-            torch.set_default_tensor_type('torch.cuda.FloatTensor')
-        elif torch.backends.mps.is_available(): # mac gpus
-            device = torch.device("mps")
-        elif torch.backends.mkl.is_available(): # intel cpus
-            device = torch.device("mkl")
-        torch.set_grad_enabled(True)
-        return device
+
 
     # detect GPU device and set it as default
     dev = setDevice()

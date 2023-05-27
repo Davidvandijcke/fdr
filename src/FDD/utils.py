@@ -61,5 +61,15 @@ class DeviceMode(TorchFunctionMode):
             return func(*args, **kwargs)
         return func(*args, **kwargs)
     
-    
-    
+
+def setDevice():
+    if torch.cuda.is_available(): # cuda gpus
+        device = torch.device("cuda")
+        #torch.cuda.set_device(int(gpu_id))
+        torch.set_default_tensor_type('torch.cuda.FloatTensor')
+    elif torch.backends.mps.is_available(): # mac gpus
+        device = torch.device("mps")
+    elif torch.backends.mkl.is_available(): # intel cpus
+        device = torch.device("mkl")
+    torch.set_grad_enabled(True)
+    return device
