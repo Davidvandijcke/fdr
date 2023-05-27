@@ -260,7 +260,7 @@ class FDD():
     
     def k_means_boundary(self):
         # histogram of gradient norm
-        test = np.linalg.norm(forward_differences(mIn, D = len(mIn.shape)), axis = 0)
+        test = np.linalg.norm(self.forward_differences(self.mIn, D = len(self.mIn.shape)), axis = 0)
         out = plt.hist(test)
 
         X1 = np.tile(out[1][1:], out[0].shape[0])

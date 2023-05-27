@@ -11,7 +11,7 @@ import pywt
 from primaldual_multi_scaled_tune import PrimalDual
 from functools import partial
 from ray import tune
-from utils import setDevice
+from utils import *
 
 
 
@@ -116,14 +116,14 @@ def SURE(model, maxiter = 100, R = 1, grid = True, tuner = False, eps = 0.01, wa
     b = torch.randn(list(f.shape) + [R], device = model.device) 
 
     if model.scaled:
-      nu_max = model.max() / model.resolution
+      nu_max = y_diff.max()**2
     else:
       nu_max = 1
 
     if not grid and not tuner:
         res = \
             minimize(SURE_objective_tune, np.array([lmbda, nu]), 
-                    tuple([tol, eps, f, repeats, level, model.grid_y, sigma_sq, b, model, R]),
+                    tuple([tol, eps, f, repeats, level, model.grid_y, sigma_sq, b, R]),
                     method = "BFGS", tol = 1*10**(-9), 
                     options = {'disp' : True, 'maxiter' : maxiter})# , bounds = ((0, 500), (0, 1)))
         # bounds = [(0, 10), (0, 1)] # set bounds for your parameters
@@ -138,7 +138,7 @@ def SURE(model, maxiter = 100, R = 1, grid = True, tuner = False, eps = 0.01, wa
                 # Start the Ray Tune run
         analysis = tune.run(
             partial(SURE_tune, tol=tol, eps=eps, f=f, repeats=repeats, 
-                    level=level, grid_y=model.grid_y, sigma_sq=sigma_sq, b=b, model=model, R=R),
+                    level=level, grid_y=model.grid_y, sigma_sq=sigma_sq, b=b, R=R),
             config=search_space,
             num_samples=200,  # number of different hyperparameter combinations to try
             resources_per_trial={"cpu": 2, "gpu": 0.5},  # adjust depending on your setup
@@ -153,12 +153,12 @@ def SURE(model, maxiter = 100, R = 1, grid = True, tuner = False, eps = 0.01, wa
         
     return res
 
-def SURE_tune(config, tol, eps, f, repeats, level, grid_y, sigma_sq, b, model, R):
+def SURE_tune(config, tol, eps, f, repeats, level, grid_y, sigma_sq, b, R):
     
     theta = np.array(config['lambda'], config['nu'])
-    return SURE_objective_tune(theta, tol, eps, f, repeats, level, grid_y, sigma_sq, b, model, R)
+    return SURE_objective_tune(theta, tol, eps, f, repeats, level, grid_y, sigma_sq, b, R)
 
-def SURE_objective_tune(theta, tol, eps, f, repeats, level, grid_y, sigma_sq, b, model, R=5):
+def SURE_objective_tune(theta, tol, eps, f, repeats, level, grid_y, sigma_sq, b, R=5):
 
     device = f.device
 
@@ -167,8 +167,8 @@ def SURE_objective_tune(theta, tol, eps, f, repeats, level, grid_y, sigma_sq, b,
     lmbda_torch = torch.tensor(theta[0], device = device, dtype = torch.float32)
     nu_torch = torch.tensor(theta[1], device = device, dtype = torch.float32)
     n = grid_y.size # flatten().shape[0]
-    v = model.forward(f, repeats, level, lmbda_torch, nu_torch, tol)[0]
-    u = model.isosurface(v.cpu().detach().numpy())
+    v = PrimalDual.forward(f, repeats, level, lmbda_torch, nu_torch, tol)[0]
+    u = isosurface(v.cpu().detach().numpy())
 
     u_dist = np.mean(np.abs(grid_y.flatten() - u.flatten())**2)
 
@@ -178,8 +178,8 @@ def SURE_objective_tune(theta, tol, eps, f, repeats, level, grid_y, sigma_sq, b,
         f_eps = f + bt * eps
         f_eps = torch.clamp(f_eps, min = 0, max = 1)
 
-        v_eps = model.forward(f_eps, repeats, level, lmbda_torch, nu_torch, tol)[0]
-        u_eps = model.isosurface(v_eps.cpu().detach().numpy())
+        v_eps = PrimalDual.forward(f_eps, repeats, level, lmbda_torch, nu_torch, tol)[0]
+        u_eps = isosurface(v_eps.cpu().detach().numpy())
 
         divf_y = np.real(np.vdot(bt.cpu().detach().numpy().squeeze().flatten(), 
                                 u_eps.flatten() - u.flatten())) / (eps)
