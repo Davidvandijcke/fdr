@@ -11,7 +11,7 @@ import pywt
 from primaldual_multi_scaled_tune import PrimalDual
 from functools import partial
 from ray import tune
-from .utils import setDevice
+from utils import setDevice
 
 
 

@@ -9,8 +9,8 @@ from sklearn.cluster import KMeans
 from scipy.spatial import cKDTree
 from scipy.optimize import minimize
 import pywt
-from .primaldual_multi_scaled_tune import PrimalDual
-from .utils import setDevice
+from primaldual_multi_scaled_tune import PrimalDual
+from utils import setDevice
 
 
 class FDD():
