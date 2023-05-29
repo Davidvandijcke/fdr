@@ -12,6 +12,7 @@ import pywt
 from primaldual_multi_scaled_tune import PrimalDual
 from utils import setDevice
 
+from FDD import FDD
 
 class FDD():
     def __init__(self, Y : np.array, X : np.array, pick_nu : str="kmeans", level : int=16, 

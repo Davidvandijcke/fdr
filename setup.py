@@ -11,7 +11,8 @@ class PostInstallCommand(install):
 setup(
     name="FDD",
     version="0.1",
-    packages=find_packages(),
+    package_dir={'': 'src'},  # Tell Python to look for packages in src/
+    packages=find_packages(where='src'),  # Find packages in src/
     install_requires=[
             'numpy==1.23.4',
             #"light-the-torch==0.3.5",
