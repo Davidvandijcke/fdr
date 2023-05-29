@@ -1,7 +1,6 @@
 import numpy as np
 import torch
 from typing import Tuple, List, Dict
-from utils import * 
 import cv2
 from matplotlib import pyplot as plt
 from sklearn.cluster import KMeans
@@ -13,6 +12,7 @@ from functools import partial
 from ray import tune
 from utils import *
 
+from FDD import FDD
 
 
 # def SURE_objective(theta, tol, eps, f, repeats, level, grid_y, sigma_sq, b, R=5):

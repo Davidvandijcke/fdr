@@ -1,0 +1,27 @@
+from setuptools import setup, find_packages
+from setuptools.command.install import install
+import os
+
+class PostInstallCommand(install):
+    """Post-installation for installation mode."""
+    def run(self):
+        install.run(self)
+        os.system("python post_install.py")
+
+setup(
+    name="FDD",
+    version="0.1",
+    packages=find_packages(),
+    install_requires=[
+            'numpy==1.23.4',
+            #"light-the-torch==0.3.5",
+            'opencv-python==4.6.0.66',
+            'matplotlib==3.3.4',
+            'scikit-learn==1.2.1',
+            'scipy==1.9.3',
+            'pywavelets==1.4.1',
+        ],
+        cmdclass={
+        'install': PostInstallCommand,
+    },
+)

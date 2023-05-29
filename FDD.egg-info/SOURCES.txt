@@ -1,0 +1,7 @@
+LICENSE
+setup.py
+FDD.egg-info/PKG-INFO
+FDD.egg-info/SOURCES.txt
+FDD.egg-info/dependency_links.txt
+FDD.egg-info/requires.txt
+FDD.egg-info/top_level.txt
