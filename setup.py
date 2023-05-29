@@ -16,7 +16,7 @@ setup(
     packages=find_packages(where='src'),  # Find packages in src/
     install_requires=[
             'numpy==1.23.4',
-            #"light-the-torch==0.3.5",
+            "light-the-torch==0.3.5",
             'opencv-python==4.6.0.66',
             'matplotlib==3.3.4',
             'scikit-learn==1.2.1',
