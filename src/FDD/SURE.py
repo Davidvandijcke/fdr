@@ -7,10 +7,10 @@ from sklearn.cluster import KMeans
 from scipy.spatial import cKDTree
 from scipy.optimize import minimize
 import pywt
-from primaldual_multi_scaled_tune import PrimalDual
+from .primaldual_multi_scaled_tune import PrimalDual
 from functools import partial
 from ray import tune
-from utils import *
+from .utils import *
 
 from FDD import FDD
 

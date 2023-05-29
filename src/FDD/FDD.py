@@ -2,15 +2,14 @@
 import numpy as np
 import torch
 from typing import Tuple, List, Dict
-from utils import * 
+from .utils import * 
 import cv2
 from matplotlib import pyplot as plt
 from sklearn.cluster import KMeans
 from scipy.spatial import cKDTree
 from scipy.optimize import minimize
 import pywt
-from primaldual_multi_scaled_tune import PrimalDual
-from utils import setDevice
+from .primaldual_multi_scaled_tune import PrimalDual
 
 from FDD import FDD
 
