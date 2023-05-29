@@ -6,7 +6,6 @@ def is_mac():
     return platform.system() == 'Darwin'
 
 def install():
-    subprocess.check_call([sys.executable, "-m", "pip", "install", "--upgrade", "pip"])
     
     if is_mac():
         packages = ["torch", "torchvision", "torchaudio"]
