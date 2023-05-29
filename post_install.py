@@ -10,7 +10,7 @@ def install():
     if is_mac():
         packages = ["torch", "torchvision", "torchaudio"]
     else:
-        subprocess.check_call([sys.executable, "-m", "pip", "install", "light-the-torch"])
+        #subprocess.check_call([sys.executable, "-m", "pip", "install", "light-the-torch"])
         try:
             import light_the_torch as ltt
             packages = ltt.find_links(["torch", "torchvision", "torchaudio"])
@@ -19,7 +19,7 @@ def install():
             return
 
     for package in packages:
-        subprocess.check_call([sys.executable, "-m", "pip", "install", package])
+        subprocess.check_call(["pip", "install", package])
 
 if __name__ == '__main__':
     install()
