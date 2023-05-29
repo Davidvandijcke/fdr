@@ -7,7 +7,7 @@ class PostInstallCommand(install):
     """Post-installation for installation mode."""
     def run(self):
         install.run(self)
-        subprocess.run(["python", "post_install.py"], check=True)
+        subprocess.run(["python3", "post_install.py"], check=True)
 
 setup(
     name="FDD",
