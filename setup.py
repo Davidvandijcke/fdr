@@ -22,7 +22,7 @@ setup(
             'scikit-learn==1.2.1',
             'scipy==1.9.3',
             'pywavelets==1.4.1',
-            "rays"
+            "ray"
         ],
         cmdclass={
         'install': PostInstallCommand,
