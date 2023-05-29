@@ -1,12 +1,13 @@
 from setuptools import setup, find_packages
 from setuptools.command.install import install
 import os
+import subprocess
 
 class PostInstallCommand(install):
     """Post-installation for installation mode."""
     def run(self):
         install.run(self)
-        os.system("python post_install.py")
+        subprocess.run(["python", "post_install.py"], check=True)
 
 setup(
     name="FDD",
