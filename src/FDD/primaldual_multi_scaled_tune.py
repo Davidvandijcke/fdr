@@ -2,7 +2,7 @@
 from torch import Tensor
 import torch
 from typing import Tuple, List, Dict
-from .utils import setDevice
+#from .utils import setDevice
 
 
 class PrimalDual(torch.nn.Module):
