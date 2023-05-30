@@ -26,7 +26,7 @@ setup(
             "ray"
         ],
         package_data={
-        'my_package': ['models/*.pt'],
+        'FDD': ['models/*.pt'],
     },
         cmdclass={
         'install': PostInstallCommand,
