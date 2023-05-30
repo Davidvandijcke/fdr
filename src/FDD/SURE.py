@@ -101,48 +101,12 @@ def tune_func(config, tol, eps, f, repeats, level, grid_y, sigma_sq, b, R):
     
 def SURE(model, maxiter = 100, R = 1, grid = True, tuner = False, eps = 0.01, wavelet = "db1"):
 
-    sigma_sq = waveletDenoising(y=model.grid_y, wavelet=wavelet)
-    N = model.grid_y.size
-    y = model.grid_y.squeeze()
-    y_diff = model.forward_differences(y, D = len(y.shape)) / model.resolution
-    y_norm = np.linalg.norm(np.linalg.norm(y_diff, ord = 2, axis = 0)**2)**2
-
-    # beta = N * sigma_sq / (4 * y_norm)
-    # lambda_0 = 1 # 1/(beta)
-    # nu_0 = 0.005 # (sigma_sq / 8) / beta
-    
-    lambda_0 = 0
-    nu_0 = 0
-
-    f, repeats, level, lmbda, nu, tol = \
-        model.arraysToTensors(model.grid_y, model.iter, model.level, lambda_0, nu_0, model.tol)
-    
-    #self.SURE_objective(self.lmbda, self.nu, tol, self.eps, f, repeats, level, self.grid_y, sigma_sq)
-
-    b = torch.randn(list(f.shape) + [R], device = model.device) 
-
-    if model.scaled:
-      nu_max = y_diff.max()**2
-    else:
-      nu_max = 1
-
-    if not grid and not tuner:
-        res = \
-            minimize(SURE_objective_tune, np.array([lmbda, nu]), 
-                    tuple([tol, eps, f, repeats, level, model.grid_y, sigma_sq, b, R]),
-                    method = "BFGS", tol = 1*10**(-9), 
-                    options = {'disp' : True, 'maxiter' : maxiter})# , bounds = ((0, 500), (0, 1)))
-        # bounds = [(0, 10), (0, 1)] # set bounds for your parameters
-        # res = differential_evolution(self.SURE_objective, bounds,
-        #             args=(tol, self.eps, f, repeats, level, self.grid_y, sigma_sq, b, R),
-        #             maxiter=maxiter, disp=True, polish=True)
-    elif tuner:
         search_space = {
         "lmbda": tune.loguniform(1e-4, 1e5),
         "nu": tune.loguniform(1e-4, 1)
     }
         trainable_with_resources = tune.with_resources(
-            testTune, 
+            testTune,
             {"cpu": 2, "gpu": 1}
         )
                 # Start the Ray Tune run
@@ -152,12 +116,64 @@ def SURE(model, maxiter = 100, R = 1, grid = True, tuner = False, eps = 0.01, wa
             tune_config=tune.TuneConfig(num_samples=100),  # number of different hyperparameter combinations to try
         )
 
-        # Get the hyperparameters of the best trial
-        res = analysis.fit() #get_best_trial("objective", "min", "last")
-    else:
-        res = gridSearch(tuple([tol, eps, f, repeats, level, model.grid_y, sigma_sq, b, R]))
+    # sigma_sq = waveletDenoising(y=model.grid_y, wavelet=wavelet)
+    # N = model.grid_y.size
+    # y = model.grid_y.squeeze()
+    # y_diff = model.forward_differences(y, D = len(y.shape)) / model.resolution
+    # y_norm = np.linalg.norm(np.linalg.norm(y_diff, ord = 2, axis = 0)**2)**2
+
+    # # beta = N * sigma_sq / (4 * y_norm)
+    # # lambda_0 = 1 # 1/(beta)
+    # # nu_0 = 0.005 # (sigma_sq / 8) / beta
+    
+    # lambda_0 = 0
+    # nu_0 = 0
+
+    # f, repeats, level, lmbda, nu, tol = \
+    #     model.arraysToTensors(model.grid_y, model.iter, model.level, lambda_0, nu_0, model.tol)
+    
+    # #self.SURE_objective(self.lmbda, self.nu, tol, self.eps, f, repeats, level, self.grid_y, sigma_sq)
+
+    # b = torch.randn(list(f.shape) + [R], device = model.device) 
+
+    # if model.scaled:
+    #   nu_max = y_diff.max()**2
+    # else:
+    #   nu_max = 1
+
+    # if not grid and not tuner:
+    #     res = \
+    #         minimize(SURE_objective_tune, np.array([lmbda, nu]), 
+    #                 tuple([tol, eps, f, repeats, level, model.grid_y, sigma_sq, b, R]),
+    #                 method = "BFGS", tol = 1*10**(-9), 
+    #                 options = {'disp' : True, 'maxiter' : maxiter})# , bounds = ((0, 500), (0, 1)))
+    #     # bounds = [(0, 10), (0, 1)] # set bounds for your parameters
+    #     # res = differential_evolution(self.SURE_objective, bounds,
+    #     #             args=(tol, self.eps, f, repeats, level, self.grid_y, sigma_sq, b, R),
+    #     #             maxiter=maxiter, disp=True, polish=True)
+    # elif tuner:
+    #     search_space = {
+    #     "lmbda": tune.loguniform(1e-4, 1e5),
+    #     "nu": tune.loguniform(1e-4, 1)
+    # }
+    #     trainable_with_resources = tune.with_resources(
+    #         partial(tune_func, tol=tol, eps=eps, f=f, repeats=repeats, 
+    #                 level=level, grid_y=model.grid_y, sigma_sq=sigma_sq, b=b, R=R), 
+    #         {"cpu": 2, "gpu": 1}
+    #     )
+    #             # Start the Ray Tune run
+    #     analysis = tune.Tuner(
+    #         trainable_with_resources,
+    #         param_space=search_space,
+    #         tune_config=tune.TuneConfig(num_samples=100),  # number of different hyperparameter combinations to try
+    #     )
+
+    #     # Get the hyperparameters of the best trial
+    #     res = analysis.fit() #get_best_trial("objective", "min", "last")
+    # else:
+    #     res = gridSearch(tuple([tol, eps, f, repeats, level, model.grid_y, sigma_sq, b, R]))
         
-    return res
+    # return res
 
 def testTune(config):
     return {'score' : 0}
