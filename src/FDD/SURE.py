@@ -94,7 +94,7 @@ def waveletDenoising(y, wavelet : str = "db1"):
     
     
 def tune_func(config, tol, eps, f, repeats, level, grid_y, sigma_sq, b, R):
-    tune.util.wait_for_gpu()
+    tune.utils.wait_for_gpu()
     score = SURE_tune(config, tol=tol, eps=eps, f=f, repeats=repeats, 
                     level=level, grid_y=grid_y, sigma_sq=sigma_sq, b=b, R=R)
     return {'score' : score}
