@@ -93,6 +93,12 @@ def waveletDenoising(y, wavelet : str = "db1"):
     return sigma**2
     
     
+def tune_func(config, tol, eps, f, repeats, level, grid_y, sigma_sq, b, R):
+    tune.util.wait_for_gpu()
+    score = SURE_tune(config, tol=tol, eps=eps, f=f, repeats=repeats, 
+                    level=level, grid_y=grid_y, sigma_sq=sigma_sq, b=b, R=R)
+    return {'score' : score}
+    
 def SURE(model, maxiter = 100, R = 1, grid = True, tuner = False, eps = 0.01, wavelet = "db1"):
 
     sigma_sq = waveletDenoising(y=model.grid_y, wavelet=wavelet)
@@ -135,19 +141,20 @@ def SURE(model, maxiter = 100, R = 1, grid = True, tuner = False, eps = 0.01, wa
         "lmbda": tune.loguniform(1e-4, 1e5),
         "nu": tune.loguniform(1e-4, 1)
     }
+        trainable_with_resources = tune.with_resources(
+            partial(tune_func, tol=tol, eps=eps, f=f, repeats=repeats, 
+                    level=level, grid_y=model.grid_y, sigma_sq=sigma_sq, b=b, R=R), 
+            {"cpu": 2, "gpu": 1}
+        )
                 # Start the Ray Tune run
-        analysis = tune.run(
-            partial(SURE_tune, tol=tol, eps=eps, f=f, repeats=repeats, 
-                    level=level, grid_y=model.grid_y, sigma_sq=sigma_sq, b=b, R=R),
-            config=search_space,
-            num_samples=200,  # number of different hyperparameter combinations to try
-            resources_per_trial={"cpu": 2, "gpu": 0.5},  # adjust depending on your setup
-            local_dir="./ray_results",  # directory where the results are saved
-            name="my_experiment"  # name of the experiment, used in the results directory structure
+        analysis = tune.Tuner(
+            trainable_with_resources,
+            param_space=search_space,
+            tune_config=tune.TuneConfig(num_samples=100),  # number of different hyperparameter combinations to try
         )
 
         # Get the hyperparameters of the best trial
-        res = analysis.get_best_trial("objective", "min", "last")
+        res = analysis.fit() #get_best_trial("objective", "min", "last")
     else:
         res = gridSearch(tuple([tol, eps, f, repeats, level, model.grid_y, sigma_sq, b, R]))
         
