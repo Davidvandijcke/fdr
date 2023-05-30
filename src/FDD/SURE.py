@@ -101,20 +101,23 @@ def tune_func(config, tol, eps, f, repeats, level, grid_y, sigma_sq, b, R):
     
 def SURE(model, maxiter = 100, R = 1, grid = True, tuner = False, eps = 0.01, wavelet = "db1"):
 
-        search_space = {
-        "lmbda": tune.loguniform(1e-4, 1e5),
-        "nu": tune.loguniform(1e-4, 1)
-    }
-        trainable_with_resources = tune.with_resources(
-            testTune,
-            {"cpu": 2, "gpu": 1}
-        )
-                # Start the Ray Tune run
-        analysis = tune.Tuner(
-            trainable_with_resources,
-            param_space=search_space,
-            tune_config=tune.TuneConfig(num_samples=100),  # number of different hyperparameter combinations to try
-        )
+    search_space = {
+    "lmbda": tune.loguniform(1e-4, 1e5),
+    "nu": tune.loguniform(1e-4, 1)
+}
+    trainable_with_resources = tune.with_resources(
+        testTune,
+        {"cpu": 2, "gpu": 1}
+    )
+            # Start the Ray Tune run
+    analysis = tune.Tuner(
+        trainable_with_resources,
+        param_space=search_space,
+        tune_config=tune.TuneConfig(num_samples=100),  # number of different hyperparameter combinations to try
+    )
+        
+    res = analysis.fit() #get_best_trial("objective", "min", "last")
+
 
     # sigma_sq = waveletDenoising(y=model.grid_y, wavelet=wavelet)
     # N = model.grid_y.size
