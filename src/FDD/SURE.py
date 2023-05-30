@@ -160,7 +160,7 @@ def SURE(model, maxiter = 100, R = 1, grid = True, tuner = False, eps = 0.01, wa
     return res
 
 def testTune(config):
-    return 0 
+    return {'score' : 0}
 
 def SURE_tune(config, tol, eps, f, repeats, level, grid_y, sigma_sq, b, R):
     
