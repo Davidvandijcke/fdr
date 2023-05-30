@@ -119,6 +119,6 @@ def interpolate(k, uk0, uk1, l):
     return (k + (0.5 - uk0) / (uk1 - uk0)) / l
 
 def load_model(fn, device):
-    model_file_path = pkg_resources.resource_filename('FDD', 'models/' + fn, map_location=device)
-    model = torch.jit.load(model_file_path)
+    model_file_path = pkg_resources.resource_filename('FDD', 'models/' + fn)
+    model = torch.jit.load(model_file_path, map_location=device)
     return model
