@@ -135,6 +135,8 @@ class PrimalDual(torch.nn.Module):
             # if torch.equal(iter, repeats-1):
             #     print("debug")
         
+        torch.cuda.empty_cache()
+        
         return (u, nrj, nrj/(torch.prod(torch.tensor(dims[:-1] + [int(l)]))), it_total)
         
     def updateStepSizes(self, tau_u, tau, sigma_p, sigma_s, gamma_u, gamma_mu, theta_u, theta_mu):
