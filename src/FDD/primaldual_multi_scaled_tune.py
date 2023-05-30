@@ -31,8 +31,9 @@ class PrimalDual(torch.nn.Module):
         nrj = torch.tensor(0, device=dev) 
         
         # for scaling, multiply by res, not sqrt(res) bcs L^2 and we take the res out of the power
-        tauu = torch.tensor(  1.0 / torch.sqrt(4 * f.ndim) * res, device=dev)  # torch.tensor(  1.0 / 6.0 * res, device=dev) # *res
-        sigmap = torch.tensor( 1.0 / torch.sqrt(4 * f.ndim)  * res, device=dev) # torch.tensor( (1.0 / (3.0 + l))  * res, device=dev) # *res
+        denom = torch.tensor(4 * f.ndim, device=dev, dtype=torch.float32)
+        tauu = torch.tensor(  1.0 / torch.sqrt(denom) * res, device=dev)  # torch.tensor(  1.0 / 6.0 * res, device=dev) # *res
+        sigmap = torch.tensor( 1.0 / torch.sqrt(denom)  * res, device=dev) # torch.tensor( (1.0 / (3.0 + l))  * res, device=dev) # *res
         sigmas = torch.tensor(1.0, device = dev) #  torch.tensor(1.0, device=dev) 
         #sigmas = torch.tensor( 1.0 / torch.sqrt(4 * f.ndim)  * res, device=dev) 
         

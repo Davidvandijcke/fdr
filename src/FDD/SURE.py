@@ -174,7 +174,8 @@ def SURE_objective_tune(theta, tol, eps, f, repeats, level, grid_y, sigma_sq, b,
     lmbda_torch = torch.tensor(theta[0], device = device, dtype = torch.float32)
     nu_torch = torch.tensor(theta[1], device = device, dtype = torch.float32)
     n = grid_y.size # flatten().shape[0]
-    v = PrimalDual.forward(f, repeats, level, lmbda_torch, nu_torch, tol)[0]
+    model = PrimalDual()
+    v = model.forward(f, repeats, level, lmbda_torch, nu_torch, tol)[0]
     u = isosurface(v.cpu().detach().numpy())
 
     u_dist = np.mean(np.abs(grid_y.flatten() - u.flatten())**2)
@@ -185,7 +186,7 @@ def SURE_objective_tune(theta, tol, eps, f, repeats, level, grid_y, sigma_sq, b,
         f_eps = f + bt * eps
         f_eps = torch.clamp(f_eps, min = 0, max = 1)
 
-        v_eps = PrimalDual.forward(f_eps, repeats, level, lmbda_torch, nu_torch, tol)[0]
+        v_eps = model.forward(f_eps, repeats, level, lmbda_torch, nu_torch, tol)[0]
         u_eps = isosurface(v_eps.cpu().detach().numpy())
 
         divf_y = np.real(np.vdot(bt.cpu().detach().numpy().squeeze().flatten(), 
