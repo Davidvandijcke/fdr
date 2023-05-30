@@ -99,6 +99,14 @@ def forward_differences(ubar, D : int):
 
     return u_star
 
+def arraysToTensors(y, iter, level, lmbda, nu, tol, device):
+    f = torch.tensor(y, device = device, dtype = torch.float32)
+    repeats = torch.tensor(iter, device = device, dtype = torch.int32)
+    level = torch.tensor(level, device = device, dtype = torch.int32)
+    lmbda = torch.tensor(lmbda, device = device, dtype = torch.float32)
+    nu = torch.tensor(nu, device = device, dtype = torch.float32)
+    tol = torch.tensor(tol, device = device, dtype = torch.float32)
+
 def isosurface(u, level, grid_y):
 
     mask = (u[...,:-1] > 0.5) & (u[...,1:] <= 0.5)
