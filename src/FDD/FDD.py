@@ -67,7 +67,7 @@ class FDD():
         else:
             script = "scripted_primal_dual"
         
-        self.model = torch.jit.load("src/FDD/" + script + ".pt", map_location = self.device)
+        self.model = torch.jit.load(script + ".pt", map_location = self.device)
         
         
         self.model = self.model.to(self.device)

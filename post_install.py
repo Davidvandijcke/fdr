@@ -16,7 +16,7 @@ def install():
         if is_mac():
             packages = ["torch", "torchvision", "torchaudio"]
         else:
-            #subprocess.check_call([sys.executable, "-m", "pip", "install", "light-the-torch"])
+            subprocess.check_call([sys.executable, "-m", "pip", "install", "light-the-torch"])
             try:
                 subprocess.run(["ltt install torch torchvision torchaudio"], check=True, shell=True)
             except ImportError:
