@@ -14,12 +14,12 @@ setup(
     version="0.1",
     package_dir={'': 'src'},  # Tell Python to look for packages in src/
     packages=find_packages(where='src'),  # Find packages in src/
+    python_requires=">=3.6,<3.10",
     install_requires=[
             'numpy==1.23.4',
             #"light-the-torch==0.3.5",
             'opencv-python==4.6.0.66',
             'matplotlib==3.3.4',
-            'python==3.9.7',
             'scikit-learn==1.2.1',
             'scipy==1.9.3',
             'pywavelets==1.4.1',
