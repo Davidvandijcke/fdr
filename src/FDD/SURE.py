@@ -176,7 +176,7 @@ def SURE_objective_tune(theta, tol, eps, f, repeats, level, grid_y, sigma_sq, b,
     n = grid_y.size # flatten().shape[0]
     model = PrimalDual()
     v = model.forward(f, repeats, level, lmbda_torch, nu_torch, tol)[0]
-    u = isosurface(v.cpu().detach().numpy())
+    u = isosurface(v.cpu().detach().numpy(), level, grid_y)
 
     u_dist = np.mean(np.abs(grid_y.flatten() - u.flatten())**2)
 
@@ -187,7 +187,7 @@ def SURE_objective_tune(theta, tol, eps, f, repeats, level, grid_y, sigma_sq, b,
         f_eps = torch.clamp(f_eps, min = 0, max = 1)
 
         v_eps = model.forward(f_eps, repeats, level, lmbda_torch, nu_torch, tol)[0]
-        u_eps = isosurface(v_eps.cpu().detach().numpy())
+        u_eps = isosurface(v_eps.cpu().detach().numpy(), level, grid_y)
 
         divf_y = np.real(np.vdot(bt.cpu().detach().numpy().squeeze().flatten(), 
                                 u_eps.flatten() - u.flatten())) / (eps)
