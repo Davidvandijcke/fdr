@@ -142,8 +142,7 @@ def SURE(model, maxiter = 100, R = 1, grid = True, tuner = False, eps = 0.01, wa
         "nu": tune.loguniform(1e-4, 1)
     }
         trainable_with_resources = tune.with_resources(
-            partial(tune_func, tol=tol, eps=eps, f=f, repeats=repeats, 
-                    level=level, grid_y=model.grid_y, sigma_sq=sigma_sq, b=b, R=R), 
+            testTune, 
             {"cpu": 2, "gpu": 1}
         )
                 # Start the Ray Tune run
@@ -160,6 +159,9 @@ def SURE(model, maxiter = 100, R = 1, grid = True, tuner = False, eps = 0.01, wa
         
     return res
 
+def testTune(config):
+    return 0 
+
 def SURE_tune(config, tol, eps, f, repeats, level, grid_y, sigma_sq, b, R):
     
     theta = np.array(config['lambda'], config['nu'])
@@ -167,7 +169,7 @@ def SURE_tune(config, tol, eps, f, repeats, level, grid_y, sigma_sq, b, R):
 
 def SURE_objective_tune(theta, tol, eps, f, repeats, level, grid_y, sigma_sq, b, R=5):
 
-    device = f.device
+    device = setDevice()
 
     sure = []
     
