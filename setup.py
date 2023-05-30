@@ -14,7 +14,7 @@ setup(
     version="0.1",
     package_dir={'': 'src'},  # Tell Python to look for packages in src/
     packages=find_packages(where='src'),  # Find packages in src/
-    python_requires=">=3.6,<3.10",
+    python_requires=">=3.6,<3.11", # ray doesn't support 3.11 as of now
     install_requires=[
             'numpy==1.23.4',
             #"light-the-torch==0.3.5",
@@ -25,6 +25,9 @@ setup(
             'pywavelets==1.4.1',
             "ray"
         ],
+        package_data={
+        'my_package': ['models/*.pt'],
+    },
         cmdclass={
         'install': PostInstallCommand,
     },

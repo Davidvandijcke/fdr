@@ -1,6 +1,7 @@
 import torch
 from torch.overrides import TorchFunctionMode
 import numpy as np
+import pkg_resources
 
 _DEVICE_CONSTRUCTOR = {
     # standard ones
@@ -116,3 +117,8 @@ def isosurface(u, level, grid_y):
 
 def interpolate(k, uk0, uk1, l):
     return (k + (0.5 - uk0) / (uk1 - uk0)) / l
+
+def load_model(fn, device):
+    model_file_path = pkg_resources.resource_filename('FDD', 'models/' + fn, map_location=device)
+    model = torch.jit.load(model_file_path)
+    return model
