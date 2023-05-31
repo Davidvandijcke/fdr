@@ -334,48 +334,48 @@ class PrimalDual(torch.nn.Module):
 
         
         
-# if __name__ == "__main__":
-#     def setDevice():
-#         if torch.cuda.is_available(): # cuda gpus
-#             device = torch.device("cuda")
-#             #torch.cuda.set_device(int(gpu_id))
-#             torch.set_default_tensor_type('torch.cuda.FloatTensor')
-#         elif torch.backends.mps.is_available(): # mac gpus
-#             device = torch.device("mps")
-#         elif torch.backends.mkl.is_available(): # intel cpus
-#             device = torch.device("mkl")
-#         torch.set_grad_enabled(True)
-#         return device
+if __name__ == "__main__":
+    def setDevice():
+        if torch.cuda.is_available(): # cuda gpus
+            device = torch.device("cuda")
+            #torch.cuda.set_device(int(gpu_id))
+            torch.set_default_tensor_type('torch.cuda.FloatTensor')
+        elif torch.backends.mps.is_available(): # mac gpus
+            device = torch.device("mps")
+        elif torch.backends.mkl.is_available(): # intel cpus
+            device = torch.device("mkl")
+        torch.set_grad_enabled(True)
+        return device
 
-#     # detect GPU device and set it as default
-#     dev = setDevice()
+    # detect GPU device and set it as default
+    dev = setDevice()
 #     g = DeviceMode(torch.device(dev))
 #     g.__enter__()
 
-#     f = torch.randn(10, 10, 1, device = dev)
-#     repeats = torch.tensor(10, device = dev)
-#     level = torch.tensor(16)
-#     lmbda = torch.tensor(1)
-#     nu = torch.tensor(0.1)
-#     tol = torch.tensor(1e-5)
+    f = torch.randn(10, 10, 1, device = dev)
+    repeats = torch.tensor(10, device = dev)
+    level = torch.tensor(16, device = dev)
+    lmbda = torch.tensor(1, device = dev)
+    nu = torch.tensor(0.1, device = dev)
+    tol = torch.tensor(1e-5, device = dev)
     
-#     # import numpy as np
-#     # import cv2
-#     # image = "resources/images/marylin.png"
-#     # mIn = cv2.imread(image, (0))
-#     # mIn = mIn.astype(np.float32)
-#     # mIn /= 255
-#     # f = torch.tensor(mIn, device = dev)
+    # import numpy as np
+    # import cv2
+    # image = "resources/images/marylin.png"
+    # mIn = cv2.imread(image, (0))
+    # mIn = mIn.astype(np.float32)
+    # mIn /= 255
+    # f = torch.tensor(mIn, device = dev)
     
-#     # model = PrimalDual()
-#     # u, nrj, eps, it = model.forward(f, repeats, level, lmbda, nu, tol)
+    # model = PrimalDual()
+    # u, nrj, eps, it = model.forward(f, repeats, level, lmbda, nu, tol)
     
-#     pd = PrimalDual()
-#     pd = pd.to(dev)
+    pd = PrimalDual()
+    pd = pd.to(dev)
     
-#     scripted_primal_dual = torch.jit.script(pd, example_inputs = [f, repeats, level, lmbda, nu, tol])
-#     torch.jit.save(scripted_primal_dual, 'scripted_primal_dual.pt')
+    scripted_primal_dual = torch.jit.script(pd, example_inputs = [f, repeats, level, lmbda, nu, tol])
+    torch.jit.save(scripted_primal_dual, 'scripted_primal_dual.pt')
     
-#     # test = scripted_primal_dual(f, repeats, level, lmbda, nu, tol)
+    # test = scripted_primal_dual(f, repeats, level, lmbda, nu, tol)
     
     

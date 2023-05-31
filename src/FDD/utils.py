@@ -107,6 +107,8 @@ def arraysToTensors(y, iter, level, lmbda, nu, tol, device):
     nu = torch.tensor(nu, device = device, dtype = torch.float32)
     tol = torch.tensor(tol, device = device, dtype = torch.float32)
 
+    return f, repeats, level, lmbda, nu, tol
+    
 def isosurface(u, level, grid_y):
 
     mask = (u[...,:-1] > 0.5) & (u[...,1:] <= 0.5)

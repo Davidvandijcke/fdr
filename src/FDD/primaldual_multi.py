@@ -2,7 +2,7 @@
 from torch import Tensor
 import torch
 from typing import Tuple, List, Dict
-from .utils import * 
+#from .utils import * 
 
 
 class PrimalDual(torch.nn.Module):
@@ -28,10 +28,7 @@ class PrimalDual(torch.nn.Module):
             
     def forward(self, f, repeats, l, lmbda, nu, tol):
     # Original __init__ code moved here (with 'self.' removed)
-    
-        from torch import Tensor
-        import torch
-        from typing import Tuple, List, Dict
+
     
         # repeats = int(repeats_a)
         # l = int(level_a)
@@ -344,15 +341,16 @@ if __name__ == "__main__":
 
     # detect GPU device and set it as default
     dev = setDevice()
-    g = DeviceMode(torch.device(dev))
-    g.__enter__()
+    # g = DeviceMode(torch.device(dev))
+    # g.__enter__()
+
 
     f = torch.randn(10, 10, 1, device = dev)
     repeats = torch.tensor(10, device = dev)
-    level = torch.tensor(16)
-    lmbda = torch.tensor(1)
-    nu = torch.tensor(0.1)
-    tol = torch.tensor(1e-5)
+    level = torch.tensor(16, device = dev)
+    lmbda = torch.tensor(1, device = dev)
+    nu = torch.tensor(0.1, device = dev)
+    tol = torch.tensor(1e-5, device = dev)
     
     # import numpy as np
     # import cv2

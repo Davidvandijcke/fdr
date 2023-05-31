@@ -93,17 +93,20 @@ def waveletDenoising(y, wavelet : str = "db1"):
     return sigma**2
     
     
-def tune_func(config, tol, eps, f, repeats, level, grid_y, sigma_sq, R):
-    # tune.utils.wait_for_gpu(target_util = 0)
+def tune_func(config, tol, eps, f, repeats, level, grid_y, sigma_sq, R, model):
+    #tune.utils.wait_for_gpu(target_util = 0.1, retry = 100)
     
-    device = setDevice()
+    device_id = torch.cuda.current_device() 
+    device = torch.device("cuda:{}".format(device_id)) if torch.cuda.is_available() else "cpu"
+    torch.cuda.set_device(device)
+    
 
     f, repeats, level, lmbda, nu, tol = \
-        arraysToTensors(grid_y, iter, level, 0, 0, tol)
+        arraysToTensors(grid_y, repeats, level, 0, 0, tol, device)
     b = torch.randn(list(f.shape) + [R], device = device) 
 
     score = SURE_tune(config, tol=tol, eps=eps, f=f, repeats=repeats, 
-                    level=level, grid_y=grid_y, sigma_sq=sigma_sq, b=b, R=R)
+                    level=level, grid_y=grid_y, sigma_sq=sigma_sq, b=b, R=R, model=model)
     return {'score' : score}
     
 def SURE(model, maxiter = 100, R = 1, grid = True, tuner = False, eps = 0.01, wavelet = "db1"):
@@ -162,13 +165,13 @@ def SURE(model, maxiter = 100, R = 1, grid = True, tuner = False, eps = 0.01, wa
         #             maxiter=maxiter, disp=True, polish=True)
     elif tuner:
         search_space = {
-        "lmbda": tune.loguniform(1e-4, 1e5),
-        "nu": tune.loguniform(1e-4, 1)
+        "lmbda": tune.uniform(1, 1e5),
+        "nu": tune.uniform(1e-4, 1)
     }
         trainable_with_resources = tune.with_resources(
             partial(tune_func, tol=model.tol, eps=eps, f=model.grid_y, repeats=model.iter, 
-                    level=model.level, grid_y=model.grid_y, sigma_sq=sigma_sq, R=R), 
-            {"cpu": 1, "gpu": 0.25}
+                    level=model.level, grid_y=model.grid_y, sigma_sq=sigma_sq, R=R, model=model.model), 
+            {"cpu": 1, "gpu": 1}
         )
                 # Start the Ray Tune run
         analysis = tune.Tuner(
@@ -188,14 +191,14 @@ def SURE(model, maxiter = 100, R = 1, grid = True, tuner = False, eps = 0.01, wa
 def testTune(config):
     return {'score' : 0}
 
-def SURE_tune(config, tol, eps, f, repeats, level, grid_y, sigma_sq, b, R):
+def SURE_tune(config, tol, eps, f, repeats, level, grid_y, sigma_sq, b, R, model):
     
-    theta = np.array(config['lambda'], config['nu'])
-    return SURE_objective_tune(theta, tol, eps, f, repeats, level, grid_y, sigma_sq, b, R)
+    theta = np.array([config['lmbda'], config['nu']])
+    return SURE_objective_tune(theta, tol, eps, f, repeats, level, grid_y, sigma_sq, b, R, model)
 
-def SURE_objective_tune(theta, tol, eps, f, repeats, level, grid_y, sigma_sq, b, R=5):
+def SURE_objective_tune(theta, tol, eps, f, repeats, level, grid_y, sigma_sq, b, R, model):
 
-    device = setDevice()
+    device = f.device
 
     sure = []
     
@@ -204,7 +207,7 @@ def SURE_objective_tune(theta, tol, eps, f, repeats, level, grid_y, sigma_sq, b,
     lmbda_torch = torch.tensor(theta[0], device = device, dtype = torch.float32)
     nu_torch = torch.tensor(theta[1], device = device, dtype = torch.float32)
     n = grid_y.size # flatten().shape[0]
-    model = PrimalDual()
+    #model = PrimalDual()
     v = model.forward(f, repeats, level, lmbda_torch, nu_torch, tol)[0]
     u = isosurface(v.cpu().detach().numpy(), lvl, grid_y)
 
