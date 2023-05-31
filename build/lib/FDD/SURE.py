@@ -144,9 +144,9 @@ def SURE(model, maxiter = 100, R = 1, tuner = False, eps = 0.01,
         search_space={
             # A random function
             "lmbda": tune.uniform(1, 2e2),
-            "nu":  tune.sample_from(lambda _: np.random.uniform(100))
+            "nu": tune.uniform(1, 2e2)
             # Use the `spec.config` namespace to access other hyperparameters
-            #"nu":
+            #"nu": tune.sample_from(lambda _: np.random.uniform(100))
         }
         trainable_with_resources = tune.with_resources(
             partial(tune_func, tol=model.tol, eps=eps, f=model.grid_y, repeats=model.iter, 

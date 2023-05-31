@@ -1,0 +1,6 @@
+numpy
+scikit-learn
+scipy
+pywavelets
+ray[tune]
+pandas
