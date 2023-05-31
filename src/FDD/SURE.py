@@ -93,7 +93,7 @@ def waveletDenoising(y, wavelet : str = "db1"):
     return sigma**2
     
     
-def tune_func(config, tol, eps, f, repeats, level, grid_y, sigma_sq, R, model):
+def tune_func(config, tol, eps, f, repeats, level, grid_y, sigma_sq, R):
     #tune.utils.wait_for_gpu(target_util = 0.1, retry = 100)
     
     device_id = torch.cuda.current_device() 
@@ -106,10 +106,11 @@ def tune_func(config, tol, eps, f, repeats, level, grid_y, sigma_sq, R, model):
     b = torch.randn(list(f.shape) + [R], device = device) 
 
     score = SURE_tune(config, tol=tol, eps=eps, f=f, repeats=repeats, 
-                    level=level, grid_y=grid_y, sigma_sq=sigma_sq, b=b, R=R, model=model)
+                    level=level, grid_y=grid_y, sigma_sq=sigma_sq, b=b, R=R)
     return {'score' : score}
     
-def SURE(model, maxiter = 100, R = 1, grid = True, tuner = False, eps = 0.01, wavelet = "db1"):
+def SURE(model, maxiter = 100, R = 1, grid = True, tuner = False, eps = 0.01, 
+         wavelet = "db1", num_cpus = 4, num_gpus = 1):
 
 #     search_space = {
 #     "lmbda": tune.loguniform(1e-4, 1e5),
@@ -170,8 +171,8 @@ def SURE(model, maxiter = 100, R = 1, grid = True, tuner = False, eps = 0.01, wa
     }
         trainable_with_resources = tune.with_resources(
             partial(tune_func, tol=model.tol, eps=eps, f=model.grid_y, repeats=model.iter, 
-                    level=model.level, grid_y=model.grid_y, sigma_sq=sigma_sq, R=R, model=model.model), 
-            {"cpu": 1, "gpu": 1}
+                    level=model.level, grid_y=model.grid_y, sigma_sq=sigma_sq, R=R), 
+            {"cpu": num_cpus, "gpu": num_gpus}
         )
                 # Start the Ray Tune run
         analysis = tune.Tuner(
@@ -191,12 +192,12 @@ def SURE(model, maxiter = 100, R = 1, grid = True, tuner = False, eps = 0.01, wa
 def testTune(config):
     return {'score' : 0}
 
-def SURE_tune(config, tol, eps, f, repeats, level, grid_y, sigma_sq, b, R, model):
+def SURE_tune(config, tol, eps, f, repeats, level, grid_y, sigma_sq, b, R):
     
     theta = np.array([config['lmbda'], config['nu']])
-    return SURE_objective_tune(theta, tol, eps, f, repeats, level, grid_y, sigma_sq, b, R, model)
+    return SURE_objective_tune(theta, tol, eps, f, repeats, level, grid_y, sigma_sq, b, R)
 
-def SURE_objective_tune(theta, tol, eps, f, repeats, level, grid_y, sigma_sq, b, R, model):
+def SURE_objective_tune(theta, tol, eps, f, repeats, level, grid_y, sigma_sq, b, R):
 
     device = f.device
 
@@ -207,7 +208,7 @@ def SURE_objective_tune(theta, tol, eps, f, repeats, level, grid_y, sigma_sq, b,
     lmbda_torch = torch.tensor(theta[0], device = device, dtype = torch.float32)
     nu_torch = torch.tensor(theta[1], device = device, dtype = torch.float32)
     n = grid_y.size # flatten().shape[0]
-    #model = PrimalDual()
+    model = PrimalDual()
     v = model.forward(f, repeats, level, lmbda_torch, nu_torch, tol)[0]
     u = isosurface(v.cpu().detach().numpy(), lvl, grid_y)
 
