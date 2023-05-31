@@ -105,13 +105,11 @@ def tune_func(config, tol, eps, f, repeats, level, grid_y, sigma_sq, R):
                     level=level, grid_y=grid_y, sigma_sq=sigma_sq, b=b, R=R)
     return {'score' : score}
 
-def custom_loguniform(lower=0.001, upper=50, alpha=0.5, beta_b=1):
-    def apply_log_scale():
-        val = beta.rvs(alpha, beta_b)
-        scaled_val = lower * ((upper/lower) ** val)
-        return scaled_val
+def custom_loguniform(lower=0.001, upper=50, alpha=0.5, beta_b=1, size = 100):
+    val = beta.rvs(alpha, beta_b, size=size)
+    scaled_val = lower * ((upper/lower) ** val)
+    return scaled_val
 
-    return apply_log_scale
     
 def SURE(model, maxiter = 100, R = 1, tuner = False, eps = 0.01, 
          wavelet = "db1", num_cpus = 4, num_gpus = 1, num_samples = 200):
@@ -141,10 +139,11 @@ def SURE(model, maxiter = 100, R = 1, tuner = False, eps = 0.01,
     #     "lmbda": tune.uniform(1, 2e2),
     #     "nu": tune.sample_from(lambda spec:   lower * ((nu_max/lower) ** beta.rvs(0.5, 1))),
     # }
+        nu_grid = custom_loguniform(lower = lower, upper = nu_max, size = num_samples)
         search_space={
             # A random function
             "lmbda": tune.uniform(1, 2e2),
-            "nu":  tune.sample_from(lambda _: np.random.uniform(100))
+            "nu":  tune.choice(nu_grid)
             # Use the `spec.config` namespace to access other hyperparameters
             #"nu":
         }
