@@ -93,8 +93,8 @@ def waveletDenoising(y, wavelet : str = "db1"):
     return sigma**2
     
     
-def tune_func(config, tol, eps, f, repeats, level, grid_y, sigma_sq, b, R):
-    tune.utils.wait_for_gpu(target_util = 0)
+def tune_func(config, tol, eps, f, repeats, level, grid_y, sigma_sq, R):
+    # tune.utils.wait_for_gpu(target_util = 0)
     
     device = setDevice()
 
@@ -166,9 +166,9 @@ def SURE(model, maxiter = 100, R = 1, grid = True, tuner = False, eps = 0.01, wa
         "nu": tune.loguniform(1e-4, 1)
     }
         trainable_with_resources = tune.with_resources(
-            partial(tune_func, tol=model.tol, eps=eps, f=model.grid_y, repeats=model.repeats, 
+            partial(tune_func, tol=model.tol, eps=eps, f=model.grid_y, repeats=model.iter, 
                     level=model.level, grid_y=model.grid_y, sigma_sq=sigma_sq, R=R), 
-            {"cpu": 2, "gpu": 1}
+            {"cpu": 1, "gpu": 0.25}
         )
                 # Start the Ray Tune run
         analysis = tune.Tuner(
