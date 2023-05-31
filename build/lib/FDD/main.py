@@ -1,7 +1,7 @@
 
 import numpy as np
 import torch
-from utils import * 
+from .utils import * 
 from sklearn.cluster import KMeans
 from scipy.spatial import cKDTree
 

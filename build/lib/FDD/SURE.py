@@ -2,10 +2,10 @@ import numpy as np
 import torch
 from scipy.optimize import minimize
 import pywt
-from primaldual_multi_scaled_tune import PrimalDual
+from .primaldual_multi_scaled_tune import PrimalDual
 from functools import partial
 from ray import tune
-from utils import *
+from .utils import *
 from scipy.stats import beta
 
 
@@ -144,9 +144,9 @@ def SURE(model, maxiter = 100, R = 1, tuner = False, eps = 0.01,
         search_space={
             # A random function
             "lmbda": tune.uniform(1, 2e2),
-            "nu": tune.uniform(1, 2e2)
+            "nu":  tune.sample_from(lambda _: np.random.uniform(100))
             # Use the `spec.config` namespace to access other hyperparameters
-            #"nu": tune.sample_from(lambda _: np.random.uniform(100))
+            #"nu":
         }
         trainable_with_resources = tune.with_resources(
             partial(tune_func, tol=model.tol, eps=eps, f=model.grid_y, repeats=model.iter, 

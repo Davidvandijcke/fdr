@@ -172,7 +172,7 @@ model = FDD(Y, X, level = 16, lmbda = 1, nu = 0.02, iter = 5000, tol = 5e-5, qti
 
 import time
 t0 = time.time()
-SURE(model, tuner = True, num_gpus=1)
+res = SURE(model, tuner = True, num_gpus=1)
 # u, jumps, J_grid, nrj, eps, it = model.run()
 # print(time.time() - t0)
 
