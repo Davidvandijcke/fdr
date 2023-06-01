@@ -89,11 +89,14 @@ def waveletDenoising(y, wavelet : str = "db1"):
     
 def tune_func(config, tol, eps, f, repeats, level, grid_y, sigma_sq, R):
     #tune.utils.wait_for_gpu(target_util = 0.1, retry = 100)
-    
-    device_id = torch.cuda.current_device() 
-    device = torch.device("cuda:{}".format(device_id)) if torch.cuda.is_available() else "cpu"
-    torch.cuda.set_device(device)
-    
+    if torch.cuda.is_available(): # cuda gpus
+        device_id = torch.cuda.current_device() 
+        device = torch.device("cuda:{}".format(device_id)) 
+        torch.cuda.set_device(device)
+
+    elif torch.backends.mps.is_available(): # mac gpus
+        device = torch.device("mps")
+        
 
     f, repeats, level, lmbda, nu, tol = \
         arraysToTensors(grid_y, repeats, level, 0, 0, tol, device)
