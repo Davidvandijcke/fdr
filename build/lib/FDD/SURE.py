@@ -9,37 +9,6 @@ from .utils import *
 from scipy.stats import beta
 
 
-# def SURE_objective(theta, tol, eps, f, repeats, level, grid_y, sigma_sq, b, R=5):
-    
-#     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-
-#     sure = []
-
-#     lmbda_torch = torch.tensor(theta[0], device = self.device, dtype = torch.float32)
-#     nu_torch = torch.tensor(theta[1], device = self.device, dtype = torch.float32)
-#     n = grid_y.size # flatten().shape[0]
-#     v = self.model(f, repeats, level, lmbda_torch, nu_torch, tol)[0]
-#     u = self.isosurface(v.cpu().detach().numpy())
-
-#     u_dist = np.mean(np.abs(grid_y.flatten() - u.flatten())**2)
-
-#     for r in range(R):
-
-#         bt = b[...,r]
-#         f_eps = f + bt * eps
-#         f_eps = torch.clamp(f_eps, min = 0, max = 1)
-
-#         v_eps = self.model(f_eps, repeats, level, lmbda_torch, nu_torch, tol)[0]
-#         u_eps = self.isosurface(v_eps.cpu().detach().numpy())
-
-#         divf_y = np.real(np.vdot(bt.cpu().detach().numpy().squeeze().flatten(), 
-#                                 u_eps.flatten() - u.flatten())) / (eps)
-#         sure.append(u_dist - sigma_sq + 2 * sigma_sq * divf_y / n)
-#         # TODO: should be euclidean norm
-#         sure = np.mean(sure)
-
-#     return sure
-
 
 
 def gridSearch(theta, args):

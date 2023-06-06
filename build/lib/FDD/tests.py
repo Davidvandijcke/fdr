@@ -168,12 +168,12 @@ X = data.copy()
 Y = grid_sample.copy().flatten()
 # and run the FDD command
 model = FDD(Y, X, level = 16, lmbda = 1, nu = 0.02, iter = 5000, tol = 5e-5, qtile = 0.08,
-            pick_nu = "MS", scaled = False)
+            pick_nu = "MS", scaled = True, scripted = False)
 
 import time
 t0 = time.time()
-res = SURE(model, tuner = True, num_gpus=1)
-# u, jumps, J_grid, nrj, eps, it = model.run()
+#res = SURE(model, tuner = True, num_gpus=0)
+u, jumps, J_grid, nrj, eps, it = model.run()
 # print(time.time() - t0)
 
 # plt.imshow(u)

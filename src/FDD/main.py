@@ -4,13 +4,14 @@ import torch
 from .utils import * 
 from sklearn.cluster import KMeans
 from scipy.spatial import cKDTree
+from .primaldual_multi_scaled_tune import PrimalDual
 
 
 class FDD():
     def __init__(self, Y : np.array, X : np.array, pick_nu : str="kmeans", level : int=16, 
                  lmbda : float=1, nu : float=0.01, iter : int=1000, tol : float=5e-5, rectangle : bool=False, 
                  qtile : float=0.05, image : bool=False, grid : bool=False, resolution : float=None,
-                 scaled = False) -> None:
+                 scaled = False, scripted = True) -> None:
 
         self.device = setDevice()
         torch.set_grad_enabled(False)
@@ -35,7 +36,9 @@ class FDD():
         self.theta_u = 1 # placeholder
         self.theta_mu = 1
         
-        
+        self.scripted = scripted
+        self.scaled = scaled
+
         
         if self.image: # if image, we don't scale -- assume between 0 and 1
             self.castImageToGrid()
@@ -53,15 +56,16 @@ class FDD():
         self.nu = nu
         self.pick_nu = pick_nu
         
-        # scale gradients?
-        self.scaled = scaled
-        if self.scaled:
-            script = "scripted_primal_dual_scaled"
+        if self.scripted:
+            # scale gradients?
+            if self.scaled:
+                script = "scripted_primal_dual_scaled"
+            else:
+                script = "scripted_primal_dual"
+            
+            self.model = load_model(script + ".pt", device=self.device) #torch.jit.load(script + ".pt", map_location = self.device)
         else:
-            script = "scripted_primal_dual"
-        
-        self.model = load_model(script + ".pt", device=self.device) #torch.jit.load(script + ".pt", map_location = self.device)
-        
+            self.model = PrimalDual()
         
         self.model = self.model.to(self.device)
         # TODO: exclude duplicate points (there shouldnt be any cause the variables are assumed to be continuous but anyway)
@@ -466,7 +470,10 @@ class FDD():
         f, repeats, level, lmbda, nu, tol = \
             self.arraysToTensors(self.grid_y, self.iter, self.level, self.lmbda, self.nu, self.tol)
         
-        results = self.model(f, repeats, level, lmbda, nu, tol)
+        if self.scripted:
+            results = self.model(f, repeats, level, lmbda, nu, tol)
+        else:
+            results = self.model.forward(f, repeats, level, lmbda, nu, tol)
         
         u, jumps, J_grid, nrj, eps, it = self.processResults(results)
         
