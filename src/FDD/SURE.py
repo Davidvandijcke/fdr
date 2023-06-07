@@ -111,10 +111,12 @@ def SURE(model, maxiter = 100, R = 1, tuner = False, eps = 0.01,
     #     "lmbda": tune.uniform(1, 2e2),
     #     "nu": tune.sample_from(lambda spec:   lower * ((nu_max/lower) ** beta.rvs(0.5, 1))),
     # }
-        nu_grid = custom_loguniform(lower = lower, upper = nu_max, size = num_samples)
+        nu_grid = custom_loguniform(lower = lower, upper = nu_max, size = 10000)
+        lmbda_grid = custom_loguniform(lower = 1, upper = 500, size = 10000)
+
         search_space={
             # A random function
-            "lmbda": tune.uniform(1, 2e2),
+            "lmbda": tune.choice(lmbda_grid),
             "nu":  tune.choice(nu_grid)
             # Use the `spec.config` namespace to access other hyperparameters
             #"nu":
@@ -170,6 +172,6 @@ def SURE_objective_tune(theta, tol, eps, f, repeats, level, grid_y, sigma_sq, b,
                                 u_eps.flatten() - u.flatten())) / (eps)
         sure.append(u_dist - sigma_sq + 2 * sigma_sq * divf_y / n)
         # TODO: should be euclidean norm
-        sure = np.mean(sure)
+    sure = np.mean(sure)
 
     return sure
