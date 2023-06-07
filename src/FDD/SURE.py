@@ -77,7 +77,7 @@ def tune_func(config, tol, eps, f, repeats, level, grid_y, sigma_sq, R):
                     level=level, grid_y=grid_y, sigma_sq=sigma_sq, b=b, R=R)
     return {'score' : score}
 
-def custom_loguniform(lower=0.001, upper=50, alpha=0.5, beta_b=1, size = 100):
+def custom_loguniform(lower=0.001, upper=50, alpha=1.5, beta_b=1, size = 100):
     val = beta.rvs(alpha, beta_b, size=size)
     scaled_val = lower * ((upper/lower) ** val)
     return scaled_val
@@ -111,8 +111,8 @@ def SURE(model, maxiter = 100, R = 1, tuner = False, eps = 0.01,
     #     "lmbda": tune.uniform(1, 2e2),
     #     "nu": tune.sample_from(lambda spec:   lower * ((nu_max/lower) ** beta.rvs(0.5, 1))),
     # }
-        nu_grid = custom_loguniform(lower = lower, upper = nu_max, size = 10000)
-        lmbda_grid = custom_loguniform(lower = 1, upper = 500, size = 10000)
+        nu_grid = custom_loguniform(lower = lower, upper = nu_max, size = 10000, alpha = 0.5)
+        lmbda_grid = custom_loguniform(lower = 1, upper = 500, size = 10000, alpha = 1.5)
 
         search_space={
             # A random function
