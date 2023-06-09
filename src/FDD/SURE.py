@@ -7,8 +7,10 @@ from functools import partial
 from ray import tune
 from .utils import *
 from scipy.stats import beta
-
-
+from ray.util.accelerators import NVIDIA_TESLA_V100
+from ray.tune import CLIReporter, JupyterNotebookReporter
+import sys
+from ray.air.config import RunConfig
 
 
 def gridSearch(theta, args):
@@ -93,10 +95,9 @@ def SURE(model, maxiter = 100, R = 1, tuner = False, eps = 0.01,
     y_norm = np.linalg.norm(y_diff, ord = 2, axis = 0)**2
 
 
-    if model.scaled:
-      nu_max = y_norm.max()
-    else:
-      nu_max = 1
+    nu_max = 10 # y_norm.max()
+
+    reporter = get_reporter()
 
     if not tuner:
         config = {'lmbda' : 1, 'nu' : 0.01}
@@ -116,8 +117,8 @@ def SURE(model, maxiter = 100, R = 1, tuner = False, eps = 0.01,
 
         search_space={
             # A random function
-            "lmbda": tune.choice(lmbda_grid),
-            "nu":  tune.choice(nu_grid)
+            "lmbda": tune.loguniform(1, 5e2),
+            "nu":  tune.loguniform(lower, nu_max)
             # Use the `spec.config` namespace to access other hyperparameters
             #"nu":
         }
@@ -131,6 +132,7 @@ def SURE(model, maxiter = 100, R = 1, tuner = False, eps = 0.01,
             trainable_with_resources,
             param_space=search_space,
             tune_config=tune.TuneConfig(num_samples=num_samples),  # number of different hyperparameter combinations to try
+            run_config=RunConfig(progress_reporter=reporter)
         )
 
         # Get the hyperparameters of the best trial
@@ -139,7 +141,18 @@ def SURE(model, maxiter = 100, R = 1, tuner = False, eps = 0.01,
     return res
 
 
+def get_reporter(max_progress_rows=10, metric_column="custom_metric"):
+    # Check if ipykernel is loaded
+    is_jupyter = 'ipykernel' in sys.modules
 
+    if is_jupyter:
+        reporter = JupyterNotebookReporter(overwrite=True)
+    else:
+        reporter = CLIReporter(max_progress_rows=max_progress_rows)
+
+    reporter.add_metric_column(metric_column)
+
+    return reporter
 
 
 def SURE_objective_tune(theta, tol, eps, f, repeats, level, grid_y, sigma_sq, b, R):
