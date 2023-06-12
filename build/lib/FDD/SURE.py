@@ -7,8 +7,10 @@ from functools import partial
 from ray import tune
 from .utils import *
 from scipy.stats import beta
-
-
+from ray.util.accelerators import NVIDIA_TESLA_V100
+from ray.tune import CLIReporter, JupyterNotebookReporter
+import sys
+from ray.air.config import RunConfig
 
 
 def gridSearch(theta, args):
@@ -77,7 +79,7 @@ def tune_func(config, tol, eps, f, repeats, level, grid_y, sigma_sq, R):
                     level=level, grid_y=grid_y, sigma_sq=sigma_sq, b=b, R=R)
     return {'score' : score}
 
-def custom_loguniform(lower=0.001, upper=50, alpha=0.5, beta_b=1, size = 100):
+def custom_loguniform(lower=0.001, upper=50, alpha=1.5, beta_b=1, size = 100):
     val = beta.rvs(alpha, beta_b, size=size)
     scaled_val = lower * ((upper/lower) ** val)
     return scaled_val
@@ -93,10 +95,9 @@ def SURE(model, maxiter = 100, R = 1, tuner = False, eps = 0.01,
     y_norm = np.linalg.norm(y_diff, ord = 2, axis = 0)**2
 
 
-    if model.scaled:
-      nu_max = y_norm.max()
-    else:
-      nu_max = 1
+    nu_max = 10 # y_norm.max()
+
+    reporter = get_reporter()
 
     if not tuner:
         config = {'lmbda' : 1, 'nu' : 0.01}
@@ -111,11 +112,13 @@ def SURE(model, maxiter = 100, R = 1, tuner = False, eps = 0.01,
     #     "lmbda": tune.uniform(1, 2e2),
     #     "nu": tune.sample_from(lambda spec:   lower * ((nu_max/lower) ** beta.rvs(0.5, 1))),
     # }
-        nu_grid = custom_loguniform(lower = lower, upper = nu_max, size = num_samples)
+        nu_grid = custom_loguniform(lower = lower, upper = nu_max, size = 10000, alpha = 0.5)
+        lmbda_grid = custom_loguniform(lower = 1, upper = 500, size = 10000, alpha = 1.5)
+
         search_space={
             # A random function
-            "lmbda": tune.uniform(1, 2e2),
-            "nu":  tune.choice(nu_grid)
+            "lmbda": tune.loguniform(1, 5e2),
+            "nu":  tune.loguniform(lower, nu_max)
             # Use the `spec.config` namespace to access other hyperparameters
             #"nu":
         }
@@ -129,6 +132,7 @@ def SURE(model, maxiter = 100, R = 1, tuner = False, eps = 0.01,
             trainable_with_resources,
             param_space=search_space,
             tune_config=tune.TuneConfig(num_samples=num_samples),  # number of different hyperparameter combinations to try
+            run_config=RunConfig(progress_reporter=reporter)
         )
 
         # Get the hyperparameters of the best trial
@@ -137,7 +141,18 @@ def SURE(model, maxiter = 100, R = 1, tuner = False, eps = 0.01,
     return res
 
 
+def get_reporter(max_progress_rows=10, metric_column="custom_metric"):
+    # Check if ipykernel is loaded
+    is_jupyter = 'ipykernel' in sys.modules
 
+    if is_jupyter:
+        reporter = JupyterNotebookReporter(overwrite=True)
+    else:
+        reporter = CLIReporter(max_progress_rows=max_progress_rows)
+
+    reporter.add_metric_column(metric_column)
+
+    return reporter
 
 
 def SURE_objective_tune(theta, tol, eps, f, repeats, level, grid_y, sigma_sq, b, R):
@@ -170,6 +185,6 @@ def SURE_objective_tune(theta, tol, eps, f, repeats, level, grid_y, sigma_sq, b,
                                 u_eps.flatten() - u.flatten())) / (eps)
         sure.append(u_dist - sigma_sq + 2 * sigma_sq * divf_y / n)
         # TODO: should be euclidean norm
-        sure = np.mean(sure)
+    sure = np.mean(sure)
 
     return sure

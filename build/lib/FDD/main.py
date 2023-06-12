@@ -5,7 +5,8 @@ from .utils import *
 from sklearn.cluster import KMeans
 from scipy.spatial import cKDTree
 from .primaldual_multi_scaled_tune import PrimalDual
-
+from matplotlib import pyplot as plt
+import pdb
 
 class FDD():
     def __init__(self, Y : np.array, X : np.array, pick_nu : str="kmeans", level : int=16, 
@@ -91,7 +92,7 @@ class FDD():
             
     def castImageToGrid(self):
         self.grid_y = np.expand_dims(Y.copy(), -1)
-        X_temp = X.copy() / (np.max(X)+1)  # / np.max(X.reshape((-1, X.shape[-1])), axis = 0)
+        X_temp = self.X.copy() / (np.max(X)+1)  # / np.max(X.reshape((-1, X.shape[-1])), axis = 0)
 
         self.grid_x = X_temp.copy() # , X_temp.copy()
         
@@ -325,7 +326,13 @@ class FDD():
                 else:
                     jumpfrom = origin_points
                     
+                # pdb.set_trace()
                 # jumpto point
+                
+                # find closest point to jumpfrom among all neighbor points
+                
+                
+                
                 pointslist = [self.grid_x_og[tuple(neighbors[j])] if self.grid_x_og[tuple(neighbors[j])] != []  # if grid cell is empty, assign centerpoint
                               else [self.grid_x[tuple(neighbors[j])] + self.resolution / 2] for j in range(len(neighbors))]
                 counts = [len(pointslist[j]) for j in range(len(neighbors))]
@@ -383,8 +390,7 @@ class FDD():
     def boundary(self, u):
         
         u_diff = self.forward_differences(u, D = len(u.shape))
-        if not self.scaled:
-            u_diff = u_diff / self.resolution # scale FD by side length
+        # u_diff = u_diff / self.resolution # scale FD by side length
         u_norm = np.linalg.norm(u_diff, axis = 0, ord = 2) # 2-norm
 
         if self.pick_nu == "kmeans":
@@ -398,7 +404,7 @@ class FDD():
                 
         # scale u back to get correct jump sizes
         if not self.image:
-            u = u * np.max(self.Y_raw, axis = -1)
+            u = u * np.max(self.Y_raw, axis = 0) + np.min(self.Y_raw, axis = 0)
         
         ## find the boundary on the point cloud
         jumps = self.boundaryGridToData(J_grid, u)

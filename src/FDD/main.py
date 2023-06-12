@@ -6,6 +6,7 @@ from sklearn.cluster import KMeans
 from scipy.spatial import cKDTree
 from .primaldual_multi_scaled_tune import PrimalDual
 from matplotlib import pyplot as plt
+import pdb
 
 class FDD():
     def __init__(self, Y : np.array, X : np.array, pick_nu : str="kmeans", level : int=16, 
@@ -325,7 +326,13 @@ class FDD():
                 else:
                     jumpfrom = origin_points
                     
+                # pdb.set_trace()
                 # jumpto point
+                
+                # find closest point to jumpfrom among all neighbor points
+                
+                
+                
                 pointslist = [self.grid_x_og[tuple(neighbors[j])] if self.grid_x_og[tuple(neighbors[j])] != []  # if grid cell is empty, assign centerpoint
                               else [self.grid_x[tuple(neighbors[j])] + self.resolution / 2] for j in range(len(neighbors))]
                 counts = [len(pointslist[j]) for j in range(len(neighbors))]
