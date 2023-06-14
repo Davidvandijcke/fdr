@@ -91,8 +91,8 @@ class FDD():
             self.X = self.X / max_x
             
     def castImageToGrid(self):
-        self.grid_y = np.expand_dims(Y.copy(), -1)
-        X_temp = self.X.copy() / (np.max(X)+1)  # / np.max(X.reshape((-1, X.shape[-1])), axis = 0)
+        self.grid_y = np.expand_dims(self.Y.copy(), -1)
+        X_temp = self.X.copy() / (np.max(self.X)+1) 
 
         self.grid_x = X_temp.copy() # , X_temp.copy()
         
