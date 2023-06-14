@@ -68,8 +68,8 @@ if __name__ == "__main__":
     num_samples = 400 # 400 # 200
     num_sims = 100 # 100 # 100
     R = 3 # 3 # 5
-    num_gpus = 0.5
-    num_cpus = 4
+    num_gpus = 1
+    num_cpus = 8
 
     @ray.remote(num_gpus=num_gpus, num_cpus=num_cpus)  # This decorator indicates that this function will be distributed, with each task using one GPU.
     def train(config, jsize, sigma, N, lmbda, nu, S):
@@ -94,8 +94,8 @@ if __name__ == "__main__":
 
         
         mse = np.mean((u - u_original)**2)
-        jump_pos = np.sum(J_grid * (1-J_original)) / np.sum(1-J_original) # false positive rate
-        jump_neg = np.sum((1-J_grid) * (J_original)) / np.sum(J_original)
+        jump_pos = np.sum(J_grid * (1-J_original)) / np.sum(1-J_original) # false positive rate (significance)
+        jump_neg = np.sum((1-J_grid) * (J_original)) / np.sum(J_original) # false negative rate (1-power)
         
         temp = pd.DataFrame(jumps)
         temp[['alpha', 'N', 'S', 's', 'sigma', 'lambda', 'nu', 'jump_neg', 
@@ -105,12 +105,12 @@ if __name__ == "__main__":
     
     dflist = []
 
-    for sigma in [0.01, 0.05, 0.1]: #, 0.05]:
+    for sigma in [0.01, 0.05]: #, 0.05]:
         
         # calculate Cohen's d jump sizes
         X, Y, U = generate2D(jsize = 0, sigma=sigma, N=N_sure)
         std = np.std(Y)
-        jsizes = np.array([0.25, 0.5, 0.75]) * std
+        jsizes = np.array([0.75]) * std
 
         for jsize in jsizes: # , 0.2, 0.5]:
 
@@ -153,8 +153,8 @@ if __name__ == "__main__":
 
             #       dflist.append(temp)
             
-        sys.stdout = old_stdout
-        log_file.close()
+    sys.stdout = old_stdout
+    log_file.close()
 
-        total = pd.concat(dflist)
-        total.to_csv("s3://ipsos-dvd/fdd/data/2022-06-09/simulations_2d.csv", index = False)
+    total = pd.concat(dflist)
+    total.to_csv("s3://ipsos-dvd/fdd/data/2022-06-09/simulations_2d.csv", index = False)
