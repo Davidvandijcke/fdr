@@ -2,71 +2,48 @@ import pandas as pd
 import os
 import numpy as np
 
-# get relative dir
-dir = os.path.dirname(__file__)
 
-# get directory above
-main_dir = os.path.dirname(os.path.dirname(dir))
-data_in = os.path.join(main_dir, 'data', 'in')
+if __name__ == "__main__":
 
-# read orbis
-orbis = pd.read_csv(os.path.join(data_in, 'orbis', 'query.csv'))
+    dir = os.path.dirname(__file__)
 
+    # get directory above
+    main_dir = os.path.dirname(os.path.dirname(os.path.dirname(dir)))
+    data_in = os.path.join(main_dir, 'data', 'in')    
+    data_out = os.path.join(main_dir, 'data', 'out')    
 
+        
 
+    # read all files in simulations/2022-06-14 as pandas dataframe
+    df = pd.concat([pd.read_csv(os.path.join(data_out, 'simulations', '2022-06-14', file)) for file in os.listdir(os.path.join(data_out, 'simulations', '2022-06-14'))])
 
+    # Group by 'alpha', 'N', and 'S' and calculate the mean 'Y_jumpsize'
+    df['Y_jumpsize'] = df['Y_jumpsize'].abs()
+    mean_jumpsize = df.groupby(['alpha', 'N', 'S', 's']).agg({'Y_jumpsize' : 'mean', 
+                                                'mse' : 'mean', 
+                                                'jump_neg' : 'mean',
+                                                'jump_pos' : 'mean',
+                                                'Y_jumpfrom' : 'mean',
+                                                'Y_jumpto' : 'mean',
+                                                'lambda' : 'mean', 
+                                                'nu' : 'mean'}).reset_index()
+    mean_jumpsize = mean_jumpsize.groupby(['alpha', 'N', 'S']).agg({'Y_jumpsize' : 'mean', 
+                                                'mse' : 'mean', 
+                                                'jump_neg' : 'mean',
+                                                'jump_pos' : 'mean', 
+                                                'Y_jumpfrom' : 'mean',
+                                                'Y_jumpto' : 'mean',
+                                                'lambda' : 'mean', 
+                                                'nu' : 'mean'}).reset_index()
 
-# read PPP data
-ppp = pd.read_csv(os.path.join(data_in, 'ppp', 'public_up_to_150k_2_230331.csv'))
+    # Create a new column 'N_S' that combines 'N' and 'S' as a tuple
+    #?mean_jumpsize['N_S'] = mean_jumpsize.apply(lambda row: f"{row['N']}_{row['S']}", axis=1)
 
+    # Create the pivot table with 'alpha' as rows and 'N_S' as columns
+    pivot_table = mean_jumpsize.pivot_table(index='alpha', columns='N', values='Y_jumpsize')
 
-ppp = pd.read_csv(os.path.join(data_in, 'ppp', 'public_150k_plus_230331.csv'))
-ppp = ppp[ppp['ProcessingMethod'] == 'PPP']
+    # Optional: sort the index and columns if needed
+    pivot_table = pivot_table.sort_index(axis=0).sort_index(axis=1)
 
-
-ppp['total_proceed'] = (ppp['UTILITIES_PROCEED'].fillna(0) +
-                        ppp['PAYROLL_PROCEED'].fillna(0) +
-                        ppp['MORTGAGE_INTEREST_PROCEED'].fillna(0) +
-                        ppp['RENT_PROCEED'].fillna(0) +
-                        ppp['REFINANCE_EIDL_PROCEED'].fillna(0) +
-                        ppp['HEALTH_CARE_PROCEED'].fillna(0) +
-                        ppp['DEBT_INTEREST_PROCEED'].fillna(0))
-
-
-(ppp['total_proceed'] == ppp['InitialApprovalAmount']).mean()
-
-ppp['payroll_percent'] = (ppp['PAYROLL_PROCEED'] ) /  ppp['CurrentApprovalAmount']
-# fill infinity values with 0   
-ppp.loc[ppp['payroll_percent'] == float('inf'), 'payroll_percent'] = np.nan
-
-ppp.loc[ppp['ForgivenessAmount'].isna(), 'ForgivenessAmount'] = 0
-ppp['forgiven'] = (ppp['ForgivenessAmount'] > 0).astype(int)
-ppp['ForgivenessPercent'] = ppp['ForgivenessAmount'] / ppp['total_proceed']
-
-# aggregate forgiven into bins along the payroll_percent variable and plot
-# group data and get average 'forgiven'
-df = ppp.groupby(pd.cut(ppp['payroll_percent'], bins=100)).agg({'InitialApprovalAmount': 'mean'}).reset_index()
-
-# convert intervals to their mid points
-df['payroll_percent'] = (df['payroll_percent'].apply(lambda x: x.mid)).astype(float)
-
-# plot data
-df.plot(x='payroll_percent', y='InitialApprovalAmount')
-
-ppp[ppp.payroll_percent < 1].plot(x = 'payroll_percent', y = 'InitialApprovalAmount', kind = 'scatter')
-
-
-
-# plot vertical line at 0.6
-plt.axvline(x=0.61, color='red')
-
-
-import matplotlib.pyplot as plt
-import seaborn as sns
-sns.scatterplot(data=ppp, x='payroll_percent', y='forgiven')
-
-
-
-
-# count unique borrowers
-ppp['BorrowerName'].unique().shape[0]
+    # Display the pivot table
+    print(pivot_table)
