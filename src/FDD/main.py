@@ -168,12 +168,12 @@ class FDD():
         n = self.Y.shape[0]
         
         if self.resolution is None:
-            self.resolution = 1/int(np.sqrt(n)) # int so we get a natural number of grid cells
+            self.resolution = 1/int(self.X_raw.max(axis=0).min()) # int so we get a natural number of grid cells
         
         xmax = np.max(self.X, axis = 0)
         
         # set up grid
-        grid_x = np.meshgrid(*[np.arange(0, xmax[i], self.resolution) for i in range(self.X.shape[1])])
+        grid_x = np.meshgrid(*[np.arange(0, xmax[i], self.resolution) for i in reversed(range(self.X.shape[1]))])
         grid_x = np.stack(grid_x, axis = -1)
         if self.Y.ndim > 1: # account for vector-valued outcomes
             grid_y = np.zeros(list(grid_x.shape[:-1]) + [self.Y.shape[1]])
@@ -182,7 +182,7 @@ class FDD():
         grid_x_og = np.empty(list(grid_x.shape[:-1]), dtype = object) # assign original x values as well for later
         
         # Get the indices of the grid cells for each data point
-        indices = [(np.clip(self.X[:, i] // self.resolution, 0, grid_y.shape[i] - 1)).astype(int) for i in reversed(range(self.X.shape[1]))]
+        indices = [(np.clip(self.X[:, i] // self.resolution, 0, grid_y.shape[i] - 1)).astype(int) for i in range(self.X.shape[1])]
         indices = np.array(indices).T
 
         # Create a count array to store the number of data points in each cell

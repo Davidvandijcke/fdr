@@ -127,7 +127,7 @@ if __name__ == '__main__':
     dir = os.path.dirname(__file__)
 
     # get directory above
-    main_dir = "/home/dvdijcke"  # os.path.dirname(os.path.dirname(dir))
+    main_dir = "s3://ipsos-dvd/fdd/" #  "/home/dvdijcke"  # os.path.dirname(os.path.dirname(dir))
     data_in = os.path.join(main_dir, 'data', 'in')
 
     cname = "LC08_L2SP_044033_20220628_20220706_02_T1"
@@ -182,11 +182,82 @@ if __name__ == '__main__':
     
     # segment the image
 
-    X = np.stack([np.tile(np.arange(0, imgseg.shape[0], 1), imgseg.shape[1]), 
-              np.repeat(np.arange(0, imgseg.shape[0], 1), imgseg.shape[1])], axis = 1)
+    X = np.indices(imgseg.shape)
+    # flatten last two dimensions of X
+    X = X.reshape((X.shape[0], -1)).T
+    Y = imgseg.flatten()
+    
+    
+    def castDataToGridSmooth(self):
+        
+        n = self.Y.shape[0]
+        
+        if self.resolution is None:
+            self.resolution = 1/int(self.X_raw.max(axis=0).min()) # int so we get a natural number of grid cells
+        
+        xmax = np.max(self.X, axis = 0)
+        
+        # set up grid
+        grid_x = np.meshgrid(*[np.arange(0, xmax[i], self.resolution) for i in reversed(range(self.X.shape[1]))])
+        grid_x = np.stack(grid_x, axis = -1)
+        if self.Y.ndim > 1: # account for vector-valued outcomes
+            grid_y = np.zeros(list(grid_x.shape[:-1]) + [self.Y.shape[1]])
+        else:
+            grid_y = np.zeros(list(grid_x.shape[:-1]))
+        grid_x_og = np.empty(list(grid_x.shape[:-1]), dtype = object) # assign original x values as well for later
+        
+        # Get the indices of the grid cells for each data point
+        indices = [(np.clip(self.X[:, i] // self.resolution, 0, grid_y.shape[i] - 1)).astype(int) for i in range(self.X.shape[1])]
+        indices = np.array(indices).T
 
-    model = FDD(Y=imgseg, X = imgseg, level = 16, lmbda = 50, nu = 0.01, iter = 10000, tol = 5e-5, 
-        pick_nu = "MS", scaled = True, scripted = False, image=True)
+        # Create a count array to store the number of data points in each cell
+        counts = np.zeros_like(grid_y)
+
+        # Initialize grid_x_og with empty lists
+        for index in np.ndindex(grid_x_og.shape):
+            grid_x_og[index] = []
+        
+
+
+        # Iterate through the data points and accumulate their values in grid_y and grid_x_og
+        for i, index_tuple in enumerate(indices):
+            index = tuple(index_tuple)
+            if np.all(index < grid_y.shape):
+                # add  Y value to grid cell
+                # print(index)
+                # print(i)
+                grid_y[index] += self.Y[i]
+                counts[index] += 1
+                grid_x_og[index].append(self.X[i])
+        
+        
+
+        # Divide the grid_y by the counts to get the average values
+        grid_y = np.divide(grid_y, counts, where=counts != 0, out=grid_y)
+
+        # Find the closest data point for empty grid cells
+        empty_cells = np.where(counts == 0)
+        empty_cell_coordinates = np.vstack([empty_cells[i] for i in range(self.X.shape[1])]).T * self.resolution
+        if empty_cell_coordinates.size > 0:
+            tree = cKDTree(self.X + self.resolution / 2) # get centerpoints of hypervoxels
+            _, closest_indices = tree.query(empty_cell_coordinates, k=1)
+            closest_Y_values = self.Y[closest_indices]
+
+            # Assign the closest data point values to the empty grid cells
+            grid_y[empty_cells] = closest_Y_values
+        
+        # add an extra "channel" dimension if we have a scalar outcome
+        if self.Y.ndim == 1:
+            grid_y = grid_y.reshape(grid_y.shape + (1,))
+
+        self.grid_x_og = grid_x_og
+        self.grid_x = grid_x
+        self.grid_y = grid_y
+    
+    #FDD.castDataToGridSmooth = castDataToGridSmooth
+
+    model = FDD(Y=Y, X = X, level = 16, lmbda = 50, nu = 0.001, iter = 10000, tol = 5e-5, 
+        pick_nu = "MS", scaled = True, scripted = False, image=False, rectangle=True)
     
     u, jumps, J_grid, nrj, eps, it = model.run()
 
