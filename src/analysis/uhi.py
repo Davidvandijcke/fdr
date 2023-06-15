@@ -127,7 +127,7 @@ if __name__ == '__main__':
     dir = os.path.dirname(__file__)
 
     # get directory above
-    main_dir = os.path.dirname(os.path.dirname(dir))
+    main_dir = "/home/dvdijcke"  # os.path.dirname(os.path.dirname(dir))
     data_in = os.path.join(main_dir, 'data', 'in')
 
     cname = "LC08_L2SP_044033_20220628_20220706_02_T1"
@@ -189,3 +189,5 @@ if __name__ == '__main__':
         pick_nu = "MS", scaled = True, scripted = False, image=True)
     
     u, jumps, J_grid, nrj, eps, it = model.run()
+
+    plt.imsave("test.png", u)
