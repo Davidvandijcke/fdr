@@ -15,13 +15,15 @@ import cv2
 from FDD import FDD
 from pyproj import Transformer, CRS
 
+from types import MethodType
+
 def readSatellite(cname):
         #------- read satellite data
     # https://d9-wret.s3.us-west-2.amazonaws.com/assets/palladium/production/s3fs-public/media/files/LSDS-1619_Landsat8-9-Collection2-Level2-Science-Product-Guide-v5.pdf
 
     # Open the ST_B10 and QA bands
-    folder = os.path.join(data_in, 'satellite', cname)
-    fn = os.path.join(folder, cname + "_ST_B10.TIF")
+    # folder = os.path.join(data_in, 'satellite', cname)
+    fn = os.path.join(cname + "_ST_B10.TIF")
     with rasterio.open(fn) as src:
         st_band = src.read(1)  # Note: band indexing in rasterio is 1-based
         st_transform = src.transform
@@ -35,7 +37,7 @@ def readSatellite(cname):
     st_band = np.where(st_band >= 61440, np.nan, st_band)
 
     # ST_QA band contains the uncertainty of the ST band, in Kelvin.
-    fn = os.path.join(folder, cname + "_ST_QA.TIF")
+    fn = os.path.join(cname + "_ST_QA.TIF")
     with rasterio.open(fn) as src:
         qa_band = src.read(1)
 
@@ -86,7 +88,7 @@ def plotHeatMap(minx, maxx, miny, maxy):
 
 def subsetRaster(cname, minx, maxx, miny, maxy, st_crs):
     
-    folder = os.path.join(data_in, 'satellite', cname)
+    folder = os.path.join(cname)
     fn = os.path.join(folder, cname + "_ST_B10.TIF")
     # Define your bounding box and create a polygon
     # Define points in the old CRS
@@ -124,13 +126,22 @@ if __name__ == '__main__':
         
         
     # get relative dir
-    dir = os.path.dirname(__file__)
+    #dir = os.path.dirname(__file__)
 
     # get directory above
-    main_dir = os.path.dirname(os.path.dirname(dir))
-    data_in = os.path.join(main_dir, 'data', 'in')
+    data_in = "/home/dvdijcke/data/fdd/"
 
-    cname = "LC08_L2SP_044033_20220628_20220706_02_T1"
+    # cname = "LC08_L2SP_044033_20220628_20220706_02_T1/"
+    
+    # # pull tif file from s3
+    # s3 = boto3.resource('s3')
+    # bucket = s3.Bucket('ipsos-dvd')
+    # for obj in bucket.objects.filter(Prefix='fdd/data/in/satellite/LC08_L2SP_044033_20220628_20220706_02_T1/'):
+    #     print(obj.key)
+    #     bucket.download_file(obj.key, os.path.join(data_in, 'satellite', obj.key.split('/')[-1]))
+    
+    sn = "LC08_L2SP_044033_20220628_20220706_02_T1"
+    cname = os.path.join(data_in, "satellite", sn, sn)
     st_c_masked, qa_band, st_transform, st_crs = readSatellite(cname)
 
     # # Bounding box around Austin, Texas, metro area
@@ -167,7 +178,7 @@ if __name__ == '__main__':
     fig, ax = plt.subplots(figsize=(8, 8))
     ret = rasterio.plot.show(subset, cmap='RdYlBu_r', ax=ax)
     
-    imgseg = cv2.resize(subset.squeeze(), dsize = (0,0), fx=0.1, fy=0.1)
+    imgseg = cv2.resize(subset.squeeze(), dsize = (0,0), fx=0.05, fy=0.05)
     plt.imshow(imgseg)
 
 
@@ -182,10 +193,80 @@ if __name__ == '__main__':
     
     # segment the image
 
+    # def castDataToGridSmooth(self):
+        
+    #     n = self.Y.shape[0]
+        
+    #     if self.resolution is None:
+    #         self.resolution = 1/int(np.sqrt(n)) # int so we get a natural number of grid cells
+        
+    #     xmax = np.max(self.X, axis = 0)
+        
+    #     # set up grid
+    #     grid_x = np.meshgrid(*[np.arange(0, xmax[i], self.resolution) for i in range(self.X.shape[1])])
+    #     grid_x = np.stack(grid_x, axis = -1)
+    #     if self.Y.ndim > 1: # account for vector-valued outcomes
+    #         grid_y = np.zeros(list(grid_x.shape[:-1]) + [self.Y.shape[1]])
+    #     else:
+    #         grid_y = np.zeros(list(grid_x.shape[:-1]))
+    #     grid_x_og = np.empty(list(grid_x.shape[:-1]), dtype = object) # assign original x values as well for later
+        
+    #     # Get the indices of the grid cells for each data point
+    #     indices = [(np.clip((self.X[:, i]) // self.resolution, 0, grid_y.shape[i] - 1)).astype(int) for i in reversed(range(self.X.shape[1]))]
+    #     indices = np.array(indices).T
+
+    #     # Create a count array to store the number of data points in each cell
+    #     counts = np.zeros_like(grid_y)
+
+    #     # Initialize grid_x_og with empty lists
+    #     for index in np.ndindex(grid_x_og.shape):
+    #         grid_x_og[index] = []
+        
+
+    #     # Iterate through the data points and accumulate their values in grid_y and grid_x_og
+    #     for i, index_tuple in enumerate(indices):
+    #         index = tuple(index_tuple)
+    #         print(index)
+    #         if np.all(index < grid_y.shape):
+    #             # add  Y value to grid cell
+    #             # print(index)
+    #             # print(i)
+    #             grid_y[index] += self.Y[i]
+    #             counts[index] += 1
+    #             grid_x_og[index].append(self.X[i])
+        
+        
+
+    #     # Divide the grid_y by the counts to get the average values
+    #     grid_y = np.divide(grid_y, counts, where=counts != 0, out=grid_y)
+
+    #     # Find the closest data point for empty grid cells
+    #     empty_cells = np.where(counts == 0)
+    #     empty_cell_coordinates = np.vstack([empty_cells[i] for i in range(self.X.shape[1])]).T * self.resolution
+    #     if empty_cell_coordinates.size > 0:
+    #         tree = cKDTree(self.X + self.resolution / 2) # get centerpoints of hypervoxels
+    #         _, closest_indices = tree.query(empty_cell_coordinates, k=1)
+    #         closest_Y_values = self.Y[closest_indices]
+
+    #         # Assign the closest data point values to the empty grid cells
+    #         grid_y[empty_cells] = closest_Y_values
+        
+    #     # add an extra "channel" dimension if we have a scalar outcome
+    #     if self.Y.ndim == 1:
+    #         grid_y = grid_y.reshape(grid_y.shape + (1,))
+
+    #     self.grid_x_og = grid_x_og
+    #     self.grid_x = grid_x
+    #     self.grid_y = grid_y
+        
+        
     X = np.stack([np.tile(np.arange(0, imgseg.shape[0], 1), imgseg.shape[1]), 
               np.repeat(np.arange(0, imgseg.shape[0], 1), imgseg.shape[1])], axis = 1)
-
-    model = FDD(Y=imgseg, X = imgseg, level = 16, lmbda = 50, nu = 0.01, iter = 10000, tol = 5e-5, 
-        pick_nu = "MS", scaled = True, scripted = False, image=True)
+    Y = imgseg.flatten()
+    
+    
+    model = FDD(Y=Y, X = X, level = 16, lmbda = 100, nu = 0.01, iter = 10000, tol = 5e-5, 
+        pick_nu = "MS", scaled = True, scripted = False, image=False, rectangle=True)
+    
     
     u, jumps, J_grid, nrj, eps, it = model.run()
