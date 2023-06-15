@@ -67,7 +67,7 @@ if __name__ == "__main__":
     # results = ray.get([train.remote(config, jsize, sigma, N, lmbda, nu, S) for config in configurations])
 
     # check simulations
-    df = pd.read_csv("/Users/davidvandijcke/Downloads/simulations_2d_sigma_0.01_jsize_0.035537513272984836.csv")
+    df = pd.read_csv("/Users/davidvandijcke/Dropbox (University of Michigan)/rdd/data/out/simulations/2022-06-14/simulations_2d_sigma_0.01_jsize_0.0355375132729848.csv")
 
     # Group by 'alpha', 'N', and 'S' and calculate the mean 'Y_jumpsize'
     df['Y_jumpsize'] = df['Y_jumpsize'].abs()

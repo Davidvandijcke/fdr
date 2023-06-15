@@ -5,6 +5,7 @@ import pandas as pd
 import torch 
 from matplotlib import pyplot as plt
 import ray
+import boto3
 
 def f(x,y, jsize):
   temp = np.sqrt((x-1/2)**2 + (y-1/2)**2)
@@ -65,10 +66,10 @@ if __name__ == "__main__":
     N_list = [100, 500, 1000, 10000]
     N_sure = max(N_list)
     S = 16
-    num_samples = 400 # 400 # 200
-    num_sims = 100 # 100 # 100
-    R = 3 # 3 # 5
-    num_gpus = 1
+    num_samples = 2 #  400 # 400 # 200
+    num_sims = 1 # 100 # 100 # 100
+    R = 1 #  3 # 3 # 5
+    num_gpus = 0.25
     num_cpus = 8
 
     @ray.remote(num_gpus=num_gpus, num_cpus=num_cpus)  # This decorator indicates that this function will be distributed, with each task using one GPU.
@@ -164,11 +165,10 @@ if __name__ == "__main__":
         
         # save to s3
         temp.to_csv("s3://ipsos-dvd/fdd/data/2022-06-14/simulations_2d_sigma_" + str(sigma) + "_jsize_" + str(jsize) + ".csv", index=False)
-
         print(f"Done with sigma {sigma}, jump size {jsize}")
             
     sys.stdout = old_stdout
     log_file.close()
 
     total = pd.concat(dflist)
-    total.to_csv("s3://ipsos-dvd/fdd/data/2022-06-09/simulations_2d.csv", index = False)
+    total.to_csv("s3://ipsos-dvd/fdd/data/2022-06-14/simulations_2d.csv", index = False)
