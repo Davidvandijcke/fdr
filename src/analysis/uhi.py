@@ -17,6 +17,7 @@ from FDD.SURE import SURE
 from pyproj import Transformer, CRS
 from types import MethodType
 import pickle
+import boto3
 
 def readSatellite(cname):
         #------- read satellite data
@@ -192,8 +193,8 @@ if __name__ == '__main__':
     
     model = FDD(Y=Y, X = X, level = 16, lmbda = 5, nu = 0.001, iter = 10000, tol = 5e-5, 
         pick_nu = "MS", scaled = True, scripted = False, image=False, rectangle=True)
-    num_samples = 2 # 400 # 400 # 200
-    R = 1 # 3 # 3 # 5
+    num_samples = 400 # 400 # 400 # 200
+    R =  3 # 3 # 5
     num_gpus = 0.5
     num_cpus = 4
     res = SURE(tuner=True, num_samples=num_samples, model=model, R=R, 
@@ -202,8 +203,10 @@ if __name__ == '__main__':
     file_name = 'uhi_SURE.pkl'
     with open(file_name, 'wb') as file:
         pickle.dump(res, file)
-        
-
+    
+    s3 = boto3.client('s3')
+    with open(file_name, "rb") as f:
+        s3.upload_fileobj(f, "ipsos-dvd", "fdd/data/uhi_SURE.pkl")
 
     
     # u, jumps, J_grid, nrj, eps, it = model.run()
