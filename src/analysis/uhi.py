@@ -171,7 +171,7 @@ if __name__ == '__main__':
     fig, ax = plt.subplots(figsize=(8, 8))
     ret = rasterio.plot.show(subset, cmap='RdYlBu_r', ax=ax)
     
-    imgseg = cv2.resize(subset.squeeze(), dsize = (0,0), fx=0.1, fy=0.1)
+    imgseg = cv2.resize(subset.squeeze(), dsize = (0,0), fx=0.075, fy=0.075)
     plt.imshow(imgseg)
 
 
@@ -193,8 +193,8 @@ if __name__ == '__main__':
     
     model = FDD(Y=Y, X = X, level = 16, lmbda = 5, nu = 0.001, iter = 10000, tol = 5e-5, 
         pick_nu = "MS", scaled = True, scripted = False, image=False, rectangle=True)
-    num_samples = 400 # 400 # 400 # 200
-    R =  3 # 3 # 5
+    num_samples = 225 #  400 # 400 # 400 # 200
+    R =  3 # 3 # 3 # 5
     num_gpus = 0.5
     num_cpus = 4
     res = SURE(tuner=True, num_samples=num_samples, model=model, R=R, 
