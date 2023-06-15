@@ -473,7 +473,7 @@ class FDD():
         
         J_grid, jumps = self.boundary(u)
         
-                # scale u back to get correct jump sizes
+        # scale u back to get correct jump sizes
         if not self.image:
             u = u * np.max(self.Y_raw, axis = -1)
         
