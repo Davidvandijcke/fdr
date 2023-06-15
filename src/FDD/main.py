@@ -168,12 +168,12 @@ class FDD():
         n = self.Y.shape[0]
         
         if self.resolution is None:
-            self.resolution = 1/int(np.sqrt(n)) # int so we get a natural number of grid cells
+            self.resolution = 1/int(self.X_raw.max(axis=0).min()) # int so we get a natural number of grid cells
         
         xmax = np.max(self.X, axis = 0)
         
         # set up grid
-        grid_x = np.meshgrid(*[np.arange(0, xmax[i], self.resolution) for i in range(self.X.shape[1])])
+        grid_x = np.meshgrid(*[np.arange(0, xmax[i], self.resolution) for i in reversed(range(self.X.shape[1]))])
         grid_x = np.stack(grid_x, axis = -1)
         if self.Y.ndim > 1: # account for vector-valued outcomes
             grid_y = np.zeros(list(grid_x.shape[:-1]) + [self.Y.shape[1]])
@@ -182,7 +182,7 @@ class FDD():
         grid_x_og = np.empty(list(grid_x.shape[:-1]), dtype = object) # assign original x values as well for later
         
         # Get the indices of the grid cells for each data point
-        indices = [(np.clip(self.X[:, i] // self.resolution, 0, grid_y.shape[i] - 1)).astype(int) for i in reversed(range(self.X.shape[1]))]
+        indices = [(np.clip(self.X[:, i] // self.resolution, 0, grid_y.shape[i] - 1)).astype(int) for i in range(self.X.shape[1])]
         indices = np.array(indices).T
 
         # Create a count array to store the number of data points in each cell
@@ -271,9 +271,9 @@ class FDD():
         
         
         
-    def boundaryGridToData(self, J_grid, u):
+    def boundaryGridToData(self, J_grid, u, average = False):
         # get the indices of the J_grid where J_grid is 1
-        
+
 
         k = np.array(np.where(J_grid == 1))
 
@@ -284,11 +284,11 @@ class FDD():
         Y_boundary = []
         X_jumpfrom = []
         X_jumpto = []
-        
+
 
         # Iterate over the boundary points
         for i in range(k.shape[1]):
-            
+
             origin_points = []
             dest_points = []
 
@@ -312,40 +312,52 @@ class FDD():
 
             # Check if there are any valid neighbors
             if neighbors:
-                
+
                 # origin_points
                 origin_points = self.grid_x_og[tuple(point)]
-                Yjumpfrom = float(u[tuple(point)])
                 if len(origin_points) == 0:
                     origin_points = self.grid_x[tuple(point)] + self.resolution / 2
-                    
+                Yjumpfrom = float(u[tuple(point)])
+
+
                 # jumpfrom point
                 origin_points = np.stack(origin_points).squeeze()
                 if origin_points.ndim > 1: # if there are multiple points in the hypervoxel, take the mean
                     jumpfrom = np.mean(origin_points, axis = 0)
                 else:
                     jumpfrom = origin_points
-                    
-                # pdb.set_trace()
-                # jumpto point
-                
-                # find closest point to jumpfrom among all neighbor points
-                
-                
-                
-                pointslist = [self.grid_x_og[tuple(neighbors[j])] if self.grid_x_og[tuple(neighbors[j])] != []  # if grid cell is empty, assign centerpoint
-                              else [self.grid_x[tuple(neighbors[j])] + self.resolution / 2] for j in range(len(neighbors))]
-                counts = [len(pointslist[j]) for j in range(len(neighbors))]
-                total = sum(counts) # TODO: jump sizes on diagonal boundary sections are off
-                Yjumpto = np.sum([(u[tuple(neighbors[j])] * counts[j]) / total for j in range(len(neighbors))]) # proper unweighted average of the y values
-                dest_points = np.stack([item for sublist in pointslist for item in sublist]).squeeze()
-                if dest_points.ndim > 1: # if there are multiple points in the hypervoxel, take the mean
-                    jumpto = np.mean(dest_points, axis = 0)
-                else:
-                    jumpto = dest_points
-                    
 
-                
+
+                # jumpto point
+                pointslist = [self.grid_x_og[tuple(neighbors[j])] if self.grid_x_og[tuple(neighbors[j])] != []  # if grid cell is empty, assign centerpoint
+                                else [self.grid_x[tuple(neighbors[j])] + self.resolution / 2] for j in range(len(neighbors))]
+
+                if average:
+                    counts = [len(pointslist[j]) for j in range(len(neighbors))]
+                    total = sum(counts) # TODO: jump sizes on diagonal boundary sections are off
+                    Yjumpto = np.sum([(u[tuple(neighbors[j])] * counts[j]) / total for j in range(len(neighbors))]) # proper unweighted average of the y values
+                    dest_points = np.stack([item for sublist in pointslist for item in sublist]).squeeze()
+                    if dest_points.ndim > 1: # if there are multiple points in the hypervoxel, take the mean
+                        jumpto = np.mean(dest_points, axis = 0)
+                    else:
+                        jumpto = dest_points
+                else:
+                    # get closest point
+                    dists = [[np.linalg.norm(jumpfrom - point) for point in pointslist[j]] for j in range(len(neighbors))]
+                    idx = np.argmin([np.argmin(sublist) for sublist in dists])
+                    closest = tuple(neighbors[idx])
+                    Yjumpto = u[closest]
+
+                    dest_points = self.grid_x_og[closest]
+                    if len(dest_points) == 0:
+                        dest_points = self.grid_x[closest] + self.resolution / 2
+                    dest_points = np.stack(dest_points).squeeze()
+
+                    if dest_points.ndim > 1: # if there are multiple points in the hypervoxel, take the mean
+                        jumpto = np.mean(dest_points, axis = 0)
+                    else:
+                        jumpto = dest_points
+
                 # append to lists
                 Y_boundary.append((jumpfrom + jumpto) / 2)
                 Y_jumpfrom.append(Yjumpfrom)
@@ -353,20 +365,20 @@ class FDD():
                 Y_jumpsize.append(Yjumpto - Yjumpfrom)
                 X_jumpfrom.append(jumpfrom)
                 X_jumpto.append(jumpto)
-        
+
         if Y_boundary:
             Y_boundary = np.stack(Y_boundary)
             Y_jumpfrom = np.stack(Y_jumpfrom)
             Y_jumpto = np.stack(Y_jumpto)
             Y_jumpsize = np.stack(Y_jumpsize)
-            
+
             # create named array to return
             rays = [Y_boundary[:,d] for d in range(Y_boundary.shape[1])] + [Y_jumpfrom, Y_jumpto, Y_jumpsize]
             names = ["X_" + str(d) for d in range(Y_boundary.shape[1])] + ["Y_jumpfrom", "Y_jumpto", "Y_jumpsize"]
             jumps = np.core.records.fromarrays(rays, names=names)
         else:
             jumps = None
-        
+
         return jumps
 
         
