@@ -110,27 +110,28 @@ class FDD():
         
         n = self.Y.shape[0]
         
-        # calculate 0.5% quantile of distances between points
-        # if data is large, use a random sample of 1000 points to calculate quantile
-        if n > 1000:
-            idx = np.random.permutation(n)
-            idx = idx[:1000]
-            X_sample = self.X[idx,:]
-            distances = np.sqrt(np.sum((X_sample[:,None,:] - X_sample[None,:,:])**2, axis = 2))
+        if self.resolution is None:
+            # calculate 0.5% quantile of distances between points
+            # if data is large, use a random sample of 1000 points to calculate quantile
+            if n > 1000:
+                idx = np.random.permutation(n)
+                idx = idx[:1000]
+                X_sample = self.X[idx,:]
+                distances = np.sqrt(np.sum((X_sample[:,None,:] - X_sample[None,:,:])**2, axis = 2))
 
-        else:   
-            distances = np.sqrt(np.sum((self.X[:,None,:] - self.X[None,:,:])**2, axis = 2))
-        np.fill_diagonal(distances, 1) # remove self-comparisons
-        distances = np.min(distances, axis = 0) # get closest point for each point
-        qile = np.quantile(distances, self.qtile) # get 5% quantile
-        
-        # pythagoras
-        
-        if self.grid:
-            self.resolution = qile
-        else:
-            self.resolution = 2*  qile / np.sqrt(2) # on average, points fall in center of grid cell, then use Pythagoras to get resolution
-        
+            else:   
+                distances = np.sqrt(np.sum((self.X[:,None,:] - self.X[None,:,:])**2, axis = 2))
+            np.fill_diagonal(distances, 1) # remove self-comparisons
+            distances = np.min(distances, axis = 0) # get closest point for each point
+            qile = np.quantile(distances, self.qtile) # get 5% quantile
+            
+            # pythagoras
+            
+            if self.grid:
+                self.resolution = qile
+            else:
+                self.resolution = 2*  qile / np.sqrt(2) # on average, points fall in center of grid cell, then use Pythagoras to get resolution
+            
         xmax = np.max(self.X, axis = 0)
         
         # set up grid
@@ -182,7 +183,9 @@ class FDD():
         grid_x_og = np.empty(list(grid_x.shape[:-1]), dtype = object) # assign original x values as well for later
         
         # Get the indices of the grid cells for each data point
-        indices = [(np.clip(self.X[:, i] // self.resolution, 0, grid_y.shape[i] - 1)).astype(int) for i in range(self.X.shape[1])]
+        # indices = [(np.clip(self.X[:, i] // self.resolution, 0, grid_y.shape[i] - 1)).astype(int) for i in range(self.X.shape[1])]
+        indices = [(np.clip(self.X[:, i] // self.resolution, 0, grid_y.shape[i] - 1)).astype(int) for i in reversed(range(self.X.shape[1]))]
+        
         indices = np.array(indices).T
 
         # Create a count array to store the number of data points in each cell
@@ -232,6 +235,7 @@ class FDD():
         
     def castDataToGrid(self):
         
+        #self.castDataToGridPoints()
         self.castDataToGridSmooth()
         
 
@@ -473,7 +477,7 @@ class FDD():
         
         J_grid, jumps = self.boundary(u)
         
-        # scale u back to get correct jump sizes
+                # scale u back to get correct jump sizes
         if not self.image:
             u = u * np.max(self.Y_raw, axis = -1)
         

@@ -1,16 +1,69 @@
-from FDD import FDD
-from FDD.SURE import SURE
-import numpy as np
 import pandas as pd
-import torch 
-from matplotlib import pyplot as plt
-import ray
 import os
+from tabulate import tabulate
 
 def moveUp(fn, times = 1):
     for _ in range(times):
         fn = os.path.dirname(fn)
     return fn
+
+def format_value(value):
+    if isinstance(value, int):
+        return str(value)
+    return "{:.4f}".format(value)
+
+
+def create_latex_subtables(df, sigma):
+    # Filter the dataframe by the sigma value
+    df_sigma = df[df['sigma'] == sigma]
+
+    # Get the unique alpha values, sorted
+    alphas = sorted(df_sigma['alpha'].unique())
+
+    # Initialize the final LaTeX table string
+    latex_tables = "\\begin{subtable}{\\textwidth}\n\\centering\n"
+
+    # Iterate over each alpha value
+    for alpha in alphas:
+        # Get the subset of the dataframe with the current alpha value
+        df_alpha = df_sigma[df_sigma['alpha'] == alpha].sort_values('N')
+        
+
+        # Remove the 'alpha', 'S', 'lambda', 'nu', 'sigma', 'Y_jumpfrom', and 'Y_jumpto' columns
+        df_alpha = df_alpha.drop(['alpha', 'S', 'lambda', 'nu', 'sigma', 'Y_jumpfrom', 'Y_jumpto'], axis=1)
+        
+        df_alpha.rename(columns={'mse' : 'MSE',
+                                'jump_neg' : 'FNR',
+                                'jump_pos' : 'FPR'}, 
+                        inplace=True)
+        
+        df_alpha['N'] = df_alpha['N'].astype(int)
+        # format value on df_alpha
+        df_alpha = df_alpha.applymap(format_value)
+
+
+        # Generate the LaTeX table
+        latex_table = tabulate(df_alpha, tablefmt="latex_booktabs", headers="keys", showindex=False)
+
+        # Get the lambda and nu values
+        lambda_val = df_sigma.loc[df_sigma['alpha'] == alpha, 'lambda'].values[0]
+        nu_val = df_sigma.loc[df_sigma['alpha'] == alpha, 'nu'].values[0]
+
+        # Add the sub-table to the final LaTeX tables string
+        nrow = df_alpha.shape[1]
+        latex_tables += " $\\alpha$ = %.4f \\\\ \n%s \n" % (alpha, latex_table)
+        latex_tables += "\\\\ SURE: $\\lambda$ = %.4f, $\\nu$ = %.4f  \\\\ \n\n" % (lambda_val, nu_val)
+
+        # replace "Y_jumpsize" with "$\alpha_hat$"
+        latex_tables = latex_tables.replace("Y\\_jumpsize", "$\\hat{\\alpha}$")
+
+
+    latex_tables += "\\end{subtable}"
+    
+    return latex_tables
+
+
+
 
 
 if __name__ == "__main__":
@@ -23,16 +76,16 @@ if __name__ == "__main__":
     data_out = os.path.join(main_dir, 'data', 'out')   
     
     # pull data from S3
-    "aws s3 sync s3://ipsos-dvd/fdd/data/2022-06-14/ /Users/davidvandijcke/Dropbox (University of Michigan)/rdd/data/out/simulations --profile ipsos"
-    
+
     # run the command string in cli
-    fn = "2022-06-14"
+    fn = "2022-06-16"
     ffrom = f"'s3://ipsos-dvd/fdd/data/{fn}/'"
     fto = f"'/Users/davidvandijcke/Dropbox (University of Michigan)/rdd/data/out/simulations/{fn}/'"
-    !aws s3 sync $ffrom $fto --profile ipsos
+    #!aws s3 sync $ffrom $fto --profile ipsos
 
     # read all files in fto
     df = pd.concat([pd.read_csv(os.path.join(data_out, 'simulations', fn, file)) for file in os.listdir(os.path.join(data_out, 'simulations', fn)) if file.endswith(".csv")])
+    df = pd.read_csv("/Users/davidvandijcke/Downloads/simulations_2d_sigma_0.01_jsize_0.10661253981895451 (1).csv")
 
     # Group by 'alpha', 'N', and 'S' and calculate the mean 'Y_jumpsize'
     df['Y_jumpsize'] = df['Y_jumpsize'].abs()
@@ -55,14 +108,14 @@ if __name__ == "__main__":
                                                 'nu' : 'mean', 
                                                 'sigma' : 'mean'}).reset_index()
 
-    # Create a new column 'N_S' that combines 'N' and 'S' as a tuple
-    #?mean_jumpsize['N_S'] = mean_jumpsize.apply(lambda row: f"{row['N']}_{row['S']}", axis=1)
 
-    # Create the pivot table with 'alpha' as rows and 'N_S' as columns
-    pivot_table = mean_jumpsize.pivot_table(index='alpha', columns='N', values='Y_jumpsize')
+    # Generate the LaTeX tables for each sigma value
+    latex_table_sigma_0_01 = create_latex_subtables(mean_jumpsize, 0.01)
+    latex_table_sigma_0_05 = create_latex_subtables(mean_jumpsize, 0.05)
 
-    # Optional: sort the index and columns if needed
-    pivot_table = pivot_table.sort_index(axis=0).sort_index(axis=1)
+    # Write the tables to separate .tex files
+    with open(os.path.join(data_out, 'table_sigma_0_01.tex'), 'w') as f:
+        f.write(latex_table_sigma_0_01)
 
-    # Display the pivot table
-    print(pivot_table)
+    with open(os.path.join(data_out, 'table_sigma_0_05.tex'), 'w') as f:
+        f.write(latex_table_sigma_0_05)

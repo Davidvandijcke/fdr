@@ -1,3 +1,6 @@
+""" Run 2D simulations """
+# note if ray gives trouble, try "ray start --head"
+
 from FDD import FDD
 from FDD.SURE import SURE
 import numpy as np
@@ -6,6 +9,7 @@ import torch
 from matplotlib import pyplot as plt
 import ray
 import boto3
+
 
 def f(x,y, jsize):
   temp = np.sqrt((x-1/2)**2 + (y-1/2)**2)
@@ -66,11 +70,11 @@ if __name__ == "__main__":
     N_list = [100, 500, 1000, 10000]
     N_sure = max(N_list)
     S = 16
-    num_samples = 2 #  400 # 400 # 200
-    num_sims = 1 # 100 # 100 # 100
-    R = 1 #  3 # 3 # 5
-    num_gpus = 0.25
-    num_cpus = 8
+    num_samples = 400 #  400 # 400 # 200
+    num_sims = 100 # 100 # 100 # 100
+    R = 3 #  3 # 3 # 5
+    num_gpus = 0.5
+    num_cpus = 4
     fdate = "2022-06-15"
 
     @ray.remote(num_gpus=num_gpus, num_cpus=num_cpus)  # This decorator indicates that this function will be distributed, with each task using one GPU.
@@ -107,7 +111,7 @@ if __name__ == "__main__":
     
     dflist = []
 
-    for sigma in [0.01, 0.05]: #, 0.05]:
+    for sigma in [0.05]: #, 0.05]:
         
         # calculate Cohen's d jump sizes
         X, Y, U = generate2D(jsize = 0, sigma=sigma, N=N_sure)
