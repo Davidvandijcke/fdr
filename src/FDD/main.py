@@ -12,7 +12,7 @@ class FDD():
     def __init__(self, Y : np.array, X : np.array, pick_nu : str="kmeans", level : int=16, 
                  lmbda : float=1, nu : float=0.01, iter : int=1000, tol : float=5e-5, rectangle : bool=False, 
                  qtile : float=0.05, image : bool=False, grid : bool=False, resolution : float=None,
-                 scaled = False, scripted = True) -> None:
+                 scaled=False, scripted=True, average=False) -> None:
 
         self.device = setDevice()
         torch.set_grad_enabled(False)
@@ -39,6 +39,8 @@ class FDD():
         
         self.scripted = scripted
         self.scaled = scaled
+        
+        self.average = average
 
         
         if self.image: # if image, we don't scale -- assume between 0 and 1
@@ -280,6 +282,7 @@ class FDD():
 
 
         k = np.array(np.where(J_grid == 1))
+        
 
         # Store the average points
         Y_jumpfrom = []
@@ -309,10 +312,10 @@ class FDD():
                 neighbor = point.copy()
                 if neighbor[d] < J_grid.shape[d] - 1:
                     neighbor[d] += 1
-
-                    # Check if the neighbor is not a boundary point
-                    if J_grid[tuple(neighbor)] != 1:
+                    # Check if the upper-left neighbor is not a boundary point
+                    if J_grid[tuple(neighbor)] == 1:
                         neighbors.append(neighbor)
+                        
 
             # Check if there are any valid neighbors
             if neighbors:
@@ -423,7 +426,7 @@ class FDD():
             u = u * np.max(self.Y_raw, axis = 0) + np.min(self.Y_raw, axis = 0)
         
         ## find the boundary on the point cloud
-        jumps = self.boundaryGridToData(J_grid, u)
+        jumps = self.boundaryGridToData(J_grid, u, self.average)
         
         # test_grid = np.zeros(self.grid_y.shape)
         # for row in jumps:

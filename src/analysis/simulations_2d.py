@@ -1,6 +1,3 @@
-""" Run 2D simulations """
-# note if ray gives trouble, try "ray start --head"
-
 from FDD import FDD
 from FDD.SURE import SURE
 import numpy as np
@@ -9,7 +6,6 @@ import torch
 from matplotlib import pyplot as plt
 import ray
 import boto3
-
 
 def f(x,y, jsize):
   temp = np.sqrt((x-1/2)**2 + (y-1/2)**2)
@@ -73,14 +69,8 @@ if __name__ == "__main__":
     num_samples = 400 #  400 # 400 # 200
     num_sims = 100 # 100 # 100 # 100
     R = 3 #  3 # 3 # 5
-<<<<<<< HEAD
-    num_gpus = 0.5
-    num_cpus = 4
-    fdate = "2022-06-15"
-=======
     num_gpus = 0.25
     num_cpus = 8
->>>>>>> ab736ab0073b5c112bf48a65e42e7fce43c324dc
 
     @ray.remote(num_gpus=num_gpus, num_cpus=num_cpus)  # This decorator indicates that this function will be distributed, with each task using one GPU.
     def train(config, jsize, sigma, N, lmbda, nu, S):
@@ -95,7 +85,7 @@ if __name__ == "__main__":
         elif torch.backends.mps.is_available(): # mac gpus
             device = torch.device("mps")
             
-        resolution = 1/int(np.sqrt(N))
+        resolution = 1/int(np.sqrt(N*2/3))
         model = FDD(Y, X, level = S, lmbda = lmbda, nu = nu, iter = 5000, tol = 5e-5, resolution=resolution,
                 pick_nu = "MS", scaled = True, scripted = False)
         
@@ -116,11 +106,7 @@ if __name__ == "__main__":
     
     dflist = []
 
-<<<<<<< HEAD
-    for sigma in [0.05]: #, 0.05]:
-=======
     for sigma in [0.01, 0.05]: #, 0.05]:
->>>>>>> ab736ab0073b5c112bf48a65e42e7fce43c324dc
         
         # calculate Cohen's d jump sizes
         X, Y, U = generate2D(jsize = 0, sigma=sigma, N=N_sure)
@@ -132,19 +118,32 @@ if __name__ == "__main__":
             print("Running SURE")
             # run SURE once for largest N
             X, Y, U = generate2D(jsize, sigma=sigma, N=N_sure)
-<<<<<<< HEAD
-            resolution = 1/int(np.sqrt(N_sure))
-=======
-            resolution = 1/int(np.sqrt(N_sure*2/3))
->>>>>>> ab736ab0073b5c112bf48a65e42e7fce43c324dc
-            model = FDD(Y, X, level = S, lmbda = 20, nu = 0.01, iter = 10000, tol = 5e-5, resolution=resolution, pick_nu = "MS", 
-                        scaled = True)
+            resolution = 1/int(np.sqrt(2*N_sure))
+            model = FDD(Y, X, level = S, lmbda = 20, nu = 0.01, iter = 10000, tol = 5e-5, pick_nu = "MS", 
+                        scaled = True, resolution=resolution, average=True)
             res = SURE(tuner=True, num_samples=num_samples, model=model, R=R, 
                     num_gpus=num_gpus, num_cpus=num_cpus)
             best = res.get_best_result(metric = "score", mode = "min")
 
             config = best.metrics['config']
             lmbda, nu = config['lmbda'], config['nu']
+            
+            lmbda = 120
+            nu = 0.0016
+            model.lmbda = lmbda
+            model.nu = nu
+            model.tol = 5e-6
+            u, jumps, J_grid, nrj, eps, it = model.run()
+            temp = pd.DataFrame(jumps)
+            temp['Y_jumpsize'].abs().mean()
+            
+            plt.hist(temp['Y_jumpsize'])
+            plt.show()
+            
+            test = temp[temp['Y_jumpsize'].abs() < 0.02]
+            plt.scatter(test['X_0'], test['X_1'], color = "blue")
+            test = temp[temp['Y_jumpsize'].abs() > 0.02]
+            plt.scatter(test['X_0'], test['X_1'], color = "red")
 
             print("Running simulations")
             sims = list(range(num_sims))  # 100 simulations
@@ -152,11 +151,7 @@ if __name__ == "__main__":
 
             temp = pd.concat(results)
             dflist.append(temp)
-<<<<<<< HEAD
-            temp.to_csv("s3://ipsos-dvd/fdd/data/" + fdate + "/simulations_2d_sigma_" + str(sigma) + "_jsize_" + str(jsize) + ".csv", index=False)
-=======
             temp.to_csv("s3://ipsos-dvd/fdd/data/2022-06-09/simulations_2d_sigma_" + str(sigma) + "_jsize_" + str(jsize) + ".csv", index=False)
->>>>>>> ab736ab0073b5c112bf48a65e42e7fce43c324dc
             print(f"Done with sigma {sigma}, jump size {jsize}")
             
     # dflist = []
@@ -193,4 +188,4 @@ if __name__ == "__main__":
     log_file.close()
 
     total = pd.concat(dflist)
-    total.to_csv("s3://ipsos-dvd/fdd/data/" + fdate + "/simulations_2d.csv", index = False)
+    total.to_csv("s3://ipsos-dvd/fdd/data/2022-06-14/simulations_2d.csv", index = False)
