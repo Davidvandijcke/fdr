@@ -275,6 +275,29 @@ class FDD():
         kmeans = KMeans(n_clusters=2, random_state=0).fit(Z)
         nu = X1[kmeans.labels_ == 1].max()
         
+    def explore(self, point, J_grid, visited_points=None):
+        if visited_points is None:
+            visited_points = set()
+        
+        visited_points.add(tuple(point))
+        
+        neighbors = []
+
+        for d in range(k.shape[0]):
+            neighbor = point.copy()
+            if neighbor[d] < J_grid.shape[d] - 1:
+                neighbor[d] += 1
+                neighbors.append(neighbor)
+        
+        # Check if there is a jump point in the immediate neighbors
+        if any(J_grid[tuple(neighbor)] == 1 for neighbor in neighbors):
+            for neighbor in neighbors:
+                if tuple(neighbor) not in visited_points:
+                    visited_points.update(self.explore(neighbor, visited_points))
+
+        return visited_points
+
+        
         
         
     def boundaryGridToData(self, J_grid, u, average = False):
@@ -306,15 +329,9 @@ class FDD():
             neighbors = []
 
             # Iterate through all dimensions
-            for d in range(k.shape[0]):
 
-                # Calculate the down-right neighbor along the current dimension
-                neighbor = point.copy()
-                if neighbor[d] < J_grid.shape[d] - 1:
-                    neighbor[d] += 1
-                    # Check if the upper-left neighbor is not a boundary point
-                    if J_grid[tuple(neighbor)] == 1:
-                        neighbors.append(neighbor)
+            
+            neighbors = []
                         
 
             # Check if there are any valid neighbors
