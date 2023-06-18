@@ -85,7 +85,7 @@ if __name__ == "__main__":
 
     # read all files in fto
     df = pd.concat([pd.read_csv(os.path.join(data_out, 'simulations', fn, file)) for file in os.listdir(os.path.join(data_out, 'simulations', fn)) if file.endswith(".csv")])
-    df = pd.read_csv("/Users/davidvandijcke/Downloads/simulations_2d_sigma_0.01_jsize_0.10661253981895451 (1).csv")
+    #df = pd.read_csv("/Users/davidvandijcke/Downloads/simulations_2d_sigma_0.01_jsize_0.10661253981895451 (1).csv")
 
     # Group by 'alpha', 'N', and 'S' and calculate the mean 'Y_jumpsize'
     df['Y_jumpsize'] = df['Y_jumpsize'].abs()

@@ -276,24 +276,25 @@ class FDD():
         nu = X1[kmeans.labels_ == 1].max()
         
     def explore(self, point, J_grid, visited_points=None):
+        
         if visited_points is None:
             visited_points = set()
         
-        visited_points.add(tuple(point))
-        
         neighbors = []
 
-        for d in range(k.shape[0]):
+        for d in range(J_grid.ndim):
             neighbor = point.copy()
             if neighbor[d] < J_grid.shape[d] - 1:
                 neighbor[d] += 1
+                if J_grid[tuple(neighbor)] == 0:
+                    visited_points.add(tuple(neighbor))
                 neighbors.append(neighbor)
         
-        # Check if there is a jump point in the immediate neighbors
-        if any(J_grid[tuple(neighbor)] == 1 for neighbor in neighbors):
+        # Check if all neighbors are jump points, if so, continue exploring
+        if all(J_grid[tuple(neighbor)] == 1 for neighbor in neighbors):
             for neighbor in neighbors:
                 if tuple(neighbor) not in visited_points:
-                    visited_points.update(self.explore(neighbor, visited_points))
+                    visited_points.update(self.explore(neighbor, J_grid, visited_points))
 
         return visited_points
 
@@ -330,8 +331,7 @@ class FDD():
 
             # Iterate through all dimensions
 
-            
-            neighbors = []
+            neighbors = self.explore(point, J_grid)
                         
 
             # Check if there are any valid neighbors

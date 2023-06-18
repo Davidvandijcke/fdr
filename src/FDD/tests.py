@@ -8,11 +8,38 @@ from types import MethodType
 
 # #------ test 1
 
+def explore(self, point, J_grid, visited_points=None):
+    
+    if visited_points is None:
+        visited_points = set()
+    
+    neighbors = []
+
+    for d in range(J_grid.ndim):
+        neighbor = point.copy()
+        if neighbor[d] < J_grid.shape[d] - 1:
+            neighbor[d] += 1
+            if J_grid[tuple(neighbor)] == 0:
+                visited_points.add(tuple(neighbor))
+            neighbors.append(neighbor)
+    
+    # Check if all neighbors are jump points, if so, continue exploring
+    if all(J_grid[tuple(neighbor)] == 1 for neighbor in neighbors):
+        for neighbor in neighbors:
+            if tuple(neighbor) not in visited_points:
+                visited_points.update(self.explore(neighbor, J_grid, visited_points))
+
+    return visited_points
+
+    
+    
+    
 def boundaryGridToData(self, J_grid, u, average = False):
     # get the indices of the J_grid where J_grid is 1
-    
+
 
     k = np.array(np.where(J_grid == 1))
+    
 
     # Store the average points
     Y_jumpfrom = []
@@ -21,54 +48,46 @@ def boundaryGridToData(self, J_grid, u, average = False):
     Y_boundary = []
     X_jumpfrom = []
     X_jumpto = []
-    
+
 
     # Iterate over the boundary points
     for i in range(k.shape[1]):
-        
+
         origin_points = []
         dest_points = []
 
         # Get the coordinates of the current boundary point
         point = k[:, i]
 
-        # Initialize a list to store the neighboring hypervoxels
-        neighbors = []
+        # ignore the points that are surrounded by other boundary points to the upper left
 
-        # Iterate through all dimensions
-        for d in range(k.shape[0]):
-
-            # Calculate the down-right neighbor along the current dimension
-            neighbor = point.copy()
-            if neighbor[d] < J_grid.shape[d] - 1:
-                neighbor[d] += 1
-
-                # Check if the neighbor is not a boundary point
-                if J_grid[tuple(neighbor)] != 1:
-                    neighbors.append(neighbor)
+        
+        # get the neighboring non-boundary points
+        neighbors = self.explore(point, J_grid)
+                    
 
         # Check if there are any valid neighbors
         if neighbors:
-            
+
             # origin_points
             origin_points = self.grid_x_og[tuple(point)]
             if len(origin_points) == 0:
                 origin_points = self.grid_x[tuple(point)] + self.resolution / 2
             Yjumpfrom = float(u[tuple(point)])
 
-                
+
             # jumpfrom point
             origin_points = np.stack(origin_points).squeeze()
             if origin_points.ndim > 1: # if there are multiple points in the hypervoxel, take the mean
                 jumpfrom = np.mean(origin_points, axis = 0)
             else:
                 jumpfrom = origin_points
-                
+
 
             # jumpto point
             pointslist = [self.grid_x_og[tuple(neighbors[j])] if self.grid_x_og[tuple(neighbors[j])] != []  # if grid cell is empty, assign centerpoint
                             else [self.grid_x[tuple(neighbors[j])] + self.resolution / 2] for j in range(len(neighbors))]
-            
+
             if average:
                 counts = [len(pointslist[j]) for j in range(len(neighbors))]
                 total = sum(counts) # TODO: jump sizes on diagonal boundary sections are off
@@ -84,7 +103,7 @@ def boundaryGridToData(self, J_grid, u, average = False):
                 idx = np.argmin([np.argmin(sublist) for sublist in dists])
                 closest = tuple(neighbors[idx])
                 Yjumpto = u[closest]
-                
+
                 dest_points = self.grid_x_og[closest]
                 if len(dest_points) == 0:
                     dest_points = self.grid_x[closest] + self.resolution / 2
@@ -94,7 +113,7 @@ def boundaryGridToData(self, J_grid, u, average = False):
                     jumpto = np.mean(dest_points, axis = 0)
                 else:
                     jumpto = dest_points
-            
+
             # append to lists
             Y_boundary.append((jumpfrom + jumpto) / 2)
             Y_jumpfrom.append(Yjumpfrom)
@@ -102,20 +121,20 @@ def boundaryGridToData(self, J_grid, u, average = False):
             Y_jumpsize.append(Yjumpto - Yjumpfrom)
             X_jumpfrom.append(jumpfrom)
             X_jumpto.append(jumpto)
-    
+
     if Y_boundary:
         Y_boundary = np.stack(Y_boundary)
         Y_jumpfrom = np.stack(Y_jumpfrom)
         Y_jumpto = np.stack(Y_jumpto)
         Y_jumpsize = np.stack(Y_jumpsize)
-        
+
         # create named array to return
         rays = [Y_boundary[:,d] for d in range(Y_boundary.shape[1])] + [Y_jumpfrom, Y_jumpto, Y_jumpsize]
         names = ["X_" + str(d) for d in range(Y_boundary.shape[1])] + ["Y_jumpfrom", "Y_jumpto", "Y_jumpsize"]
         jumps = np.core.records.fromarrays(rays, names=names)
     else:
         jumps = None
-    
+
     return jumps
 
 #os.chdir("../..")
@@ -190,6 +209,7 @@ model = FDD(Y, X, level = 16, lmbda = 1, nu = 0.01, iter = 10000, tol = 5e-5,
             image=False, pick_nu = "MS", resolution=resolution, scaled=True, scripted=False)
 
 model.boundaryGridToData = MethodType(boundaryGridToData, model)
+model.explore = MethodType(explore, model)
 
 u, jumps, J_grid, nrj, eps, it = model.run()
 
