@@ -12,7 +12,7 @@ class FDD():
     def __init__(self, Y : np.array, X : np.array, pick_nu : str="kmeans", level : int=16, 
                  lmbda : float=1, nu : float=0.01, iter : int=1000, tol : float=5e-5, rectangle : bool=False, 
                  qtile : float=0.05, image : bool=False, grid : bool=False, resolution : float=None,
-                 scaled = False, scripted = True) -> None:
+                 scaled=False, scripted=True, average=False) -> None:
 
         self.device = setDevice()
         torch.set_grad_enabled(False)
@@ -39,6 +39,8 @@ class FDD():
         
         self.scripted = scripted
         self.scaled = scaled
+        
+        self.average = average
 
         
         if self.image: # if image, we don't scale -- assume between 0 and 1
@@ -110,27 +112,28 @@ class FDD():
         
         n = self.Y.shape[0]
         
-        # calculate 0.5% quantile of distances between points
-        # if data is large, use a random sample of 1000 points to calculate quantile
-        if n > 1000:
-            idx = np.random.permutation(n)
-            idx = idx[:1000]
-            X_sample = self.X[idx,:]
-            distances = np.sqrt(np.sum((X_sample[:,None,:] - X_sample[None,:,:])**2, axis = 2))
+        if self.resolution is None:
+            # calculate 0.5% quantile of distances between points
+            # if data is large, use a random sample of 1000 points to calculate quantile
+            if n > 1000:
+                idx = np.random.permutation(n)
+                idx = idx[:1000]
+                X_sample = self.X[idx,:]
+                distances = np.sqrt(np.sum((X_sample[:,None,:] - X_sample[None,:,:])**2, axis = 2))
 
-        else:   
-            distances = np.sqrt(np.sum((self.X[:,None,:] - self.X[None,:,:])**2, axis = 2))
-        np.fill_diagonal(distances, 1) # remove self-comparisons
-        distances = np.min(distances, axis = 0) # get closest point for each point
-        qile = np.quantile(distances, self.qtile) # get 5% quantile
-        
-        # pythagoras
-        
-        if self.grid:
-            self.resolution = qile
-        else:
-            self.resolution = 2*  qile / np.sqrt(2) # on average, points fall in center of grid cell, then use Pythagoras to get resolution
-        
+            else:   
+                distances = np.sqrt(np.sum((self.X[:,None,:] - self.X[None,:,:])**2, axis = 2))
+            np.fill_diagonal(distances, 1) # remove self-comparisons
+            distances = np.min(distances, axis = 0) # get closest point for each point
+            qile = np.quantile(distances, self.qtile) # get 5% quantile
+            
+            # pythagoras
+            
+            if self.grid:
+                self.resolution = qile # TODO: need to fix, leads to zero division error
+            else:
+                self.resolution = 2*  qile / np.sqrt(2) # on average, points fall in center of grid cell, then use Pythagoras to get resolution
+            
         xmax = np.max(self.X, axis = 0)
         
         # set up grid
@@ -182,7 +185,9 @@ class FDD():
         grid_x_og = np.empty(list(grid_x.shape[:-1]), dtype = object) # assign original x values as well for later
         
         # Get the indices of the grid cells for each data point
-        indices = [(np.clip(self.X[:, i] // self.resolution, 0, grid_y.shape[i] - 1)).astype(int) for i in range(self.X.shape[1])]
+        # indices = [(np.clip(self.X[:, i] // self.resolution, 0, grid_y.shape[i] - 1)).astype(int) for i in range(self.X.shape[1])]
+        indices = [(np.clip(self.X[:, i] // self.resolution, 0, grid_y.shape[i] - 1)).astype(int) for i in reversed(range(self.X.shape[1]))]
+        
         indices = np.array(indices).T
 
         # Create a count array to store the number of data points in each cell
@@ -232,6 +237,7 @@ class FDD():
         
     def castDataToGrid(self):
         
+        #self.castDataToGridPoints()
         self.castDataToGridSmooth()
         
 
@@ -269,13 +275,36 @@ class FDD():
         kmeans = KMeans(n_clusters=2, random_state=0).fit(Z)
         nu = X1[kmeans.labels_ == 1].max()
         
+    def explore(self, point, J_grid, visited_points=None):
         
+        if visited_points is None:
+            visited_points = set()
+        
+        neighbors = []
+
+        for d in range(J_grid.ndim):
+            neighbor = point.copy()
+            if neighbor[d] < J_grid.shape[d] - 1:
+                neighbor[d] += 1
+                if J_grid[tuple(neighbor)] == 0:
+                    visited_points.add(tuple(neighbor))
+                neighbors.append(neighbor)
+        
+        # Check if all neighbors are jump points, if so, continue exploring
+        if all(J_grid[tuple(neighbor)] == 1 for neighbor in neighbors):
+            for neighbor in neighbors:
+                if tuple(neighbor) not in visited_points:
+                    visited_points.update(self.explore(neighbor, J_grid, visited_points))
+
+        return visited_points
+
         
     def boundaryGridToData(self, J_grid, u, average = False):
         # get the indices of the J_grid where J_grid is 1
 
 
         k = np.array(np.where(J_grid == 1))
+        
 
         # Store the average points
         Y_jumpfrom = []
@@ -296,19 +325,8 @@ class FDD():
             point = k[:, i]
 
             # Initialize a list to store the neighboring hypervoxels
-            neighbors = []
-
-            # Iterate through all dimensions
-            for d in range(k.shape[0]):
-
-                # Calculate the down-right neighbor along the current dimension
-                neighbor = point.copy()
-                if neighbor[d] < J_grid.shape[d] - 1:
-                    neighbor[d] += 1
-
-                    # Check if the neighbor is not a boundary point
-                    if J_grid[tuple(neighbor)] != 1:
-                        neighbors.append(neighbor)
+            neighbors = list(self.explore(point, J_grid))
+                        
 
             # Check if there are any valid neighbors
             if neighbors:
@@ -419,7 +437,7 @@ class FDD():
             u = u * np.max(self.Y_raw, axis = 0) + np.min(self.Y_raw, axis = 0)
         
         ## find the boundary on the point cloud
-        jumps = self.boundaryGridToData(J_grid, u)
+        jumps = self.boundaryGridToData(J_grid, u, self.average)
         
         # test_grid = np.zeros(self.grid_y.shape)
         # for row in jumps:

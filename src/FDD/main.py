@@ -130,7 +130,7 @@ class FDD():
             # pythagoras
             
             if self.grid:
-                self.resolution = qile
+                self.resolution = qile # TODO: need to fix, leads to zero division error
             else:
                 self.resolution = 2*  qile / np.sqrt(2) # on average, points fall in center of grid cell, then use Pythagoras to get resolution
             
@@ -299,8 +299,6 @@ class FDD():
         return visited_points
 
         
-        
-        
     def boundaryGridToData(self, J_grid, u, average = False):
         # get the indices of the J_grid where J_grid is 1
 
@@ -327,11 +325,7 @@ class FDD():
             point = k[:, i]
 
             # Initialize a list to store the neighboring hypervoxels
-            neighbors = []
-
-            # Iterate through all dimensions
-
-            neighbors = self.explore(point, J_grid)
+            neighbors = list(self.explore(point, J_grid))
                         
 
             # Check if there are any valid neighbors

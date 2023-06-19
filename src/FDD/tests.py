@@ -5,35 +5,187 @@ from matplotlib import pyplot as plt
 import cv2
 import os
 from types import MethodType
+from itertools import product, combinations
+import pandas as pd
 
 # #------ test 1
 
-def explore(self, point, J_grid, visited_points=None):
-    
-    if visited_points is None:
-        visited_points = set()
-    
-    neighbors = []
 
-    for d in range(J_grid.ndim):
-        neighbor = point.copy()
-        if neighbor[d] < J_grid.shape[d] - 1:
-            neighbor[d] += 1
-            if J_grid[tuple(neighbor)] == 0:
-                visited_points.add(tuple(neighbor))
-            neighbors.append(neighbor)
-    
-    # Check if all neighbors are jump points, if so, continue exploring
-    if all(J_grid[tuple(neighbor)] == 1 for neighbor in neighbors):
-        for neighbor in neighbors:
-            if tuple(neighbor) not in visited_points:
-                visited_points.update(self.explore(neighbor, J_grid, visited_points))
 
-    return visited_points
+
+# #os.chdir("../..")
+# image = "resources/images/marylin.png"
+# mIn = cv2.imread(image, (0))
+
+# scale_percent = 20 # percent of original size
+# width = int(mIn.shape[1] * scale_percent / 100)
+# height = int(mIn.shape[0] * scale_percent / 100)
+# dim = (width, height)
+# mIn = cv2.resize(mIn, dim)
+# mIn = mIn.astype(np.float32)
+
+
+# mIn /= 255
+
+
+# Y = mIn.copy() #.flatten()
+# #Y = np.stack([Y, Y], axis = 1)
+# # get labels of grid points associated with Y values in mIn
+# #X = np.stack(np.meshgrid(*[np.arange(Y.shape[1]), np.arange(Y.shape[0])]), axis = -1)
+
+
+# # # reshuffle Y and X in the same way so that it resembles normal data
+# Y = Y.flatten()
+# X = np.stack([np.tile(np.arange(0, mIn.shape[0], 1), mIn.shape[1]), 
+#               np.repeat(np.arange(0, mIn.shape[0], 1), mIn.shape[1])], axis = 1)
+
+        
+# def forward_differences(ubar, D : int):
+
+#     diffs = []
+
+#     for dim in range(int(D)):
+#         #zeros_shape = torch.jit.annotate(List[int], [])
+#         zeros_shape = list(ubar.shape)
+#         zeros_shape[dim] = 1
+#         # for j in range(ubar.dim()): 
+#         #     if j == dim:
+#         #         zeros_shape.append(1)
+#         #     else:
+#         #         zeros_shape.append(ubar.shape[j])
+#         zeros = np.zeros(zeros_shape)
+#         diff = np.concatenate((np.diff(ubar, axis=dim), zeros), axis=dim)
+#         diffs.append(diff)
+#                 # Stack the results along a new dimension (first dimension)
+#     u_star = np.stack(diffs, axis=0)
+
+#     return u_star
+
+# def boundary(u, nu):
+#     u_diff = forward_differences(u, D = len(u.shape))
+#     u_norm = np.linalg.norm(u_diff, axis = 0, ord = 2) # 2-norm
+#     return (u_norm >= np.sqrt(nu)).astype(int)
+
+
+# # histogram of gradient norm
+# test = np.linalg.norm(forward_differences(mIn, D = len(mIn.shape)), axis = 0)
+# out = plt.hist(test)
+
+# X1 = np.tile(out[1][1:], out[0].shape[0])
+# X2 = out[0].reshape(-1,1).squeeze(1)
+# Z = np.stack([X1, X2], axis = 1)
+
+# from sklearn.cluster import KMeans
+
+# kmeans = KMeans(n_clusters=2, random_state=0).fit(Z)
+# nu = X1[kmeans.labels_ == 1].max()
+
+# resolution = 1/int(np.sqrt(X.size*2/3))
+# model = FDD(Y, X, level = 16, lmbda = 1, nu = 0.01, iter = 10000, tol = 5e-5, 
+#             image=False, pick_nu = "MS", resolution=resolution, scaled=True, scripted=False)
+
+# model.boundaryGridToData = MethodType(boundaryGridToData, model)
+# model.explore = MethodType(explore, model)
+
+# u, jumps, J_grid, nrj, eps, it = model.run()
+
+
+# cv2.imwrite("result.png",u*255)
+
+# model.pick_nu = "kmeans"
+# J_grid, jumps = model.boundary(u)
+
+# plt.imshow(u)
+# plt.show()
+
+# plt.imshow(J_grid)
+# plt.show()
+
+# # plot image with boundary
+# plt.imshow(u, cmap = "gray")
+# test = J_grid.copy().astype(np.float32)
+# test[test == 0] = np.nan
+# plt.imshow(test, cmap='autumn', interpolation='none')
+# plt.show()
+# plt.savefig("resources/images/marylin_segmented.png")
+
+# # histogram of gradient norm
+
+# test = np.linalg.norm(forward_differences(u, D = len(u.shape)), axis = 0)
+# out = plt.hist(test)
+# #plt.show()
+# plt.savefig("resources/images/hist.png")
+
+# X = np.tile(out[1][1:], out[0].shape[0])
+# Y = out[0].reshape(-1,1).squeeze(1)
+# Z = np.stack([X, Y], axis = 1)
+
+# from sklearn.cluster import KMeans
+
+# kmeans = KMeans(n_clusters=2, random_state=0).fit(Z)
+# nu = X[kmeans.labels_ == 1].max()
+
+# # get new boundary
+# J_new = boundary(u, nu = nu**2) # the squared is just cause we're taking the square root
+
+# plt.imshow(J_new)
+
+# # plt.hist(test.reshape(-1,1)[kmeans.labels_ == 2], bins = 100)
 
     
-    
-    
+# # from pomegranate import  *
+
+# # model = GeneralMixtureModel.from_samples(NormalDistribution, n_components=2, X=test.reshape(-1,1))
+# # labels = model.predict(test.reshape(-1,1))
+
+# # plt.hist(test.reshape(-1,1)[labels == 0], bins = 100)
+
+# # plt.hist(test.reshape(-1,1),  bins = 500)
+# # plt.ylim(0,5)
+
+
+
+#------- test2
+
+# Generate some random data points from a discontinuous function
+np.random.seed(0)
+data = np.random.rand(10000, 2) # draw 1000 2D points from a uniform
+
+# Create the grid
+# Define the grid dimensions and resolution
+xmin, xmax = 0, 1
+ymin, ymax = 0, 1
+resolution = 0.01 # 100 by 100 grid
+x, y = np.meshgrid(np.arange(xmin, xmax, resolution), np.arange(ymin, ymax, resolution))
+grid = np.dstack((x, y))
+grid_f = np.zeros(grid.shape[:2])
+
+def f(x,y):
+    temp = np.sqrt((x-1/2)**2 + (y-1/2)**2)
+    if temp < 1/4:
+        return temp
+    else:
+        return temp + 1/8
+
+# Compute the function values on the grid
+for i in range(grid.shape[0]):
+    for j in range(grid.shape[1]):
+        grid_f[i, j] = f(grid[i, j][0], grid[i, j][1])
+        
+# now sample the function values on the data points
+grid_sample = np.zeros((data.shape[0],1))
+for i in range(data.shape[0]):
+        grid_sample[i] = f(data[i,0], data[i,1]) + np.random.normal(0, 0.01)
+
+X = data.copy()
+Y = grid_sample.copy().flatten()
+# and run the FDD command
+resolution = 1/int(1/2*np.sqrt(X.size))
+model = FDD(Y, X, level = 16, lmbda = 120, nu = 0.0016, iter = 5000, tol = 5e-6, qtile = 0.08,
+            pick_nu = "MS", scaled = True, scripted = False, resolution=resolution)
+
+import time
+
 def boundaryGridToData(self, J_grid, u, average = False):
     # get the indices of the J_grid where J_grid is 1
 
@@ -58,12 +210,10 @@ def boundaryGridToData(self, J_grid, u, average = False):
 
         # Get the coordinates of the current boundary point
         point = k[:, i]
-
-        # ignore the points that are surrounded by other boundary points to the upper left
-
         
-        # get the neighboring non-boundary points
-        neighbors = self.explore(point, J_grid)
+
+        # Initialize a list to store the neighboring hypervoxels
+        neighbors = list(self.explore(point, J_grid))
                     
 
         # Check if there are any valid neighbors
@@ -136,183 +286,120 @@ def boundaryGridToData(self, J_grid, u, average = False):
         jumps = None
 
     return jumps
-
-#os.chdir("../..")
-image = "resources/images/marylin.png"
-mIn = cv2.imread(image, (0))
-
-scale_percent = 20 # percent of original size
-width = int(mIn.shape[1] * scale_percent / 100)
-height = int(mIn.shape[0] * scale_percent / 100)
-dim = (width, height)
-mIn = cv2.resize(mIn, dim)
-mIn = mIn.astype(np.float32)
-
-
-mIn /= 255
-
-
-Y = mIn.copy() #.flatten()
-#Y = np.stack([Y, Y], axis = 1)
-# get labels of grid points associated with Y values in mIn
-#X = np.stack(np.meshgrid(*[np.arange(Y.shape[1]), np.arange(Y.shape[0])]), axis = -1)
-
-
-# # reshuffle Y and X in the same way so that it resembles normal data
-Y = Y.flatten()
-X = np.stack([np.tile(np.arange(0, mIn.shape[0], 1), mIn.shape[1]), 
-              np.repeat(np.arange(0, mIn.shape[0], 1), mIn.shape[1])], axis = 1)
-
-        
-def forward_differences(ubar, D : int):
-
-    diffs = []
-
-    for dim in range(int(D)):
-        #zeros_shape = torch.jit.annotate(List[int], [])
-        zeros_shape = list(ubar.shape)
-        zeros_shape[dim] = 1
-        # for j in range(ubar.dim()): 
-        #     if j == dim:
-        #         zeros_shape.append(1)
-        #     else:
-        #         zeros_shape.append(ubar.shape[j])
-        zeros = np.zeros(zeros_shape)
-        diff = np.concatenate((np.diff(ubar, axis=dim), zeros), axis=dim)
-        diffs.append(diff)
-                # Stack the results along a new dimension (first dimension)
-    u_star = np.stack(diffs, axis=0)
-
-    return u_star
-
-def boundary(u, nu):
-    u_diff = forward_differences(u, D = len(u.shape))
-    u_norm = np.linalg.norm(u_diff, axis = 0, ord = 2) # 2-norm
-    return (u_norm >= np.sqrt(nu)).astype(int)
-
-
-# histogram of gradient norm
-test = np.linalg.norm(forward_differences(mIn, D = len(mIn.shape)), axis = 0)
-out = plt.hist(test)
-
-X1 = np.tile(out[1][1:], out[0].shape[0])
-X2 = out[0].reshape(-1,1).squeeze(1)
-Z = np.stack([X1, X2], axis = 1)
-
-from sklearn.cluster import KMeans
-
-kmeans = KMeans(n_clusters=2, random_state=0).fit(Z)
-nu = X1[kmeans.labels_ == 1].max()
-
-resolution = 1/int(np.sqrt(X.size*2/3))
-model = FDD(Y, X, level = 16, lmbda = 1, nu = 0.01, iter = 10000, tol = 5e-5, 
-            image=False, pick_nu = "MS", resolution=resolution, scaled=True, scripted=False)
-
+    
 model.boundaryGridToData = MethodType(boundaryGridToData, model)
-model.explore = MethodType(explore, model)
+#res = SURE(model, tuner = True, num_gpus=0)
 
 u, jumps, J_grid, nrj, eps, it = model.run()
 
+def is_adjacent(points):
+    # A function to check if all points are adjacent to each other
+    for i in range(len(points)):
+        for j in range(i+1, len(points)):
+            if np.count_nonzero(np.abs(np.array(points[i]) - np.array(points[j]))) > 1:
+                return False
+    return True
 
-# cv2.imwrite("result.png",u*255)
+def get_thick_boundary_points(J_grid):
+    # Get the array dimensions
+    dimensions = J_grid.shape
 
-# model.pick_nu = "kmeans"
-# J_grid, jumps = model.boundary(u)
+    # Initialize the thick boundary grid
+    thick_boundary_grid = np.zeros(dimensions, dtype=int)
 
-# plt.imshow(u)
-# plt.show()
+    # Generate all shifts for queen's rule adjacency in d dimensions
+    shifts = list(product([-1, 0, 1], repeat=J_grid.ndim))
+    shifts.remove((0,) * J_grid.ndim)  # Remove the zero-shift
 
-# plt.imshow(J_grid)
-# plt.show()
+    # Iterate over all points in the grid
+    for index in np.ndindex(dimensions):
+        # Check if current point is a jump point
+        if J_grid[index] == 1:
+            neighbors = []
+            for shift in shifts:
+                neighbor = [index[d] + shift[d] for d in range(J_grid.ndim)]
+                if all(0 <= neighbor[d] < dimensions[d] for d in range(J_grid.ndim)):
+                    neighbors.append(tuple(neighbor))
 
-# # plot image with boundary
-# plt.imshow(u, cmap = "gray")
-# test = J_grid.copy().astype(np.float32)
+            # Check if there are any d+1 subsets of neighbors which are all jump points and all adjacent to each other
+            for subset in combinations(neighbors, len(index) + 1):
+                if all(J_grid[neighbor] == 1 for neighbor in subset) and is_adjacent(subset):
+                    # Current point is a thick boundary point
+                    thick_boundary_grid[index] = 1
+                    break
+    return thick_boundary_grid
+
+thick = get_thick_boundary_points(J_grid)
+
+jumps = model.boundaryGridToData(J_grid-thick, u)
+
+
+temp = pd.DataFrame(jumps)
+
+# from itertools import product
+
+
+
+# def get_packed_points(J_grid, thick_boundary_points):
+#     dimensions = J_grid.shape
+#     packed_points = np.zeros(dimensions, dtype=int)
+#     shifts = [(0,)*i + (-1,) + (0,)*(len(dimensions)-i-1) for i in range(len(dimensions))] 
+#     shifts.extend((0,)*i + (1,) + (0,)*(len(dimensions)-i-1) for i in range(len(dimensions)))  # rook neighbors
+
+#     for index in np.ndindex(*dimensions):
+#         if thick_boundary_points[index] == 1:
+#             neighbors = [tuple(index[i] + shift[i] for i in range(len(index))) for shift in shifts]
+#             valid_neighbors = [neighbor for neighbor in neighbors if all(0 <= neighbor[i] < dimensions[i] for i in range(len(neighbor)))]
+#             if all(thick_boundary_points[neighbor] == 1 for neighbor in valid_neighbors if J_grid[neighbor] == 1):
+#                 packed_points[index] = 1
+#     return packed_points
+
+# def get_eliminate_points(J_grid, packed_points):
+#     dimensions = J_grid.shape
+#     eliminate_points = np.zeros(dimensions, dtype=int)
+#     shifts = list(product([0, 1], repeat=J_grid.ndim))  # only "down-right" neighbors
+
+#     for index in np.ndindex(*dimensions):
+#         if packed_points[index] == 1:
+#             neighbors = [tuple(index[i] + shift[i] for i in range(len(index))) for shift in shifts]
+#             valid_neighbors = [neighbor for neighbor in neighbors if all(0 <= neighbor[i] < dimensions[i] for i in range(len(neighbor)))]
+#             if any(J_grid[neighbor] == 0 for neighbor in valid_neighbors):
+#                 eliminate_points[index] = 1
+#     return eliminate_points
+
+# def process_thick_boundary_points(J_grid):
+#     while True:
+#         thick_boundary_points = get_thick_boundary_points(J_grid)
+#         if np.sum(thick_boundary_points) == 0:
+#             break
+#         packed_points = get_packed_points(J_grid, thick_boundary_points)
+#         eliminate_points = get_eliminate_points(J_grid, packed_points)
+#         J_grid[eliminate_points == 1] = 0
+#     return J_grid
+
+# pgrid = J_grid.copy()
+# thick = process_thick_boundary_points(pgrid)
+
+# test = get_thick_boundary_points(pgrid)
+
+# plt.imshow(J_grid-thick)
+
+# fig, ax = plt.subplots(1,1)
+# # plot thick on top of J_grid
+# ax.imshow(J_grid, cmap = "gray")
+# test = thick.copy().astype(np.float32)
 # test[test == 0] = np.nan
-# plt.imshow(test, cmap='autumn', interpolation='none')
-# plt.show()
-# plt.savefig("resources/images/marylin_segmented.png")
+# ax.imshow(test, cmap='autumn', interpolation='none')
 
-# # histogram of gradient norm
+test = temp[temp['Y_jumpsize'].abs() < 0.03]
+plt.scatter(temp['X_0'], temp['X_1'], c="gray")
+plt.scatter(test['X_0'], test['X_1'], c="red")
 
-# test = np.linalg.norm(forward_differences(u, D = len(u.shape)), axis = 0)
-# out = plt.hist(test)
-# #plt.show()
-# plt.savefig("resources/images/hist.png")
+# test = J_grid - (1-thick)
+# plt.imshow((thick)[40:50,40:60])
 
-# X = np.tile(out[1][1:], out[0].shape[0])
-# Y = out[0].reshape(-1,1).squeeze(1)
-# Z = np.stack([X, Y], axis = 1)
+# # print(time.time() - t0)
 
-# from sklearn.cluster import KMeans
-
-# kmeans = KMeans(n_clusters=2, random_state=0).fit(Z)
-# nu = X[kmeans.labels_ == 1].max()
-
-# # get new boundary
-# J_new = boundary(u, nu = nu**2) # the squared is just cause we're taking the square root
-
-# plt.imshow(J_new)
-
-# # plt.hist(test.reshape(-1,1)[kmeans.labels_ == 2], bins = 100)
-
-    
-# # from pomegranate import  *
-
-# # model = GeneralMixtureModel.from_samples(NormalDistribution, n_components=2, X=test.reshape(-1,1))
-# # labels = model.predict(test.reshape(-1,1))
-
-# # plt.hist(test.reshape(-1,1)[labels == 0], bins = 100)
-
-# # plt.hist(test.reshape(-1,1),  bins = 500)
-# # plt.ylim(0,5)
-
-
-
-#------- test2
-
-# # Generate some random data points from a discontinuous function
-# np.random.seed(0)
-# data = np.random.rand(100, 2) # draw 1000 2D points from a uniform
-
-# # Create the grid
-# # Define the grid dimensions and resolution
-# xmin, xmax = 0, 1
-# ymin, ymax = 0, 1
-# resolution = 0.01 # 100 by 100 grid
-# x, y = np.meshgrid(np.arange(xmin, xmax, resolution), np.arange(ymin, ymax, resolution))
-# grid = np.dstack((x, y))
-# grid_f = np.zeros(grid.shape[:2])
-
-# def f(x,y):
-#     temp = np.sqrt((x-1/2)**2 + (y-1/2)**2)
-#     if temp < 1/4:
-#         return temp
-#     else:
-#         return temp + 1/8
-
-# # Compute the function values on the grid
-# for i in range(grid.shape[0]):
-#     for j in range(grid.shape[1]):
-#         grid_f[i, j] = f(grid[i, j][0], grid[i, j][1])
-        
-# # now sample the function values on the data points
-# grid_sample = np.zeros((data.shape[0],1))
-# for i in range(data.shape[0]):
-#         grid_sample[i] = f(data[i,0], data[i,1]) + np.random.normal(0, 0.08)
-
-# X = data.copy()
-# Y = grid_sample.copy().flatten()
-# # and run the FDD command
-# model = FDD(Y, X, level = 16, lmbda = 1, nu = 0.02, iter = 5000, tol = 5e-5, qtile = 0.08,
-#             pick_nu = "MS", scaled = True, scripted = False)
-
-# import time
-# t0 = time.time()
-# #res = SURE(model, tuner = True, num_gpus=0)
-# u, jumps, J_grid, nrj, eps, it = model.run()
-# print(time.time() - t0)
-
-# plt.imshow(u)
-# plt.show()
+# # plt.imshow(u)
+# # plt.show()
 
