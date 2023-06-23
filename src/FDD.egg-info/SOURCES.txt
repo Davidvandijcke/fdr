@@ -8,6 +8,7 @@ src/FDD/primaldual_multi_scaled.py
 src/FDD/primaldual_multi_scaled_tune.py
 src/FDD/test_ray.py
 src/FDD/tests.py
+src/FDD/trash.py
 src/FDD/utils.py
 src/FDD.egg-info/PKG-INFO
 src/FDD.egg-info/SOURCES.txt
