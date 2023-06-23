@@ -6,7 +6,7 @@ from sklearn.cluster import KMeans
 from scipy.spatial import cKDTree
 from .primaldual_multi_scaled_tune import PrimalDual
 from matplotlib import pyplot as plt
-import pdb
+import pandas as pd
 
 class FDD():
     def __init__(self, Y : np.array, X : np.array, pick_nu : str="kmeans", level : int=16, 
@@ -326,7 +326,12 @@ class FDD():
 
             # Initialize a list to store the neighboring hypervoxels
             neighbors = list(self.explore(point, J_grid))
-                        
+            #neighbors = []  
+            for d in range(J_grid.ndim):
+                neighbor = point.copy()
+                if neighbor[d] < J_grid.shape[d] - 1:
+                    neighbor[d] += 1
+                    neighbors.append(neighbor)
 
             # Check if there are any valid neighbors
             if neighbors:
@@ -375,6 +380,7 @@ class FDD():
                         jumpto = np.mean(dest_points, axis = 0)
                     else:
                         jumpto = dest_points
+                        
 
                 # append to lists
                 Y_boundary.append((jumpfrom + jumpto) / 2)
@@ -393,7 +399,7 @@ class FDD():
             # create named array to return
             rays = [Y_boundary[:,d] for d in range(Y_boundary.shape[1])] + [Y_jumpfrom, Y_jumpto, Y_jumpsize]
             names = ["X_" + str(d) for d in range(Y_boundary.shape[1])] + ["Y_jumpfrom", "Y_jumpto", "Y_jumpsize"]
-            jumps = np.core.records.fromarrays(rays, names=names)
+            jumps = pd.DataFrame(np.core.records.fromarrays(rays, names=names))
         else:
             jumps = None
 

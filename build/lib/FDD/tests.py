@@ -180,8 +180,8 @@ for i in range(data.shape[0]):
 X = data.copy()
 Y = grid_sample.copy().flatten()
 # and run the FDD command
-resolution = 1/int(np.sqrt(2/3*X.size))
-model = FDD(Y, X, level = 16, lmbda = 120, nu = 0.0016, iter = 5000, tol = 5e-6, qtile = 0.08,
+resolution = 1/int(2/3*np.sqrt(X.size))
+model = FDD(Y, X, level = 16, lmbda = 120, nu = 0.0016, iter = 5000, tol = 5e-5, qtile = 0.08,
             pick_nu = "MS", scaled = True, scripted = False, resolution=resolution)
 
 import time
@@ -210,10 +210,15 @@ def boundaryGridToData(self, J_grid, u, average = False):
 
         # Get the coordinates of the current boundary point
         point = k[:, i]
-
+        
+        neighbors = []
         # Initialize a list to store the neighboring hypervoxels
-        neighbors = list(self.explore(point, J_grid))
-                    
+        neighbors = list(self.explore(point, J_grid)) 
+        # for d in range(J_grid.ndim):
+        #     neighbor = point.copy()
+        #     if neighbor[d] < J_grid.shape[d] - 1:
+        #         neighbor[d] += 1
+        #         neighbors.append(neighbor)           
 
         # Check if there are any valid neighbors
         if neighbors:
@@ -291,49 +296,65 @@ model.boundaryGridToData = MethodType(boundaryGridToData, model)
 
 u, jumps, J_grid, nrj, eps, it = model.run()
 
-jumps = model.boundaryGridToData(J_grid, u, average = True)
+def is_adjacent(points):
+    # A function to check if all points are adjacent to each other
+    for i in range(len(points)):
+        for j in range(i+1, len(points)):
+            if np.count_nonzero(np.abs(np.array(points[i]) - np.array(points[j]))) > 1:
+                return False
+    return True
+
+def get_thick_boundary_points(J_grid):
+    # Get the array dimensions
+    dimensions = J_grid.shape
+
+    # Initialize the thick boundary grid
+    thick_boundary_grid = np.zeros(dimensions, dtype=int)
+
+    # Generate all shifts for queen's rule adjacency in d dimensions
+    shifts = list(product([-1, 0, 1], repeat=J_grid.ndim))
+    shifts.remove((0,) * J_grid.ndim)  # Remove the zero-shift
+
+    # Iterate over all points in the grid
+    for index in np.ndindex(dimensions):
+        
+        # Check if current point is a jump point
+        if J_grid[index] == 1:
+            # check if left or up neighbor is boundary point
+            lshifts = list(product([-1, 0], repeat=J_grid.ndim))
+            lshifts.remove((0,) * J_grid.ndim)  # Remove the zero-shift
+            lneighbors=[]
+            for shift in lshifts:
+                neighbor = [index[d] + shift[d] for d in range(J_grid.ndim)]
+                if all(0 <= neighbor[d] < dimensions[d] for d in range(J_grid.ndim)):
+                    lneighbors.append(tuple(neighbor))
+            if any(J_grid[tuple(lu)]==1 for lu in lneighbors):
+                neighbors = []
+                for shift in shifts:
+                    neighbor = [index[d] + shift[d] for d in range(J_grid.ndim)]
+                    if all(0 <= neighbor[d] < dimensions[d] for d in range(J_grid.ndim)):
+                        neighbors.append(tuple(neighbor))
+
+                    # Check if there are any d+1 subsets of neighbors which are all jump points and all adjacent to each other
+                    for subset in combinations(neighbors, len(index) + 1):
+                        if all(J_grid[neighbor] == 1 for neighbor in subset) and is_adjacent(subset):
+                            # Current point is a thick boundary point
+                            thick_boundary_grid[index] = 1
+                            break
+    return thick_boundary_grid
+
+thick = get_thick_boundary_points(J_grid)
+
+jumps = model.boundaryGridToData(J_grid-thick, u, average=True)
 
 
 temp = pd.DataFrame(jumps)
+temp['Y_jumpsize'].hist(bins=40)
+temp['Y_jumpsize'].abs().mean()
 
 # from itertools import product
 
-# def is_adjacent(points):
-#     # A function to check if all points are adjacent to each other
-#     for i in range(len(points)):
-#         for j in range(i+1, len(points)):
-#             if np.count_nonzero(np.abs(np.array(points[i]) - np.array(points[j]))) > 1:
-#                 return False
-#     return True
 
-# def get_thick_boundary_points(J_grid):
-#     # Get the array dimensions
-#     dimensions = J_grid.shape
-
-#     # Initialize the thick boundary grid
-#     thick_boundary_grid = np.zeros(dimensions, dtype=int)
-
-#     # Generate all shifts for queen's rule adjacency in d dimensions
-#     shifts = list(product([-1, 0, 1], repeat=J_grid.ndim))
-#     shifts.remove((0,) * J_grid.ndim)  # Remove the zero-shift
-
-#     # Iterate over all points in the grid
-#     for index in np.ndindex(dimensions):
-#         # Check if current point is a jump point
-#         if J_grid[index] == 1:
-#             neighbors = []
-#             for shift in shifts:
-#                 neighbor = [index[d] + shift[d] for d in range(J_grid.ndim)]
-#                 if all(0 <= neighbor[d] < dimensions[d] for d in range(J_grid.ndim)):
-#                     neighbors.append(tuple(neighbor))
-
-#             # Check if there are any d+1 subsets of neighbors which are all jump points and all adjacent to each other
-#             for subset in combinations(neighbors, len(index) + 1):
-#                 if all(J_grid[neighbor] == 1 for neighbor in subset) and is_adjacent(subset):
-#                     # Current point is a thick boundary point
-#                     thick_boundary_grid[index] = 1
-#                     break
-#     return thick_boundary_grid
 
 # def get_packed_points(J_grid, thick_boundary_points):
 #     dimensions = J_grid.shape
@@ -386,9 +407,13 @@ temp = pd.DataFrame(jumps)
 # test[test == 0] = np.nan
 # ax.imshow(test, cmap='autumn', interpolation='none')
 
-test = temp[temp['Y_jumpsize'].abs() < 0.03]
+test = temp[temp['Y_jumpsize'].abs() < 0.07]
 plt.scatter(temp['X_0'], temp['X_1'], c="gray")
 plt.scatter(test['X_0'], test['X_1'], c="red")
+
+# if there are rows with identical X_0, X_1 in temp, keep the one with the largest Y_jumpsize 
+temp = temp.sort_values(by=['X_0', 'X_1', 'Y_jumpsize'], ascending=False)
+temp = temp.drop_duplicates(subset=['X_0', 'X_1'], keep='first')
 
 # test = J_grid - (1-thick)
 # plt.imshow((thick)[40:50,40:60])
