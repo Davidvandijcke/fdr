@@ -149,7 +149,7 @@ def forward_differences(ubar, D : int):
 
 # Generate some random data points from a discontinuous function
 np.random.seed(0)
-data = np.random.rand(10000, 2) # draw 1000 2D points from a uniform
+data = np.random.rand(1000, 2) # draw 1000 2D points from a uniform
 
 # Create the grid
 # Define the grid dimensions and resolution
@@ -186,182 +186,12 @@ model = FDD(Y, X, level = 16, lmbda = 120, nu = 0.0025, iter = 5000, tol = 5e-5,
 
 import time
 
-def boundaryGridToData(self, J_grid, u, average = False):
-        # get the indices of the J_grid where J_grid is 1
-
-
-        k = np.array(np.where(J_grid == 1))
-        
-
-        # Store the average points
-        Y_jumpfrom = []
-        Y_jumpto = []
-        Y_jumpsize = []
-        Y_boundary = []
-        X_jumpfrom = []
-        X_jumpto = []
-
-
-        # Iterate over the boundary points
-        for i in range(k.shape[1]):
-
-            origin_points = []
-            dest_points = []
-
-            # Get the coordinates of the current boundary point
-            point = k[:, i]
-
-            # Initialize a list to store the neighboring hypervoxels
-            #neighbors = list(self.explore(point, J_grid))
-            neighbors = []  
-            for d in range(J_grid.ndim):
-                neighbor = point.copy()
-                if neighbor[d] < J_grid.shape[d] - 1:
-                    neighbor[d] += 1
-                    neighbors.append(neighbor)
-
-            # Check if there are any valid neighbors
-            if neighbors:
-
-                # origin_points
-                origin_points = self.grid_x_og[tuple(point)]
-                if len(origin_points) == 0:
-                    origin_points = self.grid_x[tuple(point)] + self.resolution / 2
-                Yjumpfrom = float(u[tuple(point)])
-
-
-                # jumpfrom point
-                origin_points = np.stack(origin_points).squeeze()
-                if origin_points.ndim > 1: # if there are multiple points in the hypervoxel, take the mean
-                    jumpfrom = np.mean(origin_points, axis = 0)
-                else:
-                    jumpfrom = origin_points
-
-
-                # jumpto point
-                pointslist = [self.grid_x_og[tuple(neighbors[j])] if self.grid_x_og[tuple(neighbors[j])] != []  # if grid cell is empty, assign centerpoint
-                                else [self.grid_x[tuple(neighbors[j])] + self.resolution / 2] for j in range(len(neighbors))]
-
-                if average:
-                    counts = [len(pointslist[j]) for j in range(len(neighbors))]
-                    total = sum(counts) # TODO: jump sizes on diagonal boundary sections are off
-                    Yjumpto = np.sum([(u[tuple(neighbors[j])] * counts[j]) / total for j in range(len(neighbors))]) # proper unweighted average of the y values
-                    dest_points = np.stack([item for sublist in pointslist for item in sublist]).squeeze()
-                    if dest_points.ndim > 1: # if there are multiple points in the hypervoxel, take the mean
-                        jumpto = np.mean(dest_points, axis = 0)
-                    else:
-                        jumpto = dest_points
-                else:
-                    # # get point with largest jump size
-                    # Yjumptos = [u[tuple(neighbors[j])] for j in range(len(neighbors))]
-                    # Yjumpsizes = [abs(Yjumptos[j] - Yjumpfrom) for j in range(len(neighbors))]
-                    # idx = np.argmax(Yjumpsizes)
-                    # Yjumpto = Yjumptos[idx]
-                    # dest_points = self.grid_x_og[tuple(neighbors[idx])]
-                    # if len(dest_points) == 0:
-                    #     dest_points = self.grid_x[tuple(neighbors[idx])] + self.resolution / 2
-                    # dest_points = np.stack(dest_points).squeeze()
-                    
-                    # if dest_points.ndim > 1: # if there are multiple points in the hypervoxel, take the mean
-                    #     jumpto = np.mean(dest_points, axis = 0)
-                    # else:
-                    #     jumpto = dest_points
-                    
-                    dists = [[np.linalg.norm(jumpfrom - point) for point in pointslist[j]] for j in range(len(neighbors))]
-                    idx = np.argmin([np.argmin(sublist) for sublist in dists])
-                    closest = tuple(neighbors[idx])
-                    Yjumpto = u[closest]
-
-                    dest_points = self.grid_x_og[closest]
-                    if len(dest_points) == 0:
-                        dest_points = self.grid_x[closest] + self.resolution / 2
-                    dest_points = np.stack(dest_points).squeeze()
-
-                    if dest_points.ndim > 1: # if there are multiple points in the hypervoxel, take the mean
-                        jumpto = np.mean(dest_points, axis = 0)
-                    else:
-                        jumpto = dest_points
-                        
-
-                # append to lists
-                Y_boundary.append((jumpfrom + jumpto) / 2)
-                Y_jumpfrom.append(Yjumpfrom)
-                Y_jumpto.append(Yjumpto)
-                Y_jumpsize.append(Yjumpto - Yjumpfrom)
-                X_jumpfrom.append(jumpfrom)
-                X_jumpto.append(jumpto)
-
-        if Y_boundary:
-            Y_boundary = np.stack(Y_boundary)
-            Y_jumpfrom = np.stack(Y_jumpfrom)
-            Y_jumpto = np.stack(Y_jumpto)
-            Y_jumpsize = np.stack(Y_jumpsize)
-
-            # create named array to return
-            rays = [Y_boundary[:,d] for d in range(Y_boundary.shape[1])] + [Y_jumpfrom, Y_jumpto, Y_jumpsize]
-            names = ["X_" + str(d) for d in range(Y_boundary.shape[1])] + ["Y_jumpfrom", "Y_jumpto", "Y_jumpsize"]
-            jumps = pd.DataFrame(np.core.records.fromarrays(rays, names=names))
-        else:
-            jumps = None
-
-        return jumps
     
-model.boundaryGridToData = MethodType(boundaryGridToData, model)
 # model.getNearestPoint = MethodType(getNearestPoint, model)
 # model.explore = MethodType(explore, model)
 #res = SURE(model, tuner = True, num_gpus=0)
 
 u, jumps, J_grid, nrj, eps, it = model.run()
-
-def is_adjacent(points):
-    # A function to check if all points are adjacent to each other
-    for i in range(len(points)):
-        for j in range(i+1, len(points)):
-            if np.count_nonzero(np.abs(np.array(points[i]) - np.array(points[j]))) > 1:
-                return False
-    return True
-
-def get_thick_boundary_points(J_grid):
-    # Get the array dimensions
-    dimensions = J_grid.shape
-
-    # Initialize the thick boundary grid
-    thick_boundary_grid = np.zeros(dimensions, dtype=int)
-
-    # Generate all shifts for queen's rule adjacency in d dimensions
-    shifts = list(product([-1, 0, 1], repeat=J_grid.ndim))
-    shifts.remove((0,) * J_grid.ndim)  # Remove the zero-shift
-
-    # Iterate over all points in the grid
-    for index in np.ndindex(dimensions):
-        
-        # Check if current point is a jump point
-        if J_grid[index] == 1:
-            # check if left or up neighbor is boundary point
-            lshifts = [(0,-1), (-1,0)]
-            lneighbors=[]
-            for shift in lshifts:
-                neighbor = [index[d] + shift[d] for d in range(J_grid.ndim)]
-                if all(0 <= neighbor[d] < dimensions[d] for d in range(J_grid.ndim)):
-                    lneighbors.append(tuple(neighbor))
-            if any(J_grid[tuple(lu)]==1 for lu in lneighbors):
-                neighbors = []
-                for shift in shifts:
-                    neighbor = [index[d] + shift[d] for d in range(J_grid.ndim)]
-                    if all(0 <= neighbor[d] < dimensions[d] for d in range(J_grid.ndim)):
-                        neighbors.append(tuple(neighbor))
-
-                    # Check if there are any d+1 subsets of neighbors which are all jump points and all adjacent to each other
-                    for subset in combinations(neighbors, len(index) + 1):
-                        if all(J_grid[neighbor] == 1 for neighbor in subset) and is_adjacent(subset):
-                            # Current point is a thick boundary point
-                            thick_boundary_grid[index] = 1
-    return thick_boundary_grid
-
-thick = get_thick_boundary_points(J_grid)
-
-jumps = model.boundaryGridToData(J_grid, u, average=False)
-
 
 temp = pd.DataFrame(jumps)
 temp['Y_jumpsize'].abs().hist(bins=40)

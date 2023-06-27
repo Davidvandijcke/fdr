@@ -298,7 +298,6 @@ class FDD():
 
         return visited_points
 
-        
     def boundaryGridToData(self, J_grid, u, average = False):
         # get the indices of the J_grid where J_grid is 1
 
@@ -325,8 +324,8 @@ class FDD():
             point = k[:, i]
 
             # Initialize a list to store the neighboring hypervoxels
-            neighbors = list(self.explore(point, J_grid))
-            #neighbors = []  
+            #neighbors = list(self.explore(point, J_grid))
+            neighbors = []  
             for d in range(J_grid.ndim):
                 neighbor = point.copy()
                 if neighbor[d] < J_grid.shape[d] - 1:
@@ -365,21 +364,35 @@ class FDD():
                     else:
                         jumpto = dest_points
                 else:
-                    # get closest point
-                    dists = [[np.linalg.norm(jumpfrom - point) for point in pointslist[j]] for j in range(len(neighbors))]
-                    idx = np.argmin([np.argmin(sublist) for sublist in dists])
-                    closest = tuple(neighbors[idx])
-                    Yjumpto = u[closest]
-
-                    dest_points = self.grid_x_og[closest]
+                    # get point with largest jump size
+                    Yjumptos = [u[tuple(neighbors[j])] for j in range(len(neighbors))]
+                    Yjumpsizes = [abs(Yjumptos[j] - Yjumpfrom) for j in range(len(neighbors))]
+                    idx = np.argmax(Yjumpsizes)
+                    Yjumpto = Yjumptos[idx]
+                    dest_points = self.grid_x_og[tuple(neighbors[idx])]
                     if len(dest_points) == 0:
-                        dest_points = self.grid_x[closest] + self.resolution / 2
+                        dest_points = self.grid_x[tuple(neighbors[idx])] + self.resolution / 2
                     dest_points = np.stack(dest_points).squeeze()
-
+                    
                     if dest_points.ndim > 1: # if there are multiple points in the hypervoxel, take the mean
                         jumpto = np.mean(dest_points, axis = 0)
                     else:
                         jumpto = dest_points
+                    
+                    # dists = [[np.linalg.norm(jumpfrom - point) for point in pointslist[j]] for j in range(len(neighbors))]
+                    # idx = np.argmin([np.argmin(sublist) for sublist in dists])
+                    # closest = tuple(neighbors[idx])
+                    # Yjumpto = u[closest]
+
+                    # dest_points = self.grid_x_og[closest]
+                    # if len(dest_points) == 0:
+                    #     dest_points = self.grid_x[closest] + self.resolution / 2
+                    # dest_points = np.stack(dest_points).squeeze()
+
+                    # if dest_points.ndim > 1: # if there are multiple points in the hypervoxel, take the mean
+                    #     jumpto = np.mean(dest_points, axis = 0)
+                    # else:
+                    #     jumpto = dest_points
                         
 
                 # append to lists
