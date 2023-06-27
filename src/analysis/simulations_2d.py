@@ -66,11 +66,12 @@ if __name__ == "__main__":
     N_list = [100, 500, 1000, 10000]
     N_sure = max(N_list)
     S = 16
-    num_samples = 400 #  400 # 400 # 200
+    num_samples = 900 #  400 # 400 # 200
     num_sims = 100 # 100 # 100 # 100
     R = 3 #  3 # 3 # 5
     num_gpus = 0.25
     num_cpus = 8
+    fdate = "2022-06-23"
 
     @ray.remote(num_gpus=num_gpus, num_cpus=num_cpus)  # This decorator indicates that this function will be distributed, with each task using one GPU.
     def train(config, jsize, sigma, N, lmbda, nu, S):
@@ -118,7 +119,7 @@ if __name__ == "__main__":
             print("Running SURE")
             # run SURE once for largest N
             X, Y, U = generate2D(jsize, sigma=sigma, N=N_sure)
-            resolution = 1/int(np.sqrt(2*N_sure))
+            resolution = 1/int(np.sqrt(2/3*N_sure))
             model = FDD(Y, X, level = S, lmbda = 20, nu = 0.01, iter = 10000, tol = 5e-5, pick_nu = "MS", 
                         scaled = True, resolution=resolution, average=True)
             res = SURE(tuner=True, num_samples=num_samples, model=model, R=R, 
@@ -128,22 +129,22 @@ if __name__ == "__main__":
             config = best.metrics['config']
             lmbda, nu = config['lmbda'], config['nu']
             
-            lmbda = 120
-            nu = 0.0016
-            model.lmbda = lmbda
-            model.nu = nu
-            model.tol = 5e-6
-            u, jumps, J_grid, nrj, eps, it = model.run()
-            temp = pd.DataFrame(jumps)
-            temp['Y_jumpsize'].abs().mean()
+            # lmbda = 120
+            # nu = 0.0016
+            # model.lmbda = lmbda
+            # model.nu = nu
+            # model.tol = 5e-6
+            # u, jumps, J_grid, nrj, eps, it = model.run()
+            # temp = pd.DataFrame(jumps)
+            # temp['Y_jumpsize'].abs().mean()
             
-            plt.hist(temp['Y_jumpsize'])
-            plt.show()
+            # plt.hist(temp['Y_jumpsize'])
+            # plt.show()
             
-            test = temp[temp['Y_jumpsize'].abs() < 0.02]
-            plt.scatter(test['X_0'], test['X_1'], color = "blue")
-            test = temp[temp['Y_jumpsize'].abs() > 0.02]
-            plt.scatter(test['X_0'], test['X_1'], color = "red")
+            # test = temp[temp['Y_jumpsize'].abs() < 0.02]
+            # plt.scatter(test['X_0'], test['X_1'], color = "blue")
+            # test = temp[temp['Y_jumpsize'].abs() > 0.02]
+            # plt.scatter(test['X_0'], test['X_1'], color = "red")
 
             print("Running simulations")
             sims = list(range(num_sims))  # 100 simulations
@@ -151,7 +152,7 @@ if __name__ == "__main__":
 
             temp = pd.concat(results)
             dflist.append(temp)
-            temp.to_csv("s3://ipsos-dvd/fdd/data/2022-06-09/simulations_2d_sigma_" + str(sigma) + "_jsize_" + str(jsize) + ".csv", index=False)
+            temp.to_csv("s3://ipsos-dvd/fdd/data/" + fdate + "/simulations_2d_sigma_" + str(sigma) + "_jsize_" + str(jsize) + ".csv", index=False)
             print(f"Done with sigma {sigma}, jump size {jsize}")
             
     # dflist = []
@@ -188,4 +189,4 @@ if __name__ == "__main__":
     log_file.close()
 
     total = pd.concat(dflist)
-    total.to_csv("s3://ipsos-dvd/fdd/data/2022-06-14/simulations_2d.csv", index = False)
+    total.to_csv("s3://ipsos-dvd/fdd/data/" + fdate + "/simulations_2d.csv", index = False)
