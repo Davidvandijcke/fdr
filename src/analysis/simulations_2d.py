@@ -66,7 +66,7 @@ if __name__ == "__main__":
     N_list = [100, 500, 1000, 10000]
     N_sure = max(N_list)
     S = 32
-    num_samples = 300 #  400 # 400 # 200
+    num_samples = 400 #  400 # 400 # 200
     num_sims = 100 # 100 # 100 # 100
     R = 3 #  3 # 3 # 5
     num_gpus = 0.25
@@ -87,7 +87,7 @@ if __name__ == "__main__":
             device = torch.device("mps")
             
         resolution = 1/int(np.sqrt(N*2/3))
-        model = FDD(Y, X, level = S, lmbda = lmbda, nu = nu, iter = 5000, tol = 5e-6, resolution=resolution,
+        model = FDD(Y, X, level = S, lmbda = lmbda, nu = nu, iter = 10000, tol = 5e-6, resolution=resolution,
                 pick_nu = "MS", scaled = True, scripted = False)
         
         u, jumps, J_grid, nrj, eps, it = model.run()
@@ -112,7 +112,7 @@ if __name__ == "__main__":
         # calculate Cohen's d jump sizes
         X, Y, U = generate2D(jsize = 0, sigma=sigma, N=N_sure)
         std = np.std(Y)
-        jsizes = np.array([0.25, 0.5, 0.75]) * std
+        jsizes = np.array([0.75]) * std
 
         for jsize in jsizes: # , 0.2, 0.5]:
 
