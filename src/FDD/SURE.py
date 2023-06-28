@@ -51,7 +51,7 @@ def waveletDenoising(y, wavelet : str = "db1"):
         wavs.append(coeff_arr)
     wavs = np.concatenate(wavs)
     
-    mad = np.median(np.abs(wavs))
+    mad = np.median(np.abs(wavs - np.median(wavs)))
     
     sigma = mad / 0.6745
     

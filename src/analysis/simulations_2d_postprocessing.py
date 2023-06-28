@@ -78,7 +78,7 @@ if __name__ == "__main__":
     # pull data from S3
 
     # run the command string in cli
-    fn = "2022-06-16"
+    fn = "2022-06-23"
     ffrom = f"'s3://ipsos-dvd/fdd/data/{fn}/'"
     fto = f"'/Users/davidvandijcke/Dropbox (University of Michigan)/rdd/data/out/simulations/{fn}/'"
     #!aws s3 sync $ffrom $fto --profile ipsos
@@ -89,8 +89,12 @@ if __name__ == "__main__":
 
     # Group by 'alpha', 'N', and 'S' and calculate the mean 'Y_jumpsize'
     df['Y_jumpsize'] = df['Y_jumpsize'].abs()
+    df['bias'] = df['Y_jumpsize'].abs() - df['alpha']
+    df['mse_est'] = df['bias']**2 
     mean_jumpsize = df.groupby(['alpha', 'N', 'S', 's']).agg({'Y_jumpsize' : 'mean', 
                                                 'mse' : 'mean', 
+                                                'mse_est' : 'mean',
+                                                'bias' : 'mean',
                                                 'jump_neg' : 'mean',
                                                 'jump_pos' : 'mean',
                                                 'Y_jumpfrom' : 'mean',
@@ -100,6 +104,8 @@ if __name__ == "__main__":
                                                 'sigma' : 'mean'}).reset_index()
     mean_jumpsize = mean_jumpsize.groupby(['alpha', 'N', 'S']).agg({'Y_jumpsize' : 'mean', 
                                                 'mse' : 'mean', 
+                                                'mse_est' : 'mean',
+                                                'bias' : 'mean',
                                                 'jump_neg' : 'mean',
                                                 'jump_pos' : 'mean', 
                                                 'Y_jumpfrom' : 'mean',
@@ -108,6 +114,10 @@ if __name__ == "__main__":
                                                 'nu' : 'mean', 
                                                 'sigma' : 'mean'}).reset_index()
 
+
+    df = df[df['alpha'] > 0.107]
+    df = df[df['Y_jumpsize'].abs() > np.sqrt(df['nu'])]
+    df['Y_jumpsize'].abs().mean()
 
     # Generate the LaTeX tables for each sigma value
     latex_table_sigma_0_01 = create_latex_subtables(mean_jumpsize, 0.01)
@@ -119,3 +129,26 @@ if __name__ == "__main__":
 
     with open(os.path.join(data_out, 'table_sigma_0_05.tex'), 'w') as f:
         f.write(latex_table_sigma_0_05)
+        
+    # plot from a loguniform distribution
+    # Set parameters for the loguniform distribution
+    low = 1e-3
+    high = 10
+    samples = 10000
+
+    # Generate loguniform distributed samples
+    values = np.exp(np.random.uniform(np.log(low), np.log(high), samples))
+
+    # Plot histogram
+    plt.hist(values, bins=5000, alpha=0.5, color='g', density=True)
+    plt.xscale('log')
+    plt.title('LogUniform Distribution')
+    plt.xlabel('Value')
+    plt.ylabel('Frequency')
+    plt.show()
+    
+    
+    fig, ax = plt.subplots(figsize=(10, 10))
+    test['Y_jumpsize'].abs().hist(bins=1000, ax=ax, density=True)
+    # plot vertical line at np.sqrt(0.001610)
+    ax.axvline(x=np.sqrt(0.001610), color='r', linestyle='--')

@@ -65,8 +65,8 @@ if __name__ == "__main__":
     #-------------
     N_list = [100, 500, 1000, 10000]
     N_sure = max(N_list)
-    S = 16
-    num_samples = 900 #  400 # 400 # 200
+    S = 32
+    num_samples = 300 #  400 # 400 # 200
     num_sims = 100 # 100 # 100 # 100
     R = 3 #  3 # 3 # 5
     num_gpus = 0.25
@@ -87,7 +87,7 @@ if __name__ == "__main__":
             device = torch.device("mps")
             
         resolution = 1/int(np.sqrt(N*2/3))
-        model = FDD(Y, X, level = S, lmbda = lmbda, nu = nu, iter = 5000, tol = 5e-5, resolution=resolution,
+        model = FDD(Y, X, level = S, lmbda = lmbda, nu = nu, iter = 5000, tol = 5e-6, resolution=resolution,
                 pick_nu = "MS", scaled = True, scripted = False)
         
         u, jumps, J_grid, nrj, eps, it = model.run()
@@ -120,7 +120,7 @@ if __name__ == "__main__":
             # run SURE once for largest N
             X, Y, U = generate2D(jsize, sigma=sigma, N=N_sure)
             resolution = 1/int(np.sqrt(2/3*N_sure))
-            model = FDD(Y, X, level = S, lmbda = 20, nu = 0.01, iter = 10000, tol = 5e-5, pick_nu = "MS", 
+            model = FDD(Y, X, level = S, lmbda = 20, nu = 0.01, iter = 10000, tol = 5e-6, pick_nu = "MS", 
                         scaled = True, resolution=resolution, average=True)
             res = SURE(tuner=True, num_samples=num_samples, model=model, R=R, 
                     num_gpus=num_gpus, num_cpus=num_cpus)

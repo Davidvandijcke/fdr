@@ -102,9 +102,9 @@ if __name__ == "__main__":
     
     ## test SURE
     # look at results
-    jsize = 0.1
+    jsize = 0.106613
     sigma = 0.01
-    N = 1000
+    N = 10000
     lmbda = 10
     nu = 0.01
     S = 16
@@ -119,10 +119,32 @@ if __name__ == "__main__":
     resolution = 1/int(np.sqrt(N*2/3))
 
 
-    model = FDD(Y, X, level = S, lmbda = 1, 
-                nu = 0.1, iter = 10000, tol = 5e-5, 
+    model = FDD(Y, X, level = 32, lmbda = 106.780347, 
+                nu = 0.001183, iter = 10000, tol = 5e-5, 
                 resolution=resolution, pick_nu = "MS", 
                 scaled = True)
+    
+    u, jumps, J_grid, nrj, eps, it = model.run()
+    
+    model.pick_nu = "MS"
+    J_grid, jumps = model.boundary(u)
+    temp = pd.DataFrame(jumps)
+    
+    plt.imshow(J_grid)
+    plt.show()
+    
+    u_diff = model.forward_differences(u, D = len(u.shape))
+    u_diff = np.max(np.abs(u_diff), axis = 0)
+    u_diff = u_diff[np.abs(u_diff) > np.sqrt(0.00161)]
+    u_diff = u_diff[J_grid==1]
+    
+        # u_diff = u_diff / self.resolution # scale FD by side length
+    u_norm = np.linalg.norm(u_diff, axis = 0, ord = 2) # 2-norm
+    # select J_grid == 1 points from u_norm
+    u_norm = u_norm[J_grid == 1]
+    plt.hist(np.abs(u_norm), bins = 50)
+    plt.show()
+    
 
     res = SURE(tuner=True, num_samples=num_samples, model=model, R=R, 
         num_gpus=num_gpus, num_cpus=num_cpus)
