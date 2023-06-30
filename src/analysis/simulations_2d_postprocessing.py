@@ -22,15 +22,20 @@ def create_latex_subtables(df, sigma):
 
     # Initialize the final LaTeX table string
     latex_tables = "\\begin{subtable}{\\textwidth}\n\\centering\n"
+    
+    d = 0.25
 
     # Iterate over each alpha value
     for alpha in alphas:
         # Get the subset of the dataframe with the current alpha value
         df_alpha = df_sigma[df_sigma['alpha'] == alpha].sort_values('N')
-        
 
         # Remove the 'alpha', 'S', 'lambda', 'nu', 'sigma', 'Y_jumpfrom', and 'Y_jumpto' columns
-        df_alpha = df_alpha.drop(['alpha', 'S', 'lambda', 'nu', 'sigma', 'Y_jumpfrom', 'Y_jumpto'], axis=1)
+        df_alpha = df_alpha.drop(['S', 'lambda', 'nu', 'sigma', 'Y_jumpfrom', 'Y_jumpto'], axis=1)
+        
+        # reorder columns
+        cols = ['N', 'alpha', 'Y_jumpsize', 'mse', 'mse_est', 'bias', 'jump_neg', 'jump_pos']
+        df_alpha = df_alpha[cols]
         
         df_alpha.rename(columns={'mse' : 'MSE',
                                 'jump_neg' : 'FNR',
@@ -51,11 +56,17 @@ def create_latex_subtables(df, sigma):
 
         # Add the sub-table to the final LaTeX tables string
         nrow = df_alpha.shape[1]
-        latex_tables += " $\\alpha$ = %.4f \\\\ \n%s \n" % (alpha, latex_table)
+        latex_tables += " d = %.2f \\\\ \n%s \n" % (d, latex_table)
         latex_tables += "\\\\ SURE: $\\lambda$ = %.4f, $\\nu$ = %.4f  \\\\ \n\n" % (lambda_val, nu_val)
 
-        # replace "Y_jumpsize" with "$\alpha_hat$"
-        latex_tables = latex_tables.replace("Y\\_jumpsize", "$\\hat{\\alpha}$")
+        d += 0.25
+
+    # replace the names that require maths (tabulate processes them as text)
+    latex_tables = latex_tables.replace(f"alpha", f"$ \\alpha $")
+    latex_tables = latex_tables.replace("Y\\_jumpsize", "$ \\hat{\\alpha} $")
+    latex_tables = latex_tables.replace("mse\\_est", "MSE $\\tau_{\\mathrm{FD}}$")
+    latex_tables = latex_tables.replace("bias", "Bias $\\tau_{\\mathrm{FD}}$")
+        
 
 
     latex_tables += "\\end{subtable}"
@@ -73,15 +84,18 @@ if __name__ == "__main__":
     # get directory above
     main_dir = moveUp(dir, 4)
     data_in = os.path.join(main_dir, 'data', 'in')    
-    data_out = os.path.join(main_dir, 'data', 'out')   
+    data_out = os.path.join(main_dir, 'data', 'out')  
+    
+    # overleaf synced dropbox folder (change to your own overleaf path)
+    tabs_dir = "/Users/davidvandijcke/Dropbox (University of Michigan)/Apps/Overleaf/rdd/tabs/"
     
     # pull data from S3
 
     # run the command string in cli
-    fn = "2022-06-23"
+    fn = "2022-06-28"
     ffrom = f"'s3://ipsos-dvd/fdd/data/{fn}/'"
     fto = f"'/Users/davidvandijcke/Dropbox (University of Michigan)/rdd/data/out/simulations/{fn}/'"
-    #!aws s3 sync $ffrom $fto --profile ipsos
+    !aws s3 sync $ffrom $fto --profile ipsos
 
     # read all files in fto
     df = pd.concat([pd.read_csv(os.path.join(data_out, 'simulations', fn, file)) for file in os.listdir(os.path.join(data_out, 'simulations', fn)) if file.endswith(".csv")])
@@ -115,40 +129,17 @@ if __name__ == "__main__":
                                                 'sigma' : 'mean'}).reset_index()
 
 
-    df = df[df['alpha'] > 0.107]
-    df = df[df['Y_jumpsize'].abs() > np.sqrt(df['nu'])]
-    df['Y_jumpsize'].abs().mean()
+    # df = df[df['alpha'] > 0.107]
+    # df = df[df['Y_jumpsize'].abs() > np.sqrt(df['nu'])]
+    # df['Y_jumpsize'].abs().mean()
 
     # Generate the LaTeX tables for each sigma value
     latex_table_sigma_0_01 = create_latex_subtables(mean_jumpsize, 0.01)
     latex_table_sigma_0_05 = create_latex_subtables(mean_jumpsize, 0.05)
 
     # Write the tables to separate .tex files
-    with open(os.path.join(data_out, 'table_sigma_0_01.tex'), 'w') as f:
+    with open(os.path.join(tabs_dir, 'table_sigma_0_01.tex'), 'w') as f:
         f.write(latex_table_sigma_0_01)
 
-    with open(os.path.join(data_out, 'table_sigma_0_05.tex'), 'w') as f:
+    with open(os.path.join(tabs_dir, 'table_sigma_0_05.tex'), 'w') as f:
         f.write(latex_table_sigma_0_05)
-        
-    # plot from a loguniform distribution
-    # Set parameters for the loguniform distribution
-    low = 1e-3
-    high = 10
-    samples = 10000
-
-    # Generate loguniform distributed samples
-    values = np.exp(np.random.uniform(np.log(low), np.log(high), samples))
-
-    # Plot histogram
-    plt.hist(values, bins=5000, alpha=0.5, color='g', density=True)
-    plt.xscale('log')
-    plt.title('LogUniform Distribution')
-    plt.xlabel('Value')
-    plt.ylabel('Frequency')
-    plt.show()
-    
-    
-    fig, ax = plt.subplots(figsize=(10, 10))
-    test['Y_jumpsize'].abs().hist(bins=1000, ax=ax, density=True)
-    # plot vertical line at np.sqrt(0.001610)
-    ax.axvline(x=np.sqrt(0.001610), color='r', linestyle='--')

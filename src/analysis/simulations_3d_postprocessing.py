@@ -4,8 +4,6 @@ import numpy as np
 import pandas as pd
 import torch 
 from matplotlib import pyplot as plt
-import ray
-import boto3
 from mpl_toolkits.mplot3d import Axes3D
 import pickle
 
@@ -67,13 +65,31 @@ if __name__ == "__main__":
     # parameters
     #-------------
     
-    sigma = 0.05
-    S = 16
+    sigma = 0.01
+    S = 32
     #----
     
     X, Y, U = generate3D(jsize = 0, sigma=sigma, N=10000)
     std = np.std(Y)
     jsize = 0.5 * std
+    
+
+    #u, jumps, J_grid, nrj, eps, it = model.run()
+    
+    fn = '3D_SURE.pkl'
+    
+
+    ffrom = f"'s3://ipsos-dvd/fdd/data/{fn}'"
+    fto = f"'/Users/davidvandijcke/Dropbox (University of Michigan)/rdd/data/out/simulations/{fn}'"
+    !aws s3 cp $ffrom $fto --profile ipsos
+    
+    with open(fto.replace("'",''), "rb") as f:
+        res = pickle.load(f)
+
+    best = res.get_best_result(metric = "score", mode = "min")
+
+    config = best.metrics['config']
+    lmbda, nu = config['lmbda'], config['nu']
     
     X, Y, U = generate3D(jsize = jsize, sigma=sigma, N=10000)
 
@@ -81,23 +97,8 @@ if __name__ == "__main__":
     resolution = 1/int((N*2/3)**(1/3))
     model = FDD(Y, X, level = S, lmbda = 1, nu = 0.01, iter = 5000, tol = 5e-5, resolution=resolution,
             pick_nu = "MS", scaled = True, scripted = False)
-    
-    #u, jumps, J_grid, nrj, eps, it = model.run()
-    
-    num_samples = 400 #  225 #  400 # 400 # 400 # 200
-    R =  3 # 3 # 3 # 3 # 5
-    num_gpus = 0.5
-    num_cpus = 4
-    res = SURE(tuner=True, num_samples=num_samples, model=model, R=R, 
-        num_gpus=num_gpus, num_cpus=num_cpus)
 
-    file_name = '3D_SURE.pkl'
-    with open(file_name, 'wb') as file:
-        pickle.dump(res, file)
-    
-    s3 = boto3.client('s3')
-    with open(file_name, "rb") as f:
-        s3.upload_fileobj(f, "ipsos-dvd", "fdd/data/3D_SURE.pkl")
+
     
     # flatten all but last dimension of grid_x
     #grid_x = model.grid_x.reshape(-1, model.grid_x.shape[-1])
