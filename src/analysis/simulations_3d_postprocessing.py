@@ -65,7 +65,7 @@ if __name__ == "__main__":
     # parameters
     #-------------
     
-    sigma = 0.01
+    sigma = 0.05
     S = 32
     #----
     
@@ -95,10 +95,10 @@ if __name__ == "__main__":
 
     N = Y.size
     resolution = 1/int((N*2/3)**(1/3))
-    model = FDD(Y, X, level = S, lmbda = 1, nu = 0.01, iter = 5000, tol = 5e-5, resolution=resolution,
+    model = FDD(Y, X, level = S, lmbda = 1, nu = 0.01, iter = 5000, tol = 5e-6, resolution=resolution,
             pick_nu = "MS", scaled = True, scripted = False)
 
-
+    u, jumps, J_grid, nrj, eps, it = model.run()
     
     # flatten all but last dimension of grid_x
     #grid_x = model.grid_x.reshape(-1, model.grid_x.shape[-1])
