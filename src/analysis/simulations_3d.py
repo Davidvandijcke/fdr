@@ -9,7 +9,7 @@ import boto3
 from mpl_toolkits.mplot3d import Axes3D
 import pickle
 
-def f(x, y, z, jsize):
+def ft(x, y, z, jsize):
     temp = np.sqrt((x - 1/2)**2 + (y - 1/2)**2 + (z - 1/2)**2)
     if temp < 1/4:
         return temp
@@ -23,7 +23,7 @@ def generate3D(jsize=0.1, sigma=0.02, N=500):
     grid_sample = np.zeros((data.shape[0],1))
     grid_f = np.zeros((data.shape[0],1))
     for i in range(data.shape[0]):
-        grid_f[i] = f(data[i,0], data[i,1], data[i,2], jsize)
+        grid_f[i] = ft(data[i,0], data[i,1], data[i,2], jsize)
         grid_sample[i] = grid_f[i] + np.random.normal(loc=0, scale=sigma) # add random Gaussian noise
 
     # now cast this data into a standard data format

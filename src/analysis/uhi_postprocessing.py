@@ -1,5 +1,6 @@
 import pandas as pd 
 import os
+
 os.environ['USE_PYGEOS'] = '0'
 import numpy as np
 import geopandas as gpd
@@ -9,6 +10,7 @@ from rasterio.plot import show
 from rasterio.warp import calculate_default_transform, reproject, Resampling
 import contextily as ctx
 from matplotlib import pyplot as plt
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 from shapely.geometry import mapping
 from rasterio.mask import raster_geometry_mask, mask
 import cv2
@@ -18,13 +20,75 @@ from pyproj import Transformer, CRS
 from types import MethodType
 import pickle
 import boto3
+
 from uhi import *
-from simulations_2d_postprocessing import *
+
+
+def plotMap(minx, maxx, miny, maxy, st_crs, source = ctx.providers.Esri.WorldImagery):
+    # use alpha to control whether we see the surface temperature or not
+
+    # create a polygon from the bounding box    
+    bbox = box(minx, miny, maxx, maxy)
+
+
+    # create a geodataframe with the polygon
+    gdf = gpd.GeoDataFrame({'geometry': bbox}, index=[0], crs="epsg:4326")
+    gdf = gdf.to_crs(st_crs)
+
+    fig, ax = plt.subplots(figsize=(8, 8))
+
+    # plot the geodataframe on top of the raster
+    gdf.plot(ax=ax, facecolor="none", edgecolor='black', alpha=0)
+
+    # add basemap   
+    ctx.add_basemap(ax, crs=st_crs, source=source, attribution_size=2)
+    
+    # Creates a "blank" colorbar placeholder to line up with the LST map
+    divider = make_axes_locatable(ax)
+    cax = divider.append_axes("right", size="5%", pad=0.05)
+    cbar = plt.colorbar(ax.collections[0], cax=cax)
+    cbar.set_label('°C', rotation=0, labelpad=10, alpha=0)
+    cbar.set_ticks([])
+    cbar.outline.set_visible(False)
+    
+    # make plot prettier
+    ax.set_axis_off()
+    
+    return fig, ax
+
+def plotLST(imgseg):
+    # apply scaling factor and convert to celsius
+        
+    # Assuming imgseg is an array-like image data and figs_dir is a directory path
+    fig, ax = plt.subplots(figsize=(8, 8)) # you can adjust the size of the figure to your liking
+    im = ax.imshow(imgseg, cmap='RdYlBu_r') # image display
+
+    # Create an axes on the right side of ax. The width of cax will be 5%
+    # of ax and the padding between cax and ax will be fixed at 0.05 inch.
+    plt.axis("off")
+    divider = make_axes_locatable(ax)
+    cax = divider.append_axes("right", size="5%", pad=0.05)
+    cbar = plt.colorbar(im, cax=cax)
+    cbar.set_label('°C', rotation=0, labelpad=10) # This adds '°C' label to colorbar
+    
+
+    # Improving layout and saving
+    plt.tight_layout()
+    
+    return fig, ax
 
 if __name__ == '__main__':
               
+    #---------------------------
+    # get data and plot maps
+    #---------------------------
+    
     # paths
-    dir = os.path.dirname(__file__)
+    dir = os.path.dirname(os.path.realpath(__file__))
+    os.chdir(dir)
+    from uhi import *
+    from simulations_2d_postprocessing import *
+
     # get directory above
     main_dir = moveUp(dir, 4)
     data_in = os.path.join(main_dir, 'data', 'in')    
@@ -33,45 +97,53 @@ if __name__ == '__main__':
     # overleaf synced dropbox folder (change to your own overleaf path)
     figs_dir = "/Users/davidvandijcke/Dropbox (University of Michigan)/Apps/Overleaf/rdd/figs/"
     
-
-    cname = "LC08_L2SP_044033_20220628_20220706_02_T1"
-    fn = os.path.join(data_in, 'satellite', cname, cname)
-    st_c_masked, qa_band, st_transform, st_crs = readSatellite(fn)
-
-    # # Bounding box around Austin, Texas, metro area
-    # # Bounding box coordinates for Austin, Texas metropolitan area
-    # minx = -98.345211
-    # miny = 29.705602
-    # maxx = -96.848323
-    # maxy = 30.740314
-
-    # # Bounding box around Houston, Texas, metro area
-    # # # Bounding box coordinates for Austin, Texas metropolitan area
-    # minx, maxx = -95.823268, -95.069705 # Longitude
-    # miny, maxy = 29.523624, 30.110731 # Latitude
+    # get satellite data
+    cname = "LC08_CU_017017_20220623_20220709_02_ST" # "LC08_L2SP_044033_20220628_20220706_02_T1"
     
-    # # bounding box around Chicago, Illinois, metro area
-    # minx, maxx = -88.140101, -87.524137 # Longitude
-    # miny, maxy = 41.444543, 42.348038 # Latitude
-    
-    # bounding box around sacramento
-    minx, maxx = -121.787773, -121.037523 # Longitude
-    miny, maxy = 38.246354, 38.922722 # Latitude
+    #fn = os.path.join(data_in, 'satellite', cname, cname + "_B10.TIF")
+    fn = os.path.join(data_in, "satellite", "chicago_june17_2022_merged.TIF")
 
-    fig, ax = plotHeatMap(minx, maxx, miny, maxy, st_crs, st_c_masked, st_transform)
+    st_c_masked, st_transform, st_crs = readSatellite(fn)
+
+    # plot streetmap
+    fig, ax = plotMap(minx, maxx, miny, maxy, st_crs, source = ctx.providers.Esri.WorldStreetMap)
+    plt.tight_layout()
+    plt.savefig(os.path.join(figs_dir, "uhi_streetmap.pdf"), dpi = 300, bbox_inches='tight')
+
+    # plot satellite map
+    fig, ax = plotMap(minx, maxx, miny, maxy, st_crs, source = ctx.providers.Esri.WorldImagery)
+    plt.tight_layout()
+    plt.savefig(os.path.join(figs_dir, "uhi_satellite.pdf"), dpi = 300, bbox_inches='tight')
+    
 
     # subset the raster on sacramento area and also on heat island area
-    # bounding box around sacramento
-    minx, maxx = -121.787773, -121.237523 # Longitude
-    miny, maxy = 38.246354, 38.922722 # Latitude
     subset = subsetRaster(fn, minx, maxx, miny, maxy, st_crs)
 
-
+    # downsize image for faster processing
     fig, ax = plt.subplots(figsize=(8, 8))
     ret = rasterio.plot.show(subset, cmap='RdYlBu_r', ax=ax)
+    imgseg = cv2.resize(subset.squeeze(), dsize = (0,0), fx=downsize, fy=downsize)
     
-    imgseg = cv2.resize(subset.squeeze(), dsize = (0,0), fx=0.075, fy=0.075)
-    plt.imshow(imgseg)
+    imgseg = (imgseg * 0.00341802 + 149) - 273.15
+    
+    #plt.hist(imgseg)
+    
+    bottom = np.quantile(imgseg[imgseg > 30], 0.05) # bottom quantile without Lake Michigan
+    top = np.quantile(imgseg, 0.99)
+    
+    imgseg[imgseg < 38] = 38
+    imgseg[imgseg > top] = top
+    
+    # plot land surface temperature map
+    plotLST(imgseg)
+    plt.savefig(os.path.join(figs_dir, "uhi_to_segment.pdf"), dpi = 300, bbox_inches='tight')
+
+
+
+
+    #---------------------------
+    # segment image
+    #---------------------------
 
     # read the pkl file
     file_name = 'uhi_SURE.pkl'
@@ -85,6 +157,9 @@ if __name__ == '__main__':
     config = best.metrics['config']
     lmbda, nu = config['lmbda'], config['nu']
     
+    lmbda = 100
+    nu = 0.0015
+    
     # segment the image
 
     X = np.indices(imgseg.shape)
@@ -92,7 +167,8 @@ if __name__ == '__main__':
     X = X.reshape((X.shape[0], -1)).T
     Y = imgseg.flatten()
     
-    model = FDD(Y=Y, X = X, level = 32, lmbda = lmbda, nu = nu, iter = 10000, tol = 5e-6, 
+    resolution = 1/int(np.sqrt(2/3*Y.size))
+    model = FDD(Y=Y, X = X, level = S, lmbda = lmbda, nu = nu, iter = 10000, tol = 5e-5, 
         pick_nu = "MS", scaled = True, scripted = False, image=False, rectangle=True)
     num_samples = 225 #  400 # 400 # 400 # 200
     R =  3 # 3 # 3 # 5
@@ -110,7 +186,7 @@ if __name__ == '__main__':
         s3.upload_fileobj(f, "ipsos-dvd", "fdd/data/uhi_SURE.pkl")
 
     
-    # u, jumps, J_grid, nrj, eps, it = model.run()
+    u, jumps, J_grid, nrj, eps, it = model.run()
     
     # u_scaled = u / np.max(model.Y_raw, axis = -1)
     

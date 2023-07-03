@@ -186,7 +186,7 @@ class FDD():
         
         # Get the indices of the grid cells for each data point
         # indices = [(np.clip(self.X[:, i] // self.resolution, 0, grid_y.shape[i] - 1)).astype(int) for i in range(self.X.shape[1])]
-        indices = [(np.clip(self.X[:, i] // self.resolution, 0, grid_y.shape[i] - 1)).astype(int) for i in reversed(range(self.X.shape[1]))]
+        indices = [(np.clip(self.X[:, i] // self.resolution, 0, grid_y.shape[i] - 1)).astype(int) for i in range(self.X.shape[1])]
         
         indices = np.array(indices).T
 

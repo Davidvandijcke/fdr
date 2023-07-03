@@ -102,7 +102,7 @@ if __name__ == "__main__":
     
     ## test SURE
     # look at results
-    jsize = 0.1
+    jsize = 0.106613
     sigma = 0.01
     N = 10000
     lmbda = 10
@@ -115,12 +115,12 @@ if __name__ == "__main__":
         
     
     
-    X, Y, U = generate2D(jsize, sigma=0.05, N=N)
+    X, Y, U = generate2D(jsize, sigma=0.01, N=N)
     resolution = 1/int(np.sqrt(N*2/3))
 
 
-    model = FDD(Y, X, level = 32, lmbda = 98.496504, 
-                nu = 0.00161, iter = 10000, tol = 5e-5, 
+    model = FDD(Y, X, level = 32, lmbda = 106.780347, 
+                nu = 0.001183, iter = 10000, tol = 5e-5, 
                 resolution=resolution, pick_nu = "MS", 
                 scaled = True)
     
@@ -134,8 +134,8 @@ if __name__ == "__main__":
     plt.show()
     
     u_diff = model.forward_differences(u, D = len(u.shape))
-    u_diff = np.max(u_diff, axis = 0)
-    u_diff = u_diff[u_diff > np.sqrt(0.00161)]
+    u_diff = np.max(np.abs(u_diff), axis = 0)
+    u_diff = u_diff[np.abs(u_diff) > np.sqrt(0.00161)]
     u_diff = u_diff[J_grid==1]
     
         # u_diff = u_diff / self.resolution # scale FD by side length
