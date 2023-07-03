@@ -38,10 +38,14 @@ miny, maxy = 41.687979, 41.979697 # Latitude
 minx, maxx = -87.884935, -87.500000 # Longitude
 miny, maxy = 41.687979, 41.979697 # Latitude
 
-# bounding box around specified area in Houston
-# slightly zoomed in bounding box around specified area in Houston
-minx, maxx = -95.512047, -95.257086 # Longitude
-miny, maxy = 29.666534, 29.867654 # Latitude
+# # bounding box around specified area in Houston
+# # slightly zoomed in bounding box around specified area in Houston
+# minx, maxx = -95.512047, -95.257086 # Longitude
+# miny, maxy = 29.666534, 29.867654 # Latitude
+
+# # bounding box around high-density urban core of Houston
+# minx, maxx = -95.540837, -95.293579 # Longitude
+# miny, maxy = 29.674451, 29.832891 # Latitude
 
 
 

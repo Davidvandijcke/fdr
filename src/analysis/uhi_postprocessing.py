@@ -167,9 +167,9 @@ if __name__ == '__main__':
     X = X.reshape((X.shape[0], -1)).T
     Y = imgseg.flatten()
     
-    resolution = 1/int(np.sqrt(2/3*Y.size))
+    resolution = 1/int(np.sqrt(0.05*Y.size))
     model = FDD(Y=Y, X = X, level = S, lmbda = lmbda, nu = nu, iter = 10000, tol = 5e-5, 
-        pick_nu = "MS", scaled = True, scripted = False, image=False, rectangle=True)
+        pick_nu = "MS", scaled = True, scripted = False, image=False, rectangle=True, resolution=resolution)
     num_samples = 225 #  400 # 400 # 400 # 200
     R =  3 # 3 # 3 # 5
     num_gpus = 0.5
