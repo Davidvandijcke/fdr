@@ -19,20 +19,24 @@ from types import MethodType
 import pickle
 import boto3
 from uhi import *
-
+from simulations_2d_postprocessing import *
 
 if __name__ == '__main__':
-        
-        
-    # get relative dir
-    #dir = os.path.dirname(__file__)
-
+              
+    # paths
+    dir = os.path.dirname(__file__)
     # get directory above
-    main_dir = "s3://ipsos-dvd/fdd/" #  "/home/dvdijcke"  # os.path.dirname(os.path.dirname(dir))
-    data_in = os.path.join(main_dir, 'data', 'in')
+    main_dir = moveUp(dir, 4)
+    data_in = os.path.join(main_dir, 'data', 'in')    
+    data_out = os.path.join(main_dir, 'data', 'out')  
+    
+    # overleaf synced dropbox folder (change to your own overleaf path)
+    figs_dir = "/Users/davidvandijcke/Dropbox (University of Michigan)/Apps/Overleaf/rdd/figs/"
+    
 
     cname = "LC08_L2SP_044033_20220628_20220706_02_T1"
-    st_c_masked, qa_band, st_transform, st_crs = readSatellite(cname)
+    fn = os.path.join(data_in, 'satellite', cname, cname)
+    st_c_masked, qa_band, st_transform, st_crs = readSatellite(fn)
 
     # # Bounding box around Austin, Texas, metro area
     # # Bounding box coordinates for Austin, Texas metropolitan area
@@ -54,15 +58,13 @@ if __name__ == '__main__':
     minx, maxx = -121.787773, -121.037523 # Longitude
     miny, maxy = 38.246354, 38.922722 # Latitude
 
-    fig, ax = plotHeatMap(minx, maxx, miny, maxy)
+    fig, ax = plotHeatMap(minx, maxx, miny, maxy, st_crs, st_c_masked, st_transform)
 
     # subset the raster on sacramento area and also on heat island area
     # bounding box around sacramento
     minx, maxx = -121.787773, -121.237523 # Longitude
     miny, maxy = 38.246354, 38.922722 # Latitude
-    subset = subsetRaster(cname, minx, maxx, miny, maxy, st_crs)
-
-
+    subset = subsetRaster(fn, minx, maxx, miny, maxy, st_crs)
 
 
     fig, ax = plt.subplots(figsize=(8, 8))
@@ -71,15 +73,17 @@ if __name__ == '__main__':
     imgseg = cv2.resize(subset.squeeze(), dsize = (0,0), fx=0.075, fy=0.075)
     plt.imshow(imgseg)
 
-
-
-    # lower the resolution of the subset image
-    # https://rasterio.readthedocs.io/en/latest/topics/resampling.html
-    # https://rasterio.readthedocs.io/en/latest/api/rasterio.enums.html#rasterio.enums.Resampling
-    # https://rasterio.readthedocs.io/en/latest/topics/resampling.html#resampling
-    # https://rasterio.readthedocs.io/en/latest/topics/resampling.html#resampling
-    # https://rasterio.readthedocs.io/en/latest/topics/resampling.html#resampling
+    # read the pkl file
+    file_name = 'uhi_SURE.pkl'
     
+    with open(file_name, 'rb') as file:
+        res = pickle.load(file)
+        
+    # get lmbda, nu from res
+    best = res.get_best_result(metric = "score", mode = "min")
+
+    config = best.metrics['config']
+    lmbda, nu = config['lmbda'], config['nu']
     
     # segment the image
 
@@ -88,7 +92,7 @@ if __name__ == '__main__':
     X = X.reshape((X.shape[0], -1)).T
     Y = imgseg.flatten()
     
-    model = FDD(Y=Y, X = X, level = 16, lmbda = 5, nu = 0.001, iter = 10000, tol = 5e-5, 
+    model = FDD(Y=Y, X = X, level = 32, lmbda = lmbda, nu = nu, iter = 10000, tol = 5e-6, 
         pick_nu = "MS", scaled = True, scripted = False, image=False, rectangle=True)
     num_samples = 225 #  400 # 400 # 400 # 200
     R =  3 # 3 # 3 # 5

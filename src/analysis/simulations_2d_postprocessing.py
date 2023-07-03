@@ -95,7 +95,7 @@ if __name__ == "__main__":
     fn = "2022-06-28"
     ffrom = f"'s3://ipsos-dvd/fdd/data/{fn}/'"
     fto = f"'/Users/davidvandijcke/Dropbox (University of Michigan)/rdd/data/out/simulations/{fn}/'"
-    !aws s3 sync $ffrom $fto --profile ipsos
+    #!aws s3 sync $ffrom $fto --profile ipsos
 
     # read all files in fto
     df = pd.concat([pd.read_csv(os.path.join(data_out, 'simulations', fn, file)) for file in os.listdir(os.path.join(data_out, 'simulations', fn)) if file.endswith(".csv")])
