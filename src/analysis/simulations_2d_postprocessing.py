@@ -1,6 +1,9 @@
 import pandas as pd
 import os
 from tabulate import tabulate
+from simulations_2d import *
+import matplotlib.colors as mcolors
+import random
 
 def moveUp(fn, times = 1):
     for _ in range(times):
@@ -75,9 +78,30 @@ def create_latex_subtables(df, sigma):
 
 
 
+def getTrueFunction(resolution=0.01):
+    
+    # now sample the function values on the data points
+    xmin, xmax = 0, 1
+    ymin, ymax = 0, 1
+    resolution = resolution # 100 by 100 grid
+    x, y = np.meshgrid(np.arange(xmin, xmax, resolution), np.arange(ymin, ymax, resolution))
+    grid = np.dstack((x, y))
+    grid_f = np.zeros(grid.shape[:2])
 
+
+    # Compute the function values on the grid
+    for i in range(grid.shape[0]):
+        for j in range(grid.shape[1]):
+            grid_f[i, j] = f(grid[i, j][0], grid[i, j][1], jsize)
+            
+    return grid_f
 
 if __name__ == "__main__":
+    
+    #----------------
+    # prepare 
+    #----------------
+    
     
     # paths
     dir = os.path.dirname(__file__)
@@ -87,7 +111,9 @@ if __name__ == "__main__":
     data_out = os.path.join(main_dir, 'data', 'out')  
     
     # overleaf synced dropbox folder (change to your own overleaf path)
-    tabs_dir = "/Users/davidvandijcke/Dropbox (University of Michigan)/Apps/Overleaf/rdd/tabs/"
+    ovrlf = "/Users/davidvandijcke/Dropbox (University of Michigan)/Apps/Overleaf/rdd/"
+    tabs_dir = os.path.join(ovrlf, "tabs")
+    figs_dir = os.path.join(ovrlf, "figs")
     
     # pull data from S3
 
@@ -101,6 +127,11 @@ if __name__ == "__main__":
     df = pd.concat([pd.read_csv(os.path.join(data_out, 'simulations', fn, file)) for file in os.listdir(os.path.join(data_out, 'simulations', fn)) if file.endswith(".csv")])
     #df = pd.read_csv("/Users/davidvandijcke/Downloads/simulations_2d_sigma_0.01_jsize_0.10661253981895451 (1).csv")
 
+    #----------------
+    # create latex tables
+    #----------------
+    
+    
     # Group by 'alpha', 'N', and 'S' and calculate the mean 'Y_jumpsize'
     df['Y_jumpsize'] = df['Y_jumpsize'].abs()
     df['bias'] = df['Y_jumpsize'].abs() - df['alpha']
@@ -143,3 +174,65 @@ if __name__ == "__main__":
 
     with open(os.path.join(tabs_dir, 'table_sigma_0_05.tex'), 'w') as f:
         f.write(latex_table_sigma_0_05)
+        
+        
+    #----------------
+    # plot image
+    #----------------
+    random.seed(0)
+
+    
+    # extract parameters
+    sigma = 0.01
+    S = 32
+    temp = df[df.sigma == sigma].drop_duplicates(subset=['sigma', 'alpha'])
+    temp = temp[temp.alpha == max(temp.alpha)]
+    lmbda, nu, jsize = temp[['lambda', 'nu', 'alpha']].values[0]
+    
+    X, Y, U = generate2D(jsize=jsize, sigma=sigma, N=10000)
+    
+    resolution = 1/int(np.sqrt(Y.size*2/3))
+    model = FDD(Y, X, level = S, lmbda = lmbda, nu = nu, iter = 10000, tol = 1e-5, resolution=resolution,
+        pick_nu = "MS", scaled = True, scripted = False)
+    
+    u, jumps, J_grid, nrj, eps, it = model.run()
+    
+    # Define a more subtle color palette with shades of blue
+    colors = ["#f0f9e8", "#bae4bc", "#7bccc4", "#43a2ca", "#0868ac"]
+
+    # Create a colormap from the color list
+    cmap = mcolors.LinearSegmentedColormap.from_list("my_colormap", colors)
+
+    
+    # plot underlying function
+    fig, ax = plt.subplots(figsize=(5, 5))
+    grid_f = getTrueFunction()
+    plt.axis("off")
+    plt.tight_layout()
+    plt.imshow(grid_f, cmap=cmap)
+    plt.savefig(os.path.join(figs_dir, 'simulation_2d_truth.pdf'), bbox_inches='tight')
+    
+    # plot point cloud
+    fig, ax = plt.subplots(figsize=(5, 5))
+    plt.scatter(X[:, 0], X[:, 1], c=Y, cmap=cmap, s=2)
+    plt.axis("off")
+    plt.tight_layout()
+    plt.margins(0)
+    plt.savefig(os.path.join(figs_dir, 'simulation_2d_pointcloud.pdf'), bbox_inches='tight')
+    
+    # plot estimated function
+    fig, ax = plt.subplots(figsize=(5, 5))
+    plt.imshow(u, cmap=cmap)
+    plt.axis("off")
+    plt.tight_layout()
+    plt.savefig(os.path.join(figs_dir, 'simulation_2d_u.pdf'), bbox_inches='tight')
+        
+    # plot boundary
+    fig, ax = plt.subplots(figsize=(5, 5))
+    plt.imshow(J_grid, cmap='binary')
+    plt.axis("off")
+    plt.tight_layout()
+    plt.savefig(os.path.join(figs_dir, 'simulation_2d_Jgrid.pdf'), bbox_inches='tight')
+    
+    
+    

@@ -8,14 +8,14 @@ from mpl_toolkits.mplot3d import Axes3D
 import pickle
 from simulations_3d import *
 
-def plot3D(X, Y):
+def plot3D(X, Y, cmap = "coolwarm"):
     
     # Create a new figure and add a 3D subplot to it
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
 
     # Scatter plot using the generated data. Color of each point is determined by its Y value
-    scatter = ax.scatter(X[:, 0], X[:, 1], X[:, 2], c=Y, cmap='coolwarm', alpha = 0.5, s=1)
+    scatter = ax.scatter(X[:, 0], X[:, 1], X[:, 2], c=Y, cmap=cmap, alpha = 0.5, s=1)
 
     # Add a colorbar to the plot
     fig.colorbar(scatter)
@@ -43,7 +43,7 @@ if __name__ == "__main__":
     #-------------
     
     sigma = 0.05
-    S = 16
+    S = 32
     #----
     
     X, Y, U = generate3D(jsize = 0, sigma=sigma, N=10000)
@@ -67,11 +67,13 @@ if __name__ == "__main__":
     config = best.metrics['config']
     lmbda, nu = config['lmbda'], config['nu']
     
-    X, Y, U = generate3D(jsize = jsize, sigma=sigma, N=10000)
+    lmbda = 100
+    
+    X, Y, U = generate3D(jsize = jsize, sigma=sigma, N=1000)
 
     N = Y.size
     resolution = 1/int((N*2/3)**(1/3))
-    model = FDD(Y, X, level = S, lmbda = lmbda, nu = nu, iter = 10000, tol = 5e-6, resolution=resolution,
+    model = FDD(Y, X, level = S, lmbda = lmbda, nu = nu, iter = 10000, tol = 1e-5, resolution=resolution,
             pick_nu = "MS", scaled = True, scripted = False)
 
     u, jumps, J_grid, nrj, eps, it = model.run()
@@ -80,6 +82,6 @@ if __name__ == "__main__":
     
     # flatten all but last dimension of grid_x
     grid_x = model.grid_x.reshape(-1, model.grid_x.shape[-1])
-    plot3D(grid_x, J_grid.flatten())
+    plot3D(grid_x, J_grid.flatten(), cmap = "binary")
     
     

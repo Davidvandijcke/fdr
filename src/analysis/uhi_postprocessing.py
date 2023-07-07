@@ -98,10 +98,12 @@ if __name__ == '__main__':
     figs_dir = "/Users/davidvandijcke/Dropbox (University of Michigan)/Apps/Overleaf/rdd/figs/"
     
     # get satellite data
-    cname = "LC08_CU_017017_20220623_20220709_02_ST" # "LC08_L2SP_044033_20220628_20220706_02_T1"
     
-    #fn = os.path.join(data_in, 'satellite', cname, cname + "_B10.TIF")
-    fn = os.path.join(data_in, "satellite", "chicago_june17_2022_merged.TIF")
+    #cname = "LC09_CU_024007_20220621_20230414_02_ST" # detroit
+    #cname=  "LC08_CU_017017_20220623_20220709_02_ST" # houston "LC08_L2SP_044033_20220628_20220706_02_T1"
+    cname = "LC09_CU_024013_20220621_20230414_02_ST" #atlanta
+    fn = os.path.join(data_in, 'satellite', "atlanta", cname, cname + "_B10.TIF")
+    #fn = os.path.join(data_in, "satellite", "chicago_june17_2022_merged.TIF")
 
     st_c_masked, st_transform, st_crs = readSatellite(fn)
 
@@ -128,10 +130,10 @@ if __name__ == '__main__':
     
     #plt.hist(imgseg)
     
-    bottom = np.quantile(imgseg[imgseg > 30], 0.05) # bottom quantile without Lake Michigan
+    bottom = np.quantile(imgseg, 0.01) # bottom quantile without Lake Michigan
     top = np.quantile(imgseg, 0.99)
     
-    imgseg[imgseg < 38] = 38
+    imgseg[imgseg < bottom] = bottom
     imgseg[imgseg > top] = top
     
     # plot land surface temperature map
@@ -158,7 +160,7 @@ if __name__ == '__main__':
     lmbda, nu = config['lmbda'], config['nu']
     
     lmbda = 100
-    nu = 0.0015
+    nu = 0.01
     
     # segment the image
 
@@ -167,7 +169,7 @@ if __name__ == '__main__':
     X = X.reshape((X.shape[0], -1)).T
     Y = imgseg.flatten()
     
-    resolution = 1/int(np.sqrt(0.05*Y.size))
+    resolution = 1/int(np.sqrt(1/2*Y.size))
     model = FDD(Y=Y, X = X, level = S, lmbda = lmbda, nu = nu, iter = 10000, tol = 5e-5, 
         pick_nu = "MS", scaled = True, scripted = False, image=False, rectangle=True, resolution=resolution)
     num_samples = 225 #  400 # 400 # 400 # 200

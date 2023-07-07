@@ -35,17 +35,31 @@ S=32
 minx, maxx = -87.884935, -87.579413 # Longitude
 miny, maxy = 41.687979, 41.979697 # Latitude
 
-minx, maxx = -87.884935, -87.500000 # Longitude
-miny, maxy = 41.687979, 41.979697 # Latitude
+# bounding box around Chicago Metropolitan area
+minx, maxx = -88.502922, -87.019934 # Longitude
+miny, maxy = 41.395172, 42.426491 # Latitude
+
 
 # # bounding box around specified area in Houston
 # # slightly zoomed in bounding box around specified area in Houston
-# minx, maxx = -95.512047, -95.257086 # Longitude
-# miny, maxy = 29.666534, 29.867654 # Latitude
+minx, maxx = -95.512047, -95.257086 # Longitude
+miny, maxy = 29.666534, 29.867654 # Latitude
 
-# # bounding box around high-density urban core of Houston
-# minx, maxx = -95.540837, -95.293579 # Longitude
-# miny, maxy = 29.674451, 29.832891 # Latitude
+# bounding box around high-density urban core of Houston
+minx, maxx = -95.540837, -95.293579 # Longitude
+miny, maxy = 29.674451, 29.832891 # Latitude
+
+# Detroit
+minx, maxx = min(-83.082778, -83.110556, -83.031389, -83.003889, -83.082778), max(-83.082778, -83.110556, -83.031389, -83.003889, -83.082778) # Longitude
+miny, maxy = min(42.315833, 42.372222, 42.393333, 42.337222, 42.315833), max(42.315833, 42.372222, 42.393333, 42.337222, 42.315833) # Latitude
+
+
+# atlanta
+minx, maxx = -84.551819, -84.289385 # Longitude
+miny, maxy = 33.647808, 33.886823 # Latitude
+
+
+
 
 
 
