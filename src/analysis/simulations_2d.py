@@ -88,7 +88,7 @@ if __name__ == "__main__":
             device = torch.device("mps")
             
         resolution = 1/int(np.sqrt(N*2/3))
-        model = FDD(Y, X, level = S, lmbda = lmbda, nu = nu, iter = 10000, tol = 5e-6, resolution=resolution,
+        model = FDD(Y, X, level = S, lmbda = lmbda, nu = nu, iter = 50000, tol = 1e-6, resolution=resolution,
                 pick_nu = "MS", scaled = True, scripted = False)
         
         u, jumps, J_grid, nrj, eps, it = model.run()
