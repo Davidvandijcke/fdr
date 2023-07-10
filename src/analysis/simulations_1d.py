@@ -46,7 +46,7 @@ if __name__ == "__main__":
     S = 32
     N = 500
     lmbda = 100
-    nu = 0.001
+    nu = 0.0003
     
     np.random.seed(0)
     # Generate data with reduced noise
@@ -68,9 +68,16 @@ if __name__ == "__main__":
     plt.show()
     
     resolution = 1/int(Y.size*2/3)
-    model = FDD(Y, X, level = S, lmbda = lmbda, nu = nu, iter = 10000, tol = 5e-6, resolution=resolution,
+    model = FDD(Y, X, level = S, lmbda = lmbda, nu = nu, iter = 10000, tol = 5e-5, resolution=resolution,
         pick_nu = "MS", scaled = True, scripted = False)
     
     u, jumps, J_grid, nrj, eps, it = model.run()
     
-    plt.scatter(model.grid_x, u)
+    plt.scatter(model.grid_x, u, s=1)
+    plt.plot(model.grid_x, u, '-o', markersize=1, label='True function')
+    
+    
+    jumplocs = np.where(J_grid==1)[0] / J_grid.size
+    for xc in jumplocs.tolist():
+        print(xc)
+        plt.axvline(x=xc, color='r', linestyle='--')

@@ -330,11 +330,16 @@ class FDD():
             # Initialize a list to store the neighboring hypervoxels
             #neighbors = list(self.explore(point, J_grid))
             neighbors = []  
+            count = 0
             for d in range(J_grid.ndim):
                 neighbor = point.copy()
                 if neighbor[d] < J_grid.shape[d] - 1:
                     neighbor[d] += 1
                     neighbors.append(neighbor)
+                    count += 1
+            if count == 0:
+                neighbors.append(point.copy())
+                    
 
             # Check if there are any valid neighbors
             if neighbors:
@@ -400,7 +405,7 @@ class FDD():
                         
 
                 # append to lists
-                Y_boundary.append((jumpfrom + jumpto) / 2)
+                Y_boundary.append(1)
                 Y_jumpfrom.append(Yjumpfrom)
                 Y_jumpto.append(Yjumpto)
                 Y_jumpsize.append(Yjumpto - Yjumpfrom)
@@ -412,6 +417,10 @@ class FDD():
             Y_jumpfrom = np.stack(Y_jumpfrom)
             Y_jumpto = np.stack(Y_jumpto)
             Y_jumpsize = np.stack(Y_jumpsize)
+            
+            if Y_boundary.ndim == 1:
+                Y_boundary = np.expand_dims(Y_boundary, -1)
+        
 
             # create named array to return
             rays = [Y_boundary[:,d] for d in range(Y_boundary.shape[1])] + [Y_jumpfrom, Y_jumpto, Y_jumpsize]
