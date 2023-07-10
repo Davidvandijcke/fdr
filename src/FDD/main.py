@@ -168,7 +168,9 @@ class FDD():
         
     def castDataToGridSmooth(self):
         
-        n = self.Y.shape[0]
+        # if self.X only 1 dimension, add a second dimension
+        if self.X.ndim == 1:
+            self.X = np.expand_dims(self.X, -1)
         
         if self.resolution is None:
             self.resolution = 1/int(self.X_raw.max(axis=0).min()) # int so we get a natural number of grid cells
@@ -177,6 +179,8 @@ class FDD():
         
         # set up grid
         grid_x = np.meshgrid(*[np.arange(0, xmax[i], self.resolution) for i in reversed(range(self.X.shape[1]))])
+
+
         grid_x = np.stack(grid_x, axis = -1)
         if self.Y.ndim > 1: # account for vector-valued outcomes
             grid_y = np.zeros(list(grid_x.shape[:-1]) + [self.Y.shape[1]])

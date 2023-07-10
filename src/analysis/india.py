@@ -187,20 +187,49 @@ if __name__ == '__main__':
     # get before bounding box
     bbox = before.total_bounds
     
-    # get shops data
-    def getOsmData(bbox):
-        reload_osm = False
-        if reload_osm:
-            # get India data
-            # fp = get_data("India")
 
-            # Initialize the OSM object 
-            osm = pyrosm.OSM(os.path.join(data_in, 'india', 'india-220101.osm.pbf'), bounding_box=list(bbox))
+    reload_osm = False
+    
+    fn_json = os.path.join(data_out, 'india', 'shops_india.geojson')
 
-            # filter on shops
-            custom_filter = {"shop": True}
-            pois = osm.get_pois(custom_filter=custom_filter)
-            fn = os.path.join(data_in, 'india', "india_shops.geojson")
-            pois.to_file(fn, driver="GeoJSON")
-        else:
-            pois = gpd.read_file(fn)
+
+    if reload_osm:
+        # get India data
+        # fp = get_data("India")
+        
+        fn = os.path.join(data_in, 'india', 'india-220101.osm.pbf')
+        fn_osm = os.path.join(data_in, 'india', 'india-220101.osm')
+        fn_shops = os.path.join(data_out, 'india', 'shops_india.osm')
+
+        
+        # Separate out the bounding box values
+        left = bbox[0]
+        bottom = bbox[1]
+        right = bbox[2]
+        top = bbox[3]
+
+        # Construct the osmosis command
+        osmosis_command = f"osmosis --read-pbf '{fn}' --bounding-box top={top} left={left} bottom={bottom} right={right} --write-xml '{fn_osm}'"
+        
+        os.system(osmosis_command)
+
+        osmfilter_command = f"osmfilter '{fn_osm}' --keep=\"shop=*\" -o='{fn_shops}'"
+
+        # Execute the command
+        os.system(osmfilter_command)
+        
+        osmconvert_command = f"osmconvert '{fn_shops}' -o='{fn_shops+'.pbf'}'"
+        os.system(osmconvert_command)
+
+
+        osmium_command = f"osmium export '{fn_shops}' -o '{fn_json}'"
+        os.system(osmium_command)
+
+    else:
+        shops = gpd.read_file(fn_json)
+        shops = shops.to_crs("epsg:3587")
+        p = shops.plot()
+        ctx.add_basemap(p, source=ctx.providers.Stamen.TonerLite)
+        
+    # plot bbox
+    

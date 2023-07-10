@@ -1,0 +1,25 @@
+Setting default log level to "WARN".
+To adjust logging level use sc.setLogLevel(newLevel). For SparkR, use setLogLevel(newLevel).
+23/07/09 23:00:34 WARN NativeCodeLoader: Unable to load native-hadoop library for your platform... using builtin-java classes where applicable
+running osm
+Traceback (most recent call last):
+  File "/Users/davidvandijcke/Dropbox (University of Michigan)/rdd/code/fdd/src/analysis/india.py", line 202, in <module>
+    pois = osm.get_pois(custom_filter=custom_filter)
+  File "/Users/davidvandijcke/miniconda3/envs/myenv/lib/python3.9/site-packages/pyrosm/pyrosm.py", line 576, in get_pois
+    gdf = get_poi_data(
+  File "/Users/davidvandijcke/miniconda3/envs/myenv/lib/python3.9/site-packages/pyrosm/pois.py", line 38, in get_poi_data
+    gdf = prepare_geodataframe(
+  File "pyrosm/frames.pyx", line 134, in pyrosm.frames.prepare_geodataframe
+  File "pyrosm/frames.pyx", line 141, in pyrosm.frames.prepare_geodataframe
+  File "pyrosm/frames.pyx", line 103, in pyrosm.frames.prepare_way_gdf
+  File "/Users/davidvandijcke/miniconda3/envs/myenv/lib/python3.9/site-packages/geopandas/geodataframe.py", line 191, in __init__
+    self.set_geometry(geometry, inplace=True, crs=crs)
+  File "/Users/davidvandijcke/miniconda3/envs/myenv/lib/python3.9/site-packages/geopandas/geodataframe.py", line 348, in set_geometry
+    level = _ensure_geometry(level, crs=crs)
+  File "/Users/davidvandijcke/miniconda3/envs/myenv/lib/python3.9/site-packages/geopandas/geodataframe.py", line 56, in _ensure_geometry
+    out = from_shapely(np.asarray(data), crs=crs)
+  File "/Users/davidvandijcke/miniconda3/envs/myenv/lib/python3.9/site-packages/geopandas/array.py", line 158, in from_shapely
+    return GeometryArray(vectorized.from_shapely(data), crs=crs)
+  File "/Users/davidvandijcke/miniconda3/envs/myenv/lib/python3.9/site-packages/geopandas/_vectorized.py", line 148, in from_shapely
+    raise TypeError("Input must be valid geometry objects: {0}".format(geom))
+TypeError: Input must be valid geometry objects: POLYGON ((77.088 28.48, 77.088 28.48, 77.088 28.48, 77.088 28.48, 77.088 28.48, 77.088 28.479, 77.089 28.479, 77.089 28.48, 77.089 28.48, 77.089 28.48, 77.089 28.48, 77.089 28.48, 77.089 28.48, 77.088 28.48))
