@@ -5,6 +5,7 @@ import pandas as pd
 import torch 
 from matplotlib import pyplot as plt
 import ray
+from ray import tune
 #import boto3
 import os
 
@@ -78,6 +79,8 @@ if __name__ == "__main__":
     def train(config, jsize, sigma, N, lmbda, nu, S):
         # Here we randomly generate training data.
         X, Y, U = generate2D(jsize=jsize, sigma=sigma, N=N)
+
+        tune.utils.wait_for_gpu(target_util = 0.1, retry = 100000)
 
         if torch.cuda.is_available(): # cuda gpus
             device_id = torch.cuda.current_device() 

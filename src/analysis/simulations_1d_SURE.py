@@ -7,6 +7,7 @@ from matplotlib import pyplot as plt
 import ray
 #import boto3
 import os
+import pickle
 
 def f(x, jumps):
     temp = x**2 + np.sin(10 * x)  # change 10 to any other value to adjust the frequency of oscillation
@@ -16,7 +17,7 @@ def f(x, jumps):
     return temp
 
 # Redefine the function to generate data with larger jumps, with last one going down
-def generate1D(jumps=[(0.2, 0.5), (0.4, 1), (0.6, 1.5), (0.8, -2)], sigma=0.1, N=500):
+def generate1D(jumps=[(0.2, 0.9), (0.4, 1), (0.6, 1.5), (0.8, -2)], sigma=0.1, N=500):
     data = np.random.rand(N)  # draw N 1D points from a uniform
 
     # now sample the function values on the data points
@@ -37,18 +38,23 @@ def generate1D(jumps=[(0.2, 0.5), (0.4, 1), (0.6, 1.5), (0.8, -2)], sigma=0.1, N
 
     return (X, Y, u)
 
+
 if __name__ == "__main__":
-    
+
     #----------------
     # parameters
     #----------------
     sigma=0.05
     S = 32
-    N = 500
-    lmbda = 100
-    nu = 0.0003
-    
-    np.random.seed(0)
+    N = 1000
+    lmbda = 1000
+    nu = 0.02
+    num_samples = 400 # 225 #  400 # 400 # 400 # 200
+    R =  3 # 3 # 3 # 3 # 5
+    num_gpus = 1
+    num_cpus = 2
+
+    np.random.seed(34)
     # Generate data with reduced noise
     X, Y, u = generate1D(sigma=0.05, N=N)
 
@@ -58,26 +64,16 @@ if __name__ == "__main__":
     Y_sorted = Y[sort_inds]
     u_sorted = u[sort_inds]
 
-    # Plot
-    plt.figure(figsize=(10,6))
-    plt.plot(X_sorted, u_sorted, 'r-', label='True function')
-    plt.scatter(X_sorted, Y_sorted, s=10, label='Noisy samples')
-    plt.legend()
-    plt.xlabel('x')
-    plt.ylabel('y')
-    plt.show()
-    
-    resolution = 1/int(Y.size*2/3)
+
+    resolution = 1/int(Y.size*0.25)
     model = FDD(Y, X, level = S, lmbda = lmbda, nu = nu, iter = 10000, tol = 5e-5, resolution=resolution,
         pick_nu = "MS", scaled = True, scripted = False)
-    
+
     u, jumps, J_grid, nrj, eps, it = model.run()
-    
-    plt.scatter(model.grid_x, u, s=1)
-    plt.plot(model.grid_x, u, '-o', markersize=1, label='True function')
-    
-    
-    jumplocs = np.where(J_grid==1)[0] / J_grid.size
-    for xc in jumplocs.tolist():
-        print(xc)
-        plt.axvline(x=xc, color='r', linestyle='--')
+
+    res = SURE(tuner=True, num_samples=num_samples, model=model, R=R, 
+        num_gpus=num_gpus, num_cpus=num_cpus)
+
+    file_name = '1D_SURE.pkl'
+    with open(file_name, 'wb') as file:
+        pickle.dump(res, file)
