@@ -525,7 +525,7 @@ class FDD():
         
                 # scale u back to get correct jump sizes
         if not self.image:
-            u = u * np.max(self.Y_raw, axis = -1)
+            u = u * np.max(self.Y_raw, axis = -1)  + np.min(self.Y_raw, axis = -1)
         
         return (u, jumps, J_grid, nrj, eps, it)
     
