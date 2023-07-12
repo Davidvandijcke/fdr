@@ -58,9 +58,9 @@ if __name__ == "__main__":
     import sys
     old_stdout = sys.stdout
 
-    log_file = open("message.log","w")
+    # log_file = open("message.log","w")
 
-    sys.stdout = log_file
+    # sys.stdout = log_file
 
     #-------------
     # parameters
@@ -71,16 +71,17 @@ if __name__ == "__main__":
     num_samples = 400 #  400 # 400 # 200
     num_sims = 100 # 100 # 100 # 100
     R = 3 #  3 # 3 # 5
-    num_gpus = 0.25
-    num_cpus = 8
+    num_gpus = 1
+    num_cpus = 2
     fdate = "2022-06-23"
 
     @ray.remote(num_gpus=num_gpus, num_cpus=num_cpus)  # This decorator indicates that this function will be distributed, with each task using one GPU.
     def train(config, jsize, sigma, N, lmbda, nu, S):
         # Here we randomly generate training data.
         X, Y, U = generate2D(jsize=jsize, sigma=sigma, N=N)
+        
+        #tune.utils.wait_for_gpu(target_util = 0.1, retry = 100000)
 
-        tune.utils.wait_for_gpu(target_util = 0.1, retry = 100000)
 
         if torch.cuda.is_available(): # cuda gpus
             device_id = torch.cuda.current_device() 
@@ -90,8 +91,8 @@ if __name__ == "__main__":
         elif torch.backends.mps.is_available(): # mac gpus
             device = torch.device("mps")
             
-        resolution = 1/int(np.sqrt(N*2/3))
-        model = FDD(Y, X, level = S, lmbda = lmbda, nu = nu, iter = 50000, tol = 1e-6, resolution=resolution,
+        resolution = 1/int(np.sqrt(N*0.25))
+        model = FDD(Y, X, level = S, lmbda = lmbda, nu = nu, iter = 100000, tol = 1e-5, resolution=resolution,
                 pick_nu = "MS", scaled = True, scripted = False)
         
         u, jumps, J_grid, nrj, eps, it = model.run()
@@ -191,11 +192,11 @@ if __name__ == "__main__":
         dflist.append(temp)
         
         # save to s3
-        temp.to_csv( "/home/dvdijcke/data/out/simulations/2022-07-07/" + str(sigma) + "_jsize_" + str(jsize) + ".csv", index=False)
+        temp.to_csv("/home/dvdijcke/data/out/simulations/2022-07-07/" + str(sigma) + "_jsize_" + str(jsize) + ".csv", index=False)
         print(f"Done with sigma {sigma}, jump size {jsize}")
             
-    sys.stdout = old_stdout
-    log_file.close()
+    # sys.stdout = old_stdout
+    # log_file.close()
 
     total = pd.concat(dflist)
     #total.to_csv("s3://ipsos-dvd/fdd/data/" + fdate + "/simulations_2d.csv", index = False)
