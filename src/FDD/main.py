@@ -49,6 +49,7 @@ class FDD():
         else:
             self.normalizeData() # scale data to unit hypercube
             self.castDataToGrid()
+            self.grid_y = (self.grid_y - np.min(self.grid_y)) / np.max(self.grid_y)
         
         # if pick_nu == "auto":
         #     u_diff = self.forward_differences(self.grid_y, D = len(self.grid_y.shape))
@@ -76,20 +77,20 @@ class FDD():
 
     def normalizeData(self):
         
-        min_y = np.min(self.Y, axis = 0)
+        #min_y = np.min(self.Y, axis = 0)
         min_x = np.min(self.X, axis = 0)
         
-        self.Y = self.Y - min_y # start at 0
+        # self.Y = self.Y - min_y # start at 0
         self.X = self.X - min_x
         
-        max_y = np.max(self.Y, axis = 0)
+        # max_y = np.max(self.Y, axis = 0)
         if self.rectangle: # retain proportions between data -- should be used when units are identical along all axes
             max_x = np.max(self.X)
-            self.Y = self.Y / max_y
+            # self.Y = self.Y / max_y
             self.X = self.X / max_x
         else: # else scale to square
             max_x = np.max(self.X, axis = 0)
-            self.Y = self.Y / max_y
+            # self.Y = self.Y / max_y
             self.X = self.X / max_x
             
     def castImageToGrid(self):
@@ -217,7 +218,7 @@ class FDD():
         
 
         # Divide the grid_y by the counts to get the average values
-        grid_y = np.divide(grid_y, counts, where=counts != 0, out=grid_y)
+        grid_y = np.divide(grid_y, counts, where=counts != 0)
 
         # Find the closest data point for empty grid cells
         empty_cells = np.where(counts == 0)
@@ -405,7 +406,7 @@ class FDD():
                         
 
                 # append to lists
-                Y_boundary.append(1)
+                Y_boundary.append((jumpfrom + jumpto) / 2)
                 Y_jumpfrom.append(Yjumpfrom)
                 Y_jumpto.append(Yjumpto)
                 Y_jumpsize.append(Yjumpto - Yjumpfrom)
@@ -464,9 +465,9 @@ class FDD():
         J_grid = (u_norm >= nu).astype(int)
         
                 
-        # scale u back to get correct jump sizes
-        if not self.image:
-            u = u * np.max(self.Y_raw, axis = 0) + np.min(self.Y_raw, axis = 0)
+        # # scale u back to get correct jump sizes
+        # if not self.image:
+        #     u = u * np.max(self.Y_raw, axis = 0) + np.min(self.Y_raw, axis = 0)
         
         ## find the boundary on the point cloud
         jumps = self.boundaryGridToData(J_grid, u, self.average)
@@ -524,8 +525,8 @@ class FDD():
         J_grid, jumps = self.boundary(u)
         
                 # scale u back to get correct jump sizes
-        if not self.image:
-            u = u * np.max(self.Y_raw, axis = -1)  + np.min(self.Y_raw, axis = -1)
+        # if not self.image:
+        #     u = u * np.max(self.Y_raw, axis = -1)  + np.min(self.Y_raw, axis = -1)
         
         return (u, jumps, J_grid, nrj, eps, it)
     

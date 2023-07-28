@@ -178,9 +178,9 @@ for i in range(data.shape[0]):
         grid_sample[i] = f(data[i,0], data[i,1]) + np.random.normal(0, 0.01)
 
 X = data.copy()
-Y = grid_sample.copy().flatten()
+Y = grid_sample.copy().flatten() * 10
 # and run the FDD command
-resolution = 1/int(np.sqrt(2/3*X.size))
+resolution = 1/int(np.sqrt(1/2*X.size))
 model = FDD(Y, X, level = 16, lmbda = 120, nu = 0.0025, iter = 5000, tol = 5e-5, qtile = 0.08,
             pick_nu = "MS", scaled = True, scripted = False, resolution=resolution)
 
@@ -188,7 +188,7 @@ import time
 
     
 # model.getNearestPoint = MethodType(getNearestPoint, model)
-# model.explore = MethodType(explore, model)
+# model.explore = MethodType(explore, model) 
 #res = SURE(model, tuner = True, num_gpus=0)
 
 u, jumps, J_grid, nrj, eps, it = model.run()
