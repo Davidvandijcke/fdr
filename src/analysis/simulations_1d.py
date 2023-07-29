@@ -55,7 +55,7 @@ if __name__ == "__main__":
     num_gpus = 1
     num_cpus = 2
     
-    N_list = [100, 200, 500, 5000]
+    N_list = [100, 500, 1000, 10000]
     N_sure = max(N_list)
     S = 32
     num_samples = 400 #  400 # 400 # 200

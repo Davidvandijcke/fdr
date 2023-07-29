@@ -47,9 +47,9 @@ class FDD():
             self.castImageToGrid()
             
         else:
-            self.normalizeData() # scale data to unit hypercube
+            # self.normalizeData() # scale data to unit hypercube
             self.castDataToGrid()
-            self.grid_y = (self.grid_y - np.min(self.grid_y)) / np.max(self.grid_y)
+            self.grid_y = (self.grid_y - np.min(self.Y_raw, axis=0)) / np.max(self.Y_raw, axis=0)
         
         # if pick_nu == "auto":
         #     u_diff = self.forward_differences(self.grid_y, D = len(self.grid_y.shape))
@@ -354,7 +354,7 @@ class FDD():
 
                 # jumpfrom point
                 origin_points = np.stack(origin_points).squeeze()
-                if origin_points.ndim > 1: # if there are multiple points in the hypervoxel, take the mean
+                if (origin_points.ndim > 1) | ((origin_points.ndim == 1) and (origin_points.shape[0] > 1)): # if there are multiple points in the hypervoxel, take the mean
                     jumpfrom = np.mean(origin_points, axis = 0)
                 else:
                     jumpfrom = origin_points
@@ -384,7 +384,7 @@ class FDD():
                         dest_points = self.grid_x[tuple(neighbors[idx])] + self.resolution / 2
                     dest_points = np.stack(dest_points).squeeze()
                     
-                    if dest_points.ndim > 1: # if there are multiple points in the hypervoxel, take the mean
+                    if (dest_points.ndim > 1) or ((dest_points.ndim == 1) and (dest_points.shape[0] > 1)): # if there are multiple points in the hypervoxel, take the mean
                         jumpto = np.mean(dest_points, axis = 0)
                     else:
                         jumpto = dest_points
@@ -465,9 +465,9 @@ class FDD():
         J_grid = (u_norm >= nu).astype(int)
         
                 
-        # # scale u back to get correct jump sizes
-        # if not self.image:
-        #     u = u * np.max(self.Y_raw, axis = 0) + np.min(self.Y_raw, axis = 0)
+        # scale u back to get correct jump sizes
+        if not self.image:
+            u = u * np.max(self.Y_raw, axis = 0) + np.min(self.Y_raw, axis = 0)
         
         ## find the boundary on the point cloud
         jumps = self.boundaryGridToData(J_grid, u, self.average)
@@ -524,9 +524,9 @@ class FDD():
         
         J_grid, jumps = self.boundary(u)
         
-                # scale u back to get correct jump sizes
-        # if not self.image:
-        #     u = u * np.max(self.Y_raw, axis = -1)  + np.min(self.Y_raw, axis = -1)
+        # scale u back to get correct jump sizes
+        if not self.image:
+            u = u * np.max(self.Y_raw, axis = -1)  + np.min(self.Y_raw, axis = -1)
         
         return (u, jumps, J_grid, nrj, eps, it)
     
