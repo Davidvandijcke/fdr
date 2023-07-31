@@ -124,7 +124,7 @@ if __name__ == "__main__":
     #         print("Running SURE")
     #         # run SURE once for largest N
     #         X, Y, U = generate2D(jsize, sigma=sigma, N=N_sure)
-    #         resolution = 1/int(np.sqrt(2/3*N_sure))
+    #         resolution = 1/int(np.sqrt(0.1*N_sure))
     #         model = FDD(Y, X, level = S, lmbda = 20, nu = 0.01, iter = 10000, tol = 5e-6, pick_nu = "MS", 
     #                     scaled = True, resolution=resolution, average=True)
     #         res = SURE(tuner=True, num_samples=num_samples, model=model, R=R, 
