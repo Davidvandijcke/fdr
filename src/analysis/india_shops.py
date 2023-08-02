@@ -372,6 +372,11 @@ if __name__ == '__main__':
     # calculate total pings
     
     
+    #---------------------
+    merged = gpd.read_file(os.path.join(data_out, 'india', 'rajasatan_cheating_shops_merged_40K.geojson'), driver='GeoJSON')
+
+    
+    
     
     
     
@@ -409,6 +414,9 @@ if __name__ == '__main__':
     ax.set_xlim(xlim)
     ax.set_ylim(ylim)
     ax.axis("equal")
+    
+    
+    
         # Create a custom colorbar
     norm = mpl.colors.Normalize()
     cbar = plt.cm.ScalarMappable(norm=norm, cmap='coolwarm')

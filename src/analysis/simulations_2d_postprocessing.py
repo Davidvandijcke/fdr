@@ -113,12 +113,12 @@ if __name__ == "__main__":
     # overleaf synced dropbox folder (change to your own overleaf path)
     ovrlf = "/Users/davidvandijcke/Dropbox (University of Michigan)/Apps/Overleaf/rdd/"
     tabs_dir = os.path.join(ovrlf, "tabs")
-    figs_dir = os.path.join(ovrlf, "figs")
+    figs_dir = os.path.join(ovrlf, "figs") 
     
     # pull data from S3
 
     # run the command string in cli
-    fn = "2022-06-28"
+    fn = "2022-07-31"
     ffrom = f"'s3://ipsos-dvd/fdd/data/{fn}/'"
     fto = f"'/Users/davidvandijcke/Dropbox (University of Michigan)/rdd/data/out/simulations/{fn}/'"
     #!aws s3 sync $ffrom $fto --profile ipsos

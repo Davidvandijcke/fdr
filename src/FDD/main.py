@@ -47,7 +47,7 @@ class FDD():
             self.castImageToGrid()
             
         else:
-            # self.normalizeData() # scale data to unit hypercube
+            self.normalizeData() # scale data to unit hypercube
             self.castDataToGrid()
             self.grid_y = (self.grid_y - np.min(self.Y_raw, axis=0)) / np.max(self.Y_raw, axis=0)
         
@@ -449,9 +449,18 @@ class FDD():
         
         nu = X1[kmeans.labels_ == 1].max()
         return nu
+    
+    def adjustBoundary(self, u, J_grid):
+        for k in range(1, len(J_grid) - 1):
+            if J_grid[k] == 1:
+                if (J_grid[k-1] == 0) and (J_grid[k+1]==1):
+                    u[k] = u[k-1]
+                    J_grid[k] = 0
+        return (u, J_grid)
+        
         
     def boundary(self, u):
-        
+
         u_diff = self.forward_differences(u, D = len(u.shape))
         # u_diff = u_diff / self.resolution # scale FD by side length
         u_norm = np.linalg.norm(u_diff, axis = 0, ord = 2) # 2-norm
@@ -460,23 +469,28 @@ class FDD():
             nu = self.pickKMeans(u_norm)
         else:
             nu = np.sqrt(self.nu)
-        
+
+
         # find the boundary on the grid by comparing the gradient norm to the threshold
         J_grid = (u_norm >= nu).astype(int)
-        
-                
+
+        # adjust boundary in 1D
+        if J_grid.ndim == 1:
+            u, J_grid = self.adjustBoundary(u, J_grid)
+
+
         # scale u back to get correct jump sizes
         if not self.image:
             u = u * np.max(self.Y_raw, axis = 0) + np.min(self.Y_raw, axis = 0)
-        
+
         ## find the boundary on the point cloud
         jumps = self.boundaryGridToData(J_grid, u, self.average)
-        
+
         # test_grid = np.zeros(self.grid_y.shape)
         # for row in jumps:
         #     test_grid[tuple(row)[:-2]] = 1
 
-        return (J_grid, jumps)
+        return (u, J_grid, jumps)
     
     #def treatmentEffects(self, u, J):
         
@@ -522,11 +536,7 @@ class FDD():
         u = self.isosurface(v) 
         
         
-        J_grid, jumps = self.boundary(u)
-        
-        # scale u back to get correct jump sizes
-        if not self.image:
-            u = u * np.max(self.Y_raw, axis = -1)  + np.min(self.Y_raw, axis = -1)
+        u, J_grid, jumps = self.boundary(u)
         
         return (u, jumps, J_grid, nrj, eps, it)
     

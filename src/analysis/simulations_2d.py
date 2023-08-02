@@ -65,15 +65,15 @@ if __name__ == "__main__":
     #-------------
     # parameters
     #-------------
-    N_list = [100, 500, 1000, 10000]
+    N_list = [1000, 5000, 10000]
     N_sure = max(N_list)
     S = 32
-    num_samples = 400 #  400 # 400 # 200
-    num_sims = 100 # 100 # 100 # 100
+    num_samples = 400 # 400 # 200
+    num_sims = 20 # 100 # 100
     R = 3 #  3 # 3 # 5
     num_gpus = 1
-    num_cpus = 2
-    fdate = "2022-06-23"
+    num_cpus = 4
+    fdate = "2022-07-31"
 
     @ray.remote(num_gpus=num_gpus, num_cpus=num_cpus)  # This decorator indicates that this function will be distributed, with each task using one GPU.
     def train(config, jsize, sigma, N, lmbda, nu, S):
@@ -91,8 +91,8 @@ if __name__ == "__main__":
         elif torch.backends.mps.is_available(): # mac gpus
             device = torch.device("mps")
             
-        resolution = 1/int(np.sqrt(N*0.25))
-        model = FDD(Y, X, level = S, lmbda = lmbda, nu = nu, iter = 100000, tol = 1e-5, resolution=resolution,
+        resolution = 1/int(np.sqrt(N*0.05))
+        model = FDD(Y, X, level = S, lmbda = lmbda, nu = nu, iter = 100000, tol = 5e-5, resolution=resolution,
                 pick_nu = "MS", scaled = True, scripted = False)
         
         u, jumps, J_grid, nrj, eps, it = model.run()
@@ -110,93 +110,93 @@ if __name__ == "__main__":
         return temp
 
     
-    # dflist = []
-
-    # for sigma in [0.05]: #, 0.05]:
-        
-    #     # calculate Cohen's d jump sizes
-    #     X, Y, U = generate2D(jsize = 0, sigma=sigma, N=N_sure)
-    #     std = np.std(Y)
-    #     jsizes = np.array([0.75]) * std
-
-    #     for jsize in jsizes: # , 0.2, 0.5]:
-
-    #         print("Running SURE")
-    #         # run SURE once for largest N
-    #         X, Y, U = generate2D(jsize, sigma=sigma, N=N_sure)
-    #         resolution = 1/int(np.sqrt(0.1*N_sure))
-    #         model = FDD(Y, X, level = S, lmbda = 20, nu = 0.01, iter = 10000, tol = 5e-6, pick_nu = "MS", 
-    #                     scaled = True, resolution=resolution, average=True)
-    #         res = SURE(tuner=True, num_samples=num_samples, model=model, R=R, 
-    #                 num_gpus=num_gpus, num_cpus=num_cpus)
-    #         best = res.get_best_result(metric = "score", mode = "min")
-
-    #         config = best.metrics['config']
-    #         lmbda, nu = config['lmbda'], config['nu']
-            
-    #         # lmbda = 120
-    #         # nu = 0.0016
-    #         # model.lmbda = lmbda
-    #         # model.nu = nu
-    #         # model.tol = 5e-6
-    #         # u, jumps, J_grid, nrj, eps, it = model.run()
-    #         # temp = pd.DataFrame(jumps)
-    #         # temp['Y_jumpsize'].abs().mean()
-            
-    #         # plt.hist(temp['Y_jumpsize'])
-    #         # plt.show()
-            
-    #         # test = temp[temp['Y_jumpsize'].abs() < 0.02]
-    #         # plt.scatter(test['X_0'], test['X_1'], color = "blue")
-    #         # test = temp[temp['Y_jumpsize'].abs() > 0.02]
-    #         # plt.scatter(test['X_0'], test['X_1'], color = "red")
-
-    #         print("Running simulations")
-    #         sims = list(range(num_sims))  # 100 simulations
-    #         results = ray.get([train.remote(config, jsize, sigma, N, lmbda, nu, S) for config in sims for N in N_list])
-
-    #         temp = pd.concat(results)
-    #         dflist.append(temp)
-    #         temp.to_csv("/home/dvdijcke/data/out/simulations/" + fdate + "/simulations_2d_sigma_" + str(sigma) + "_jsize_" + str(jsize) + ".csv", index=False)
-            
-    #         print(f"Done with sigma {sigma}, jump size {jsize}")
-            
     dflist = []
-    
-    # get file names in s3 folder s3://ipsos-dvd/fdd/data/2022-06-09/    
-    # s3 = boto3.resource('s3')
-    # bucket = s3.Bucket('ipsos-dvd')
-    # objs = bucket.objects.filter(Prefix="fdd/data/2022-06-09/")
-    
-    # get file names in folder /home/dvdijcke/data/out/simulations/2022-06-28/
-    fn = "/home/dvdijcke/data/out/simulations/2022-06-28/"
-    files = os.listdir(fn)
-    
-    # loop over sigmas, jzies and files and run the simulations but not the SURE
-    for file in files:
-  
-        # load files
-        df = pd.read_csv(fn + file)
-        
-        # get parameters
-        lmbda = df['lambda'].iloc[0]
-        nu = df['nu'].iloc[0]
-        jsize = df['alpha'].iloc[0]
-        sigma = df['sigma'].iloc[0]
-        
-        print("Running simulations")
-        sims = list(range(num_sims))  # 100 simulations
-        results = ray.get([train.remote(config, jsize, sigma, N, lmbda, nu, S) for config in sims for N in N_list])
-            
-        temp = pd.concat(results)
-        dflist.append(temp)
-        
-        # save to s3
-        temp.to_csv("/home/dvdijcke/data/out/simulations/2022-07-07/" + str(sigma) + "_jsize_" + str(jsize) + ".csv", index=False)
-        print(f"Done with sigma {sigma}, jump size {jsize}")
-            
-    # sys.stdout = old_stdout
-    # log_file.close()
 
-    total = pd.concat(dflist)
+    for sigma in [0.05]: #, 0.05]:
+        
+        # calculate Cohen's d jump sizes
+        X, Y, U = generate2D(jsize = 0, sigma=sigma, N=N_sure)
+        std = np.std(Y)
+        jsizes = np.array([0.25, 0.5, 0.75]) * std
+
+        for jsize in jsizes: # , 0.2, 0.5]:
+
+            print("Running SURE")
+            # run SURE once for largest N
+            X, Y, U = generate2D(jsize, sigma=sigma, N=N_sure)
+            resolution = 1/int(np.sqrt(0.05*N_sure))
+            model = FDD(Y, X, level = S, lmbda = 20, nu = 0.01, iter = 10000, tol = 5e-5, pick_nu = "MS", 
+                        scaled = True, resolution=resolution, average=True)
+            res = SURE(tuner=True, num_samples=num_samples, model=model, R=R, 
+                    num_gpus=num_gpus, num_cpus=num_cpus)
+            best = res.get_best_result(metric = "score", mode = "min")
+
+            config = best.metrics['config']
+            lmbda, nu = config['lmbda'], config['nu']
+            
+            # lmbda = 120
+            # nu = 0.0016
+            # model.lmbda = lmbda
+            # model.nu = nu
+            # model.tol = 5e-6
+            # u, jumps, J_grid, nrj, eps, it = model.run()
+            # temp = pd.DataFrame(jumps)
+            # temp['Y_jumpsize'].abs().mean()
+            
+            # plt.hist(temp['Y_jumpsize'])
+            # plt.show()
+            
+            # test = temp[temp['Y_jumpsize'].abs() < 0.02]
+            # plt.scatter(test['X_0'], test['X_1'], color = "blue")
+            # test = temp[temp['Y_jumpsize'].abs() > 0.02]
+            # plt.scatter(test['X_0'], test['X_1'], color = "red")
+
+            print("Running simulations")
+            sims = list(range(num_sims))  # 100 simulations
+            results = ray.get([train.remote(config, jsize, sigma, N, lmbda, nu, S) for config in sims for N in N_list])
+
+            temp = pd.concat(results)
+            dflist.append(temp)
+            temp.to_csv("/home/dvdijcke/data/out/simulations/" + fdate + "/simulations_2d_sigma_" + str(sigma) + "_jsize_" + str(jsize) + ".csv", index=False)
+            
+            print(f"Done with sigma {sigma}, jump size {jsize}")
+            
+    # dflist = []
+    
+    # # get file names in s3 folder s3://ipsos-dvd/fdd/data/2022-06-09/    
+    # # s3 = boto3.resource('s3')
+    # # bucket = s3.Bucket('ipsos-dvd')
+    # # objs = bucket.objects.filter(Prefix="fdd/data/2022-06-09/")
+    
+    # # get file names in folder /home/dvdijcke/data/out/simulations/2022-06-28/
+    # fn = "/home/dvdijcke/data/out/simulations/2022-06-28/"
+    # files = os.listdir(fn)
+    
+    # # loop over sigmas, jzies and files and run the simulations but not the SURE
+    # for file in files:
+  
+    #     # load files
+    #     df = pd.read_csv(fn + file)
+        
+    #     # get parameters
+    #     lmbda = df['lambda'].iloc[0]
+    #     nu = df['nu'].iloc[0]
+    #     jsize = df['alpha'].iloc[0]
+    #     sigma = df['sigma'].iloc[0]
+        
+    #     print("Running simulations")
+    #     sims = list(range(num_sims))  # 100 simulations
+    #     results = ray.get([train.remote(config, jsize, sigma, N, lmbda, nu, S) for config in sims for N in N_list])
+            
+    #     temp = pd.concat(results)
+    #     dflist.append(temp)
+        
+    #     # save to s3
+    #     temp.to_csv("/home/dvdijcke/data/out/simulations/2022-07-07/" + str(sigma) + "_jsize_" + str(jsize) + ".csv", index=False)
+    #     print(f"Done with sigma {sigma}, jump size {jsize}")
+            
+    # # sys.stdout = old_stdout
+    # # log_file.close()
+
+    # total = pd.concat(dflist)
     #total.to_csv("s3://ipsos-dvd/fdd/data/" + fdate + "/simulations_2d.csv", index = False)

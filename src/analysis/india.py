@@ -79,6 +79,12 @@ def cast_to_grid(df, meters=5000):
 
 if __name__ == '__main__':
     
+    #-------
+    # parameters
+    six = False
+    
+    #-------
+    
     #spend_list = [spend_dir + "m=" + str(x) + "/" for x in [9,10]]
     
     dir = os.path.dirname(os.path.realpath(__file__))
@@ -89,6 +95,15 @@ if __name__ == '__main__':
     data_in = os.path.join(main_dir, 'data', 'in')    
     data_out = os.path.join(main_dir, 'data', 'out')  
     
+    if six:
+        start = 18
+        end = 24
+        after6 = "_after6"
+    else:
+        start = 6
+        end = 18
+        after6 = ""
+    
     redo_merge = False
     if redo_merge:
         #---
@@ -96,14 +111,14 @@ if __name__ == '__main__':
         fn_india = os.path.join(data_in, 'india', 'rajasatan_sundays_sep_2021')
         cheatdate =  "2021-09-26"
         #---
-        
+    
         df = spark.read.parquet(fn_india)
         
         ## day of cheating
         df = df.filter(F.to_date(df.date) == cheatdate) # day of cheating shutdown
-        df = df.filter(F.hour(df.date).between(18,24)) # time of cheating shutdown
+        df = df.filter(F.hour(df.date).between(start,end)) # time of cheating shutdown
         
-        fn = os.path.join(data_out, 'india', 'rajasatan_cheating_after6')
+        fn = os.path.join(data_out, 'india', 'rajasatan_cheating' + after6)
         df.repartition(1).write.mode("overwrite").csv(fn, header=True, compression="gzip")
         
         # read csv file inside fn folder
@@ -116,9 +131,9 @@ if __name__ == '__main__':
         df = spark.read.parquet(fn_india)
 
         df = df.filter(F.to_date(df.date) != cheatdate) # day before cheating shutdown
-        df = df.filter(F.hour(df.date).between(18,24)) # time of cheating shutdown
+        df = df.filter(F.hour(df.date).between(start,end)) # time of cheating shutdown
         
-        fn = os.path.join(data_out, 'india', 'rajasatan_cheating_before_after6')
+        fn = os.path.join(data_out, 'india', 'rajasatan_cheating_before' + after6)
         df.repartition(1).write.mode("overwrite").csv(fn, header=True, compression="gzip")
         
         # read csv file inside fn folder
@@ -126,7 +141,6 @@ if __name__ == '__main__':
         csv_files = [os.path.join(fn, file) for file in files_in_directory if file.endswith(".csv.gz")]
         before = pd.read_csv(*csv_files, compression="gzip")
 
-        
         
         # convert to geopandas
         gdf = gpd.GeoDataFrame(cheat, geometry=gpd.points_from_xy(cheat.longitude, cheat.latitude))
@@ -159,11 +173,11 @@ if __name__ == '__main__':
 
         merged = gpd.GeoDataFrame(merged, geometry=merged.geometry)
         
-        fn_merged = os.path.join(data_out, 'india', 'rajasatan_cheating_grid_after6.geojson')
+        fn_merged = os.path.join(data_out, 'india', 'rajasatan_cheating_grid' + after6 + '.geojson')
         merged.to_file(fn_merged, driver='GeoJSON')
 
     else:
-        fn_merged = os.path.join(data_out, 'india', 'rajasatan_cheating_grid_after6.geojson')
+        fn_merged = os.path.join(data_out, 'india', 'rajasatan_cheating_grid' + after6 + '.geojson')
         gdf = gpd.read_file(fn_merged)
         gdf['count_norm'] = gdf['count_norm'] * 100
 

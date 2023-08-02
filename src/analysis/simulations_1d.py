@@ -60,24 +60,14 @@ if __name__ == "__main__":
     #----------------
     # parameters
     #----------------
-    sigma=0.05
-    S = 32
-    N = 1000
-    lmbda = 1000
-    nu = 0.02
-    num_samples = 2 # 225 #  400 # 400 # 400 # 200
-    R =  1 # 3 # 3 # 3 # 5
-    num_gpus = 1
-    num_cpus = 2
-    
     N_list = [500, 1000, 5000]
     N_sure = max(N_list)
     S = 32
-    num_samples = 225 #  400 # 400 # 200
+    num_samples = 400 #  400 # 400 # 200
     num_sims = 100 # 100 # 100 # 100
     R = 3 #  3 # 3 # 5
     num_gpus = 1
-    num_cpus = 2
+    num_cpus = 4
     fdate = "2022-07-31"
 
     @ray.remote(num_gpus=num_gpus, num_cpus=num_cpus)  # This decorator indicates that this function will be distributed, with each task using one GPU.
@@ -96,7 +86,7 @@ if __name__ == "__main__":
         elif torch.backends.mps.is_available(): # mac gpus
             device = torch.device("mps")
             
-        resolution = 1/int(np.sqrt(N*0.05))
+        resolution = 1/int(N*0.05)
         model = FDD(Y, X, level = S, lmbda = lmbda, nu = nu, iter = 100000, tol = 5e-5, resolution=resolution,
                 pick_nu = "MS", scaled = True, scripted = False)
         
@@ -123,16 +113,19 @@ if __name__ == "__main__":
         print("Running SURE")
         # run SURE once for largest N
         X, Y, U = generate1D(sigma=sigma, N=N_sure)
-        resolution = 1/int(np.sqrt(0.05*N_sure))
+        resolution = 1/int(0.05*N_sure)
         model = FDD(Y, X, level = S, lmbda = 20, nu = 0.01, iter = 10000, tol = 5e-5, pick_nu = "MS", 
                     scaled = True, resolution=resolution, scripted=False)
         res = SURE(tuner=True, num_samples=num_samples, model=model, R=R, 
-                num_gpus=num_gpus, num_cpus=num_cpus)
+                num_gpus=num_gpus, num_cpus=num_cpus, nu_min = 0.0001, nu_max = 0.01)
         best = res.get_best_result(metric = "score", mode = "min")
 
         config = best.metrics['config']
         lmbda, nu = config['lmbda'], config['nu']
         
+        del(model)
+        torch.cuda.empty_cache()
+
         # lmbda = 120
         # nu = 0.0016
         # model.lmbda = lmbda
