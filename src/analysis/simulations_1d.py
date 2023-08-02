@@ -68,7 +68,10 @@ if __name__ == "__main__":
     R = 3 #  3 # 3 # 5
     num_gpus = 1
     num_cpus = 4
-    fdate = "2022-07-31"
+    fdate = "2022-08-02"
+    main_dir = "/home/dvdijcke/"
+    data_out = os.path.join(main_dir, "data", "out")
+    SURE = False
 
     @ray.remote(num_gpus=num_gpus, num_cpus=num_cpus)  # This decorator indicates that this function will be distributed, with each task using one GPU.
     def train(config, sigma, N, lmbda, nu, S):
@@ -116,15 +119,20 @@ if __name__ == "__main__":
         resolution = 1/int(0.05*N_sure)
         model = FDD(Y, X, level = S, lmbda = 20, nu = 0.01, iter = 10000, tol = 5e-5, pick_nu = "MS", 
                     scaled = True, resolution=resolution, scripted=False)
-        res = SURE(tuner=True, num_samples=num_samples, model=model, R=R, 
-                num_gpus=num_gpus, num_cpus=num_cpus, nu_min = 0.0001, nu_max = 0.01)
-        best = res.get_best_result(metric = "score", mode = "min")
-
-        config = best.metrics['config']
-        lmbda, nu = config['lmbda'], config['nu']
         
-        del(model)
-        torch.cuda.empty_cache()
+        if SURE:
+            res = SURE(tuner=True, num_samples=num_samples, model=model, R=R, 
+                    num_gpus=num_gpus, num_cpus=num_cpus, nu_min = 0.0001, nu_max = 0.01)
+            best = res.get_best_result(metric = "score", mode = "min")
+
+            config = best.metrics['config']
+            lmbda, nu = config['lmbda'], config['nu']
+        
+            del(model)
+            torch.cuda.empty_cache()
+        else:
+            df = pd.read_csv(os.path.join(data_out, "simulations", "2022-07-31", "simulations_1d_sigma_0.05.csv"))
+            lmbda, nu, sigma, S = df[['lambda', 'nu', 'sigma', 'S']].loc[0]
 
         # lmbda = 120
         # nu = 0.0016
@@ -149,6 +157,6 @@ if __name__ == "__main__":
 
         temp = pd.concat(results)
         dflist.append(temp)
-        temp.to_csv("/home/dvdijcke/data/out/simulations/" + fdate + "/simulations_1d_sigma_" + str(sigma) + ".csv", index=False)
+        temp.to_csv(os.path.join(data_out, "simulations/" + fdate + "/simulations_1d_sigma_" + str(sigma) + ".csv"), index=False)
         
         print(f"Done with sigma {sigma}")
