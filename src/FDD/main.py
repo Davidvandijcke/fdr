@@ -454,10 +454,11 @@ class FDD():
         for k in range(1, len(J_grid) - 1):
             if J_grid[k] == 1:
                 if (J_grid[k-1] == 0) and (J_grid[k+1]==1):
-                    u[k] = u[k-1]
+                    u[k+1] = u[k].copy()
                     J_grid[k] = 0
         return (u, J_grid)
-        
+    
+
         
     def boundary(self, u):
 

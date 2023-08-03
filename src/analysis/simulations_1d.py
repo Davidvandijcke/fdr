@@ -17,8 +17,9 @@ def ft(x, jumps):
     return temp
 
 # Redefine the function to generate data with larger jumps, with last one going down
-def generate1D(jumps=[(0.2013934, 0.6), (0.4023231, 1), (0.590349, 1.5), (0.7893434, -2)], sigma=0.1, N=500):
-    data = np.random.rand(N)  # draw N 1D points from a uniform
+def generate1D(jumps=[(0.2013934, 0.6), (0.4023231, 1), (0.590349, 1.5), (0.7893434, -2)], sigma=0.1, N=500, data=None):
+    if data is None:
+        data = np.random.rand(N)  # draw N 1D points from a uniform
 
     # now sample the function values on the data points
     grid_f = np.zeros(data.shape)
@@ -27,7 +28,6 @@ def generate1D(jumps=[(0.2013934, 0.6), (0.4023231, 1), (0.590349, 1.5), (0.7893
 
     # Normalize function values to [0, 1]
     grid_f = (grid_f - np.min(grid_f)) / np.max(grid_f)  # - np.min(grid_f))
-    
 
     # now add noise
     grid_sample = grid_f + np.random.normal(loc=0, scale=sigma, size=data.shape)  # add random Gaussian noise
@@ -36,7 +36,7 @@ def generate1D(jumps=[(0.2013934, 0.6), (0.4023231, 1), (0.590349, 1.5), (0.7893
     X = data.copy()
     Y = grid_sample.copy()
     u = grid_f.copy()
-    
+
     return (X, Y, u)
 
 def getOriginalImage(model, jumplocs = [0.2013934, 0.4023231, 0.590349, 0.7893434]):
@@ -46,9 +46,9 @@ def getOriginalImage(model, jumplocs = [0.2013934, 0.4023231, 0.590349, 0.789343
     
     temp_bdy = np.zeros_like(data)
     for jump in jumplocs:
-        temp_bdy += ((data+model.resolution) < jump) * ((np.append(data[1:], 0) + model.resolution) > jump)
+        temp_bdy += ((data+0.5*model.resolution) < jump) * ((np.append(data[1:], 0) + 1.5*model.resolution) > jump)
 
-    x, y, u = generate1D(N = data.size)
+    x, y, u = generate1D(N = data.size, data=data)
 
 
     return u, temp_bdy
@@ -99,8 +99,10 @@ if __name__ == "__main__":
 
         
         mse = np.mean((u - u_original)**2)
-        jump_pos = np.sum(J_grid * (1-J_original)) / np.sum(1-J_original) # false positive rate (significance)
-        jump_neg = np.sum((1-J_grid) * (J_original)) / np.sum(J_original) # false negative rate (1-power)
+        pos =  ((J_original ) * (J_grid+np.append(J_grid[1:],0 ))) # true positive if jump happens in jump pixel or the one next to it
+        neg = (J_original * (1-pos) * J_grid) # negative otherwise
+        jump_pos = np.sum(pos) / np.sum(1-J_original) # false positive rate (significance)
+        jump_neg = np.sum(neg) / np.sum(J_original) # false negative rate (1-power)
         
         temp = pd.DataFrame(jumps)
         temp[['N', 'S', 's', 'sigma', 'lambda', 'nu', 'jump_neg', 

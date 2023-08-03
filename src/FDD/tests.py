@@ -149,7 +149,7 @@ def forward_differences(ubar, D : int):
 
 # Generate some random data points from a discontinuous function
 np.random.seed(0)
-data = np.random.rand(1000, 2) # draw 1000 2D points from a uniform
+data = np.random.rand(50000, 2) # draw 1000 2D points from a uniform
 
 # Create the grid
 # Define the grid dimensions and resolution
@@ -160,12 +160,20 @@ x, y = np.meshgrid(np.arange(xmin, xmax, resolution), np.arange(ymin, ymax, reso
 grid = np.dstack((x, y))
 grid_f = np.zeros(grid.shape[:2])
 
+df = pd.read_csv("/Users/davidvandijcke/Dropbox (University of Michigan)/rdd/data/out/simulations/2022-07-31/simulations_2d_sigma_0.05_jsize_0.11256701161550323.csv")
+
+N = df['N'].max()
+jsize, lmbda, nu = df[['alpha', 'lambda', 'nu']].loc[0]
+jsize = 0.11311710234510926
+lmbda = 50.98361141501264
+nu = 0.0014171440043674144
+
 def f(x,y):
     temp = np.sqrt((x-1/2)**2 + (y-1/2)**2)
     if temp < 1/4:
         return temp
     else:
-        return temp + 0.1066
+        return temp + jsize
 
 # Compute the function values on the grid
 for i in range(grid.shape[0]):
@@ -175,13 +183,16 @@ for i in range(grid.shape[0]):
 # now sample the function values on the data points
 grid_sample = np.zeros((data.shape[0],1))
 for i in range(data.shape[0]):
-        grid_sample[i] = f(data[i,0], data[i,1]) + np.random.normal(0, 0.01)
+        grid_sample[i] = f(data[i,0], data[i,1]) + np.random.normal(0, 0.05)
+        
+
+
 
 X = data.copy()
-Y = grid_sample.copy().flatten() * 10
+Y = grid_sample.copy().flatten() 
 # and run the FDD command
-resolution = 1/int(np.sqrt(1/2*X.size))
-model = FDD(Y, X, level = 16, lmbda = 120, nu = 0.0025, iter = 5000, tol = 5e-5, qtile = 0.08,
+resolution = 1/int(np.sqrt(0.05*X.size))
+model = FDD(Y, X, level = 32, lmbda = lmbda, nu = nu, iter = 5000, tol = 5e-6, qtile = 0.08,
             pick_nu = "MS", scaled = True, scripted = False, resolution=resolution)
 
 import time
@@ -193,70 +204,24 @@ import time
 
 u, jumps, J_grid, nrj, eps, it = model.run()
 
+
+
 temp = pd.DataFrame(jumps)
-temp['Y_jumpsize'].abs().hist(bins=40)
+temp['Y_jumpsize'].hist(bins=40)
 temp['Y_jumpsize'].abs().mean()
 
 np.mean(np.abs(0.125 -  k.abs()))
 
 jsizes = forward_differences(u, D=len(u.shape))
 jsizes = np.linalg.norm(jsizes, axis = 0, ord = 2)
-k = jsizes[J_grid]
+k = jsizes[J_grid==1]
 
 # from itertools import product
 
 test = temp[temp['Y_jumpsize'].abs() > np.sqrt(0.0016)]
 
-# def get_packed_points(J_grid, thick_boundary_points):
-#     dimensions = J_grid.shape
-#     packed_points = np.zeros(dimensions, dtype=int)
-#     shifts = [(0,)*i + (-1,) + (0,)*(len(dimensions)-i-1) for i in range(len(dimensions))] 
-#     shifts.extend((0,)*i + (1,) + (0,)*(len(dimensions)-i-1) for i in range(len(dimensions)))  # rook neighbors
 
-#     for index in np.ndindex(*dimensions):
-#         if thick_boundary_points[index] == 1:
-#             neighbors = [tuple(index[i] + shift[i] for i in range(len(index))) for shift in shifts]
-#             valid_neighbors = [neighbor for neighbor in neighbors if all(0 <= neighbor[i] < dimensions[i] for i in range(len(neighbor)))]
-#             if all(thick_boundary_points[neighbor] == 1 for neighbor in valid_neighbors if J_grid[neighbor] == 1):
-#                 packed_points[index] = 1
-#     return packed_points
 
-# def get_eliminate_points(J_grid, packed_points):
-#     dimensions = J_grid.shape
-#     eliminate_points = np.zeros(dimensions, dtype=int)
-#     shifts = list(product([0, 1], repeat=J_grid.ndim))  # only "down-right" neighbors
-
-#     for index in np.ndindex(*dimensions):
-#         if packed_points[index] == 1:
-#             neighbors = [tuple(index[i] + shift[i] for i in range(len(index))) for shift in shifts]
-#             valid_neighbors = [neighbor for neighbor in neighbors if all(0 <= neighbor[i] < dimensions[i] for i in range(len(neighbor)))]
-#             if any(J_grid[neighbor] == 0 for neighbor in valid_neighbors):
-#                 eliminate_points[index] = 1
-#     return eliminate_points
-
-# def process_thick_boundary_points(J_grid):
-#     while True:
-#         thick_boundary_points = get_thick_boundary_points(J_grid)
-#         if np.sum(thick_boundary_points) == 0:
-#             break
-#         packed_points = get_packed_points(J_grid, thick_boundary_points)
-#         eliminate_points = get_eliminate_points(J_grid, packed_points)
-#         J_grid[eliminate_points == 1] = 0
-#     return J_grid
-
-# pgrid = J_grid.copy()
-# thick = process_thick_boundary_points(pgrid)
-
-# test = get_thick_boundary_points(pgrid)
-
-# plt.imshow(J_grid-thick)
-
-# fig, ax = plt.subplots(1,1)
-# # plot thick on top of J_grid
-# ax.imshow(J_grid, cmap = "gray")
-# test = thick.copy().astype(np.float32)
-# test[test == 0] = np.nan
-# ax.imshow(test, cmap='autumn', interpolation='none')
 
 test = temp[temp['Y_jumpsize'].abs() < 0.04]
 plt.scatter(temp['X_0'], temp['X_1'], c="gray")

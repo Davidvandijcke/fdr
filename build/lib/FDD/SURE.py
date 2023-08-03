@@ -86,7 +86,8 @@ def custom_loguniform(lower=0.001, upper=50, alpha=1.5, beta_b=1, size = 100):
 
     
 def SURE(model, maxiter = 100, R = 1, tuner = False, eps = 0.01, 
-         wavelet = "db1", num_cpus = 4, num_gpus = 1, num_samples = 200):
+         wavelet = "db1", num_cpus = 4, num_gpus = 1, num_samples = 200, 
+         nu_min = 0.001, nu_max=10):
 
     sigma_sq = waveletDenoising(y=model.grid_y, wavelet=wavelet)
     N = model.grid_y.size
@@ -95,7 +96,6 @@ def SURE(model, maxiter = 100, R = 1, tuner = False, eps = 0.01,
     y_norm = np.linalg.norm(y_diff, ord = 2, axis = 0)**2
 
 
-    nu_max = 10 # y_norm.max()
 
     reporter = get_reporter()
 
@@ -107,18 +107,17 @@ def SURE(model, maxiter = 100, R = 1, tuner = False, eps = 0.01,
                     method = "BFGS", tol = 1*10**(-9), 
                     options = {'disp' : True, 'maxiter' : maxiter}, bounds = ((1, 200), (0, nu_max)))
     elif tuner:
-        lower = 0.001
     #     search_space = {
     #     "lmbda": tune.uniform(1, 2e2),
     #     "nu": tune.sample_from(lambda spec:   lower * ((nu_max/lower) ** beta.rvs(0.5, 1))),
     # }
-        nu_grid = custom_loguniform(lower = lower, upper = nu_max, size = 10000, alpha = 0.5)
+        nu_grid = custom_loguniform(lower = nu_min, upper = nu_max, size = 10000, alpha = 0.5)
         lmbda_grid = custom_loguniform(lower = 1, upper = 500, size = 10000, alpha = 1.5)
 
         search_space={
             # A random function
             "lmbda": tune.loguniform(1, 5e2),
-            "nu":  tune.loguniform(lower, nu_max)
+            "nu":  tune.loguniform(nu_min, nu_max)
             # Use the `spec.config` namespace to access other hyperparameters
             #"nu":
         }
