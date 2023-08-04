@@ -62,9 +62,9 @@ if __name__ == "__main__":
     #----------------
     N_list = [500, 1000, 5000]
     N_sure = max(N_list)
-    S = 32
+    S = 50
     num_samples = 400 #  400 # 400 # 200
-    num_sims = 100 # 100 # 100 # 100
+    num_sims = 300 # 100 # 100 # 100
     R = 3 #  3 # 3 # 5
     num_gpus = 1
     num_cpus = 4
