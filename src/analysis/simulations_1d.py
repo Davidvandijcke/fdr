@@ -68,7 +68,7 @@ if __name__ == "__main__":
     R = 3 #  3 # 3 # 5
     num_gpus = 1
     num_cpus = 4
-    fdate = "2022-08-02"
+    fdate = "2022-08-04"
     main_dir = "/home/dvdijcke/"
     data_out = os.path.join(main_dir, "data", "out")
     SURE = False
@@ -99,8 +99,8 @@ if __name__ == "__main__":
 
         
         mse = np.mean((u - u_original)**2)
-        pos =  ((J_original ) * (J_grid+np.append(J_grid[1:],0 ))) # true positive if jump happens in jump pixel or the one next to it
-        neg = (J_original * (1-pos) * J_grid) # negative otherwise
+        pos =  ((1 - (J_original + np.append(J_original[1:],0 ))) * (J_grid)) # false positive if jump happens in jump pixel or the one next to it
+        neg = (J_original *  (1-(J_grid + np.append(J_grid[1:],0 ) ))) # false negative otherwise
         jump_pos = np.sum(pos) / np.sum(1-J_original) # false positive rate (significance)
         jump_neg = np.sum(neg) / np.sum(J_original) # false negative rate (1-power)
         
@@ -133,7 +133,7 @@ if __name__ == "__main__":
             del(model)
             torch.cuda.empty_cache()
         else:
-            df = pd.read_csv(os.path.join(data_out, "simulations", "2022-07-31", "simulations_1d_sigma_0.05.csv"))
+            df = pd.read_csv(os.path.join(data_out, "simulations", "2022-08-02", "simulations_1d_sigma_0.05.csv"))
             lmbda, nu, sigma, S = df[['lambda', 'nu', 'sigma', 'S']].loc[0]
 
         # lmbda = 120

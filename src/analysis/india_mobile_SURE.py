@@ -23,8 +23,8 @@ if __name__ == '__main__':
     N = 1000
     lmbda = 1000
     nu = 0.02
-    num_samples = 2 # 225 #  400 # 400 # 400 # 200
-    R =  1 # 3 # 3 # 3 # 5
+    num_samples = 400 # 225 #  400 # 400 # 400 # 200
+    R =  3 # 3 # 3 # 3 # 5
     num_gpus = 1
     num_cpus = 2
 
@@ -37,7 +37,7 @@ if __name__ == '__main__':
     fn_merged = os.path.join(data_out, 'india', 'rajasatan_cheating_grid.geojson')
     gdf = gpd.read_file(fn_merged)
     
-    gdf = gdf.to_crs("epsg:3857")
+    #gdf = gdf.to_crs("epsg:3857")
     gdf = gdf[~gdf.geometry.isna()]
     gdf = gdf[~gdf.geometry.isnull()]
 
