@@ -346,9 +346,9 @@ class FDD():
             if neighbors:
 
                 # origin_points
-                origin_points = model.grid_x_og[tuple(point)]
+                origin_points = self.grid_x_og[tuple(point)]
                 if len(origin_points) == 0:
-                    origin_points = model.grid_x[tuple(point)] + model.resolution / 2
+                    origin_points = self.grid_x[tuple(point)] + self.resolution / 2
                 Yjumpfrom = float(u[tuple(point)])
 
 
@@ -361,8 +361,8 @@ class FDD():
 
 
                 # jumpto point
-                pointslist = [model.grid_x_og[tuple(neighbors[j])] if model.grid_x_og[tuple(neighbors[j])] != []  # if grid cell is empty, assign centerpoint
-                                else [model.grid_x[tuple(neighbors[j])] + model.resolution / 2] for j in range(len(neighbors))]
+                pointslist = [self.grid_x_og[tuple(neighbors[j])] if self.grid_x_og[tuple(neighbors[j])] != []  # if grid cell is empty, assign centerpoint
+                                else [self.grid_x[tuple(neighbors[j])] + self.resolution / 2] for j in range(len(neighbors))]
 
                 if average:
                     counts = [len(pointslist[j]) for j in range(len(neighbors))]
@@ -379,9 +379,9 @@ class FDD():
                     Yjumpsizes = [abs(Yjumptos[j] - Yjumpfrom) for j in range(len(neighbors))]
                     idx = np.argmax(Yjumpsizes)
                     Yjumpto = Yjumptos[idx]
-                    dest_points = model.grid_x_og[tuple(neighbors[idx])]
+                    dest_points = self.grid_x_og[tuple(neighbors[idx])]
                     if len(dest_points) == 0:
-                        dest_points = model.grid_x[tuple(neighbors[idx])] + model.resolution / 2
+                        dest_points = self.grid_x[tuple(neighbors[idx])] + self.resolution / 2
                     dest_points = np.stack(dest_points).squeeze()
 
                     if (dest_points.ndim > 1 or ((dest_points.ndim == 1) and (J_grid.ndim == 1))): # if there are multiple points in the hypervoxel, take the mean
