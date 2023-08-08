@@ -43,20 +43,14 @@ class FDD():
         self.average = average
 
         
-        if self.image: # if image, we don't scale -- assume between 0 and 1
-            self.castImageToGrid()
-            
-        else:
-            self.normalizeData() # scale data to unit hypercube
-            self.castDataToGrid()
-            self.grid_y = (self.grid_y - np.min(self.Y_raw, axis=0)) / np.max(self.Y_raw, axis=0)
+        self.normalizeData() # scale data to unit hypercube
+        # if X only 1 dimension, add a second dimension
+        if self.X.ndim == 1:
+            self.X = np.expand_dims(self.X, -1)
+        self.grid_x_og, self.grid_x, self.grid_y = self.castDataToGrid(self.X, self.Y)
+        self.grid_y = (self.grid_y - np.min(self.Y_raw, axis=0)) / np.max(self.Y_raw, axis=0)
         
-        # if pick_nu == "auto":
-        #     u_diff = self.forward_differences(self.grid_y, D = len(self.grid_y.shape))
-        #     u_diff = u_diff / self.resolution # scale FD by side length
-        #     u_norm = np.linalg.norm(u_diff, axis = 0, ord = 2) # 2-norm
-        #     self.nu = self.pickKMeans(u_norm)
-        # else:
+
         self.nu = nu
         self.pick_nu = pick_nu
         
@@ -93,106 +87,26 @@ class FDD():
             # self.Y = self.Y / max_y
             self.X = self.X / max_x
             
-    def castImageToGrid(self):
-        self.grid_y = np.expand_dims(self.Y.copy(), -1)
-        X_temp = self.X.copy() / (np.max(self.X)+1) 
-
-        self.grid_x = X_temp.copy() # , X_temp.copy()
-        
-        # assign original data points as tuples to align with case for non-image data
-        self.grid_x_og = np.empty(list(self.grid_x.shape[:-1]), dtype = object) # assign original x values as well for later
-
-        it = np.nditer(self.grid_x[...,0], flags = ['multi_index'])
-        for x in it:
-            idx = it.multi_index
-            self.grid_x_og[idx] = [self.grid_x[idx]]
-
-        self.resolution = (1-np.max(self.grid_x)) 
     
-    def castDataToGridPoints(self):
-        
-        n = self.Y.shape[0]
-        
-        if self.resolution is None:
-            # calculate 0.5% quantile of distances between points
-            # if data is large, use a random sample of 1000 points to calculate quantile
-            if n > 1000:
-                idx = np.random.permutation(n)
-                idx = idx[:1000]
-                X_sample = self.X[idx,:]
-                distances = np.sqrt(np.sum((X_sample[:,None,:] - X_sample[None,:,:])**2, axis = 2))
-
-            else:   
-                distances = np.sqrt(np.sum((self.X[:,None,:] - self.X[None,:,:])**2, axis = 2))
-            np.fill_diagonal(distances, 1) # remove self-comparisons
-            distances = np.min(distances, axis = 0) # get closest point for each point
-            qile = np.quantile(distances, self.qtile) # get 5% quantile
-            
-            # pythagoras
-            
-            if self.grid:
-                self.resolution = qile # TODO: need to fix, leads to zero division error
-            else:
-                self.resolution = 2*  qile / np.sqrt(2) # on average, points fall in center of grid cell, then use Pythagoras to get resolution
-            
-        xmax = np.max(self.X, axis = 0)
-        
-        # set up grid
-        grid_x = np.meshgrid(*[np.arange(0, xmax[i], self.resolution) for i in range(self.X.shape[1])])
-        grid_x = np.stack(grid_x, axis = -1)
-        if self.Y.ndim > 1: # account for vector-valued outcomes
-            grid_y = np.zeros(list(grid_x.shape[:-1]) + [self.Y.shape[1]])
-        else:
-            grid_y = np.zeros(list(grid_x.shape[:-1]))
-        grid_x_og = np.empty(list(grid_x.shape[:-1]), dtype = object) # assign original x values as well for later
-
-        # find closest data point for each point on grid and assign value
-        # Iterate over the grid cells
-        it = np.nditer(grid_x[...,0], flags = ['multi_index'])
-        for x in it:
-            distances = np.linalg.norm(self.X - grid_x[it.multi_index], axis=1, ord = 2)
-            # Find the closest seed
-            closest_seed = np.argmin(distances)
-            # Assign the value of the corresponding data point to the grid cell
-            grid_y[it.multi_index] = self.Y[closest_seed] #.min()
-
-            # assign original x value
-            grid_x_og[it.multi_index] = tuple(self.X_raw[closest_seed,:])
-        
-        if self.Y.ndim == 1:
-            grid_y = grid_y.reshape(grid_y.shape + (1,))
-
-        self.grid_x_og = grid_x_og
-        self.grid_x = grid_x
-        self.grid_y = grid_y
-        
-        
-    def castDataToGridSmooth(self):
-        
-        # if self.X only 1 dimension, add a second dimension
-        if self.X.ndim == 1:
-            self.X = np.expand_dims(self.X, -1)
+    def castDataToGridSmooth(self, X, Y):
         
         if self.resolution is None:
             self.resolution = 1/int(self.X_raw.max(axis=0).min()) # int so we get a natural number of grid cells
         
-        xmax = np.max(self.X, axis = 0)
+        xmax = np.max(X, axis=0)
         
         # set up grid
-        grid_x = np.meshgrid(*[np.arange(0, xmax[i], self.resolution) for i in reversed(range(self.X.shape[1]))])
+        grid_x = np.meshgrid(*[np.arange(0, xmax[i], self.resolution) for i in reversed(range(X.shape[1]))])
+        grid_x = np.stack(grid_x, axis=-1)
 
-
-        grid_x = np.stack(grid_x, axis = -1)
-        if self.Y.ndim > 1: # account for vector-valued outcomes
-            grid_y = np.zeros(list(grid_x.shape[:-1]) + [self.Y.shape[1]])
+        if Y.ndim > 1: # account for vector-valued outcomes
+            grid_y = np.zeros(list(grid_x.shape[:-1]) + [Y.shape[1]])
         else:
             grid_y = np.zeros(list(grid_x.shape[:-1]))
-        grid_x_og = np.empty(list(grid_x.shape[:-1]), dtype = object) # assign original x values as well for later
+        grid_x_og = np.empty(list(grid_x.shape[:-1]), dtype=object) # assign original x values as well for later
         
         # Get the indices of the grid cells for each data point
-        # indices = [(np.clip(self.X[:, i] // self.resolution, 0, grid_y.shape[i] - 1)).astype(int) for i in range(self.X.shape[1])]
-        indices = [(np.clip(self.X[:, i] // self.resolution, 0, grid_y.shape[i] - 1)).astype(int) for i in range(self.X.shape[1])]
-        
+        indices = [(np.clip(X[:, i] // self.resolution, 0, grid_y.shape[i] - 1)).astype(int) for i in range(X.shape[1])]
         indices = np.array(indices).T
 
         # Create a count array to store the number of data points in each cell
@@ -202,48 +116,39 @@ class FDD():
         for index in np.ndindex(grid_x_og.shape):
             grid_x_og[index] = []
         
-
-
         # Iterate through the data points and accumulate their values in grid_y and grid_x_og
         for i, index_tuple in enumerate(indices):
             index = tuple(index_tuple)
             if np.all(index < grid_y.shape):
-                # add  Y value to grid cell
-                # print(index)
-                # print(i)
-                grid_y[index] += self.Y[i]
+                grid_y[index] += Y[i]
                 counts[index] += 1
-                grid_x_og[index].append(self.X[i])
+                grid_x_og[index].append(X[i])
         
-        
-
         # Divide the grid_y by the counts to get the average values
         grid_y = np.divide(grid_y, counts, where=counts != 0)
 
         # Find the closest data point for empty grid cells
         empty_cells = np.where(counts == 0)
-        empty_cell_coordinates = np.vstack([empty_cells[i] for i in range(self.X.shape[1])]).T * self.resolution
+        empty_cell_coordinates = np.vstack([empty_cells[i] for i in range(X.shape[1])]).T * self.resolution
         if empty_cell_coordinates.size > 0:
-            tree = cKDTree(self.X + self.resolution / 2) # get centerpoints of hypervoxels
+            tree = cKDTree(X + self.resolution / 2) # get centerpoints of hypervoxels
             _, closest_indices = tree.query(empty_cell_coordinates, k=1)
-            closest_Y_values = self.Y[closest_indices]
+            closest_Y_values = Y[closest_indices]
 
             # Assign the closest data point values to the empty grid cells
             grid_y[empty_cells] = closest_Y_values
         
         # add an extra "channel" dimension if we have a scalar outcome
-        if self.Y.ndim == 1:
+        if Y.ndim == 1:
             grid_y = grid_y.reshape(grid_y.shape + (1,))
 
-        self.grid_x_og = grid_x_og
-        self.grid_x = grid_x
-        self.grid_y = grid_y
+        return (grid_x_og, grid_x, grid_y)
+
         
         
-    def castDataToGrid(self):
+    def castDataToGrid(self, X, Y):
         
-        #self.castDataToGridPoints()
-        self.castDataToGridSmooth()
+        return self.castDataToGridSmooth(X, Y)
         
 
         
