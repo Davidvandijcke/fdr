@@ -65,7 +65,7 @@ if __name__ == "__main__":
     #-------------
     # parameters
     #-------------
-    N_list = [1000, 5000, 1000]
+    N_list = [1000, 5000, 10000]
     N_sure = max(N_list)
     S = 32
     num_samples = 400 # 400 # 200

@@ -321,12 +321,12 @@ class FDD():
 
         # Iterate over the boundary points
         for i in range(k.shape[1]):
-
             origin_points = []
             dest_points = []
 
             # Get the coordinates of the current boundary point
             point = k[:, i]
+            average = False
 
             # Initialize a list to store the neighboring hypervoxels
             #neighbors = list(self.explore(point, J_grid))
@@ -340,29 +340,29 @@ class FDD():
                     count += 1
             if count == 0:
                 neighbors.append(point.copy())
-                    
+
 
             # Check if there are any valid neighbors
             if neighbors:
 
                 # origin_points
-                origin_points = self.grid_x_og[tuple(point)]
+                origin_points = model.grid_x_og[tuple(point)]
                 if len(origin_points) == 0:
-                    origin_points = self.grid_x[tuple(point)] + self.resolution / 2
+                    origin_points = model.grid_x[tuple(point)] + model.resolution / 2
                 Yjumpfrom = float(u[tuple(point)])
 
 
                 # jumpfrom point
                 origin_points = np.stack(origin_points).squeeze()
-                if (origin_points.ndim > 1) | ((origin_points.ndim == 1) and (origin_points.shape[0] > 1)): # if there are multiple points in the hypervoxel, take the mean
+                if (origin_points.ndim > 1) | ((origin_points.ndim == 1) and (J_grid.ndim == 1)): # if there are multiple points in the hypervoxel, take the mean
                     jumpfrom = np.mean(origin_points, axis = 0)
                 else:
                     jumpfrom = origin_points
 
 
                 # jumpto point
-                pointslist = [self.grid_x_og[tuple(neighbors[j])] if self.grid_x_og[tuple(neighbors[j])] != []  # if grid cell is empty, assign centerpoint
-                                else [self.grid_x[tuple(neighbors[j])] + self.resolution / 2] for j in range(len(neighbors))]
+                pointslist = [model.grid_x_og[tuple(neighbors[j])] if model.grid_x_og[tuple(neighbors[j])] != []  # if grid cell is empty, assign centerpoint
+                                else [model.grid_x[tuple(neighbors[j])] + model.resolution / 2] for j in range(len(neighbors))]
 
                 if average:
                     counts = [len(pointslist[j]) for j in range(len(neighbors))]
@@ -379,16 +379,16 @@ class FDD():
                     Yjumpsizes = [abs(Yjumptos[j] - Yjumpfrom) for j in range(len(neighbors))]
                     idx = np.argmax(Yjumpsizes)
                     Yjumpto = Yjumptos[idx]
-                    dest_points = self.grid_x_og[tuple(neighbors[idx])]
+                    dest_points = model.grid_x_og[tuple(neighbors[idx])]
                     if len(dest_points) == 0:
-                        dest_points = self.grid_x[tuple(neighbors[idx])] + self.resolution / 2
+                        dest_points = model.grid_x[tuple(neighbors[idx])] + model.resolution / 2
                     dest_points = np.stack(dest_points).squeeze()
-                    
-                    if (dest_points.ndim > 1) or ((dest_points.ndim == 1) and (dest_points.shape[0] > 1)): # if there are multiple points in the hypervoxel, take the mean
+
+                    if (dest_points.ndim > 1 or ((dest_points.ndim == 1) and (J_grid.ndim == 1))): # if there are multiple points in the hypervoxel, take the mean
                         jumpto = np.mean(dest_points, axis = 0)
                     else:
                         jumpto = dest_points
-                    
+
                     # dists = [[np.linalg.norm(jumpfrom - point) for point in pointslist[j]] for j in range(len(neighbors))]
                     # idx = np.argmin([np.argmin(sublist) for sublist in dists])
                     # closest = tuple(neighbors[idx])

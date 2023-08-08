@@ -52,8 +52,10 @@ if __name__ == '__main__':
     resolution = 1/int(np.sqrt(Y.size))
     model = FDD(Y, X, level = 32, lmbda = 150, nu = 0.008, iter = 10000, tol = 5e-5, resolution=resolution,
         pick_nu = "MS", scaled = True, scripted = False, rectangle=True)
-    
     res = SURE(tuner=True, num_samples=num_samples, model=model, R=R, 
+                 
+                 
+                 
         num_gpus=num_gpus, num_cpus=num_cpus)
 
     file_name = os.path.join(data_out, 'india_mobile_SURE.pkl')
