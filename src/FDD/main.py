@@ -557,15 +557,8 @@ class FDD():
         
         u, J_grid, jumps = self.boundary(u)
         
-        if self.CI: # confidence intervals
-            u_lower, u_upper, J_lower = self.conformalSplit()
-        else:
-            u_lower, u_upper, J_lower = None, None, None
-        
-        
-        return {"u": u, "u_lower": u_lower, "u_upper": u_upper,
-                "jumps": jumps, "J": J_grid, "J_lower": J_lower,  
-                "nrj": nrj, "eps": eps, "it": it}
+        return (u, jumps, J_grid, nrj, eps, it)
+
     
 
         
@@ -583,7 +576,15 @@ class FDD():
         
         u, jumps, J_grid, nrj, eps, it = self.processResults(results)
         
-        return (u, jumps, J_grid, nrj, eps, it)
+        if self.CI: # confidence intervals
+            u_lower, u_upper, J_lower = self.conformalSplit()
+        else:
+            u_lower, u_upper, J_lower = None, None, None
+        
+        
+        return {"u": u, "u_lower": u_lower, "u_upper": u_upper,
+                "jumps": jumps, "J": J_grid, "J_lower": J_lower,  
+                "nrj": nrj, "eps": eps, "it": it}
     
 
         
