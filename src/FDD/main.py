@@ -477,7 +477,7 @@ class FDD():
 
         # calculate interval length for function
         R = np.abs(Y_2 - u[tuple(closest_indices.T)])
-        k = int(np.ceil((N/2 + 1)* (1-alpha)))
+        k = int(np.ceil((N/2 + 1)* (1-self.alpha)))
         d = sorted(R.flatten())[k-1]
 
         # # calculate interval length for forward differences
