@@ -416,8 +416,8 @@ class FDD():
         X_1 = self.X_raw[I1]
         Y_1 = self.Y_raw[I1]
 
-        model = FDD(Y_1, X_1, level = self.level, lmbda = self.lmbda, nu = self.nu, iter = self.iter, tol = 5e-6, resolution=self.resolution,
-            pick_nu = self.pick_nu, scaled = self.scaled, scripted = self.scripted, rectangle = self.rectangle, average=self.average)
+        model = FDD(Y_1, X_1, level = self.level, lmbda = self.lmbda, nu = self.nu, iter = self.iter, tol = self.tol, resolution=self.resolution,
+            pick_nu = self.pick_nu, scaled = self.scaled, scripted = self.scripted, rectangle = self.rectangle, average=self.average, CI=False)
 
         u = model.run()[0]
                 
@@ -426,7 +426,7 @@ class FDD():
         Y_2 = self.Y_raw[I2]
 
         model_temp = model = FDD(Y_2, X_2, level = self.level, lmbda = self.lmbda, nu = self.nu, iter = self.iter, tol = self.tol, resolution=self.resolution,
-            pick_nu = self.pick_nu, scaled = self.scaled, scripted = self.scripted, rectangle = self.rectangle, average=self.average)
+            pick_nu = self.pick_nu, scaled = self.scaled, scripted = self.scripted, rectangle = self.rectangle, average=self.average, CI=False)
 
         # Reshaping grid_x to a 2D array
         grid_x_reshaped = model.grid_x.reshape(-1, model.grid_x.shape[-1])
