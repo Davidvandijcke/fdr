@@ -419,7 +419,7 @@ class FDD():
         model = FDD(Y_1, X_1, level = self.level, lmbda = self.lmbda, nu = self.nu, iter = self.iter, tol = self.tol, resolution=self.resolution,
             pick_nu = self.pick_nu, scaled = self.scaled, scripted = self.scripted, rectangle = self.rectangle, average=self.average, CI=False)
 
-        u = model.run()[0]
+        u = model.run()['u']
                 
         I2 = [i for i in I if i not in I1]
         X_2 = self.X_raw[I2]
