@@ -87,7 +87,7 @@ def custom_loguniform(lower=0.001, upper=50, alpha=1.5, beta_b=1, size = 100):
     
 def SURE(model, maxiter = 100, R = 1, tuner = False, eps = 0.01, 
          wavelet = "db1", num_cpus = 4, num_gpus = 1, num_samples = 200, 
-         nu_min = 0.001, nu_max=10):
+         nu_min = 0.001, nu_max=10, lmbda_max=500):
 
     sigma_sq = waveletDenoising(y=model.grid_y, wavelet=wavelet)
     N = model.grid_y.size
@@ -116,7 +116,7 @@ def SURE(model, maxiter = 100, R = 1, tuner = False, eps = 0.01,
 
         search_space={
             # A random function
-            "lmbda": tune.loguniform(1, 5e2),
+            "lmbda": tune.loguniform(1, lmbda_max),
             "nu":  tune.loguniform(nu_min, nu_max)
             # Use the `spec.config` namespace to access other hyperparameters
             #"nu":
