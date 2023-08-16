@@ -49,14 +49,11 @@ if __name__ == '__main__':
     qtile = np.quantile(Y, 0.95)
     Y[Y>qtile] = qtile
         
-    resolution = 1/int(np.sqrt(Y.size))
+    resolution = 1/int(np.sqrt(0.25*Y.size))
     model = FDD(Y, X, level = 32, lmbda = 150, nu = 0.008, iter = 10000, tol = 5e-5, resolution=resolution,
         pick_nu = "MS", scaled = True, scripted = False, rectangle=True)
     res = SURE(tuner=True, num_samples=num_samples, model=model, R=R, 
-                 
-                 
-                 
-        num_gpus=num_gpus, num_cpus=num_cpus)
+        num_gpus=num_gpus, num_cpus=num_cpus, )
 
     file_name = os.path.join(data_out, 'india_mobile_SURE.pkl')
     with open(file_name, 'wb') as file:
