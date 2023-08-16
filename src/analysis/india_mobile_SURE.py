@@ -8,6 +8,8 @@ from FDD import FDD
 from FDD.SURE import SURE
 import geopandas as gpd
 import pickle
+import boto3
+
 
 def moveUp(fn, times = 1):
     for _ in range(times):
@@ -23,14 +25,14 @@ if __name__ == '__main__':
     N = 1000
     lmbda = 1000
     nu = 0.02
-    num_samples = 400 # 225 #  400 # 400 # 400 # 200
-    R =  3 # 3 # 3 # 3 # 5
-    num_gpus = 1
+    num_samples = 2 # 225 #  400 # 400 # 400 # 200
+    R =  1 # 3 # 3 # 3 # 5
+    num_gpus = 0.5
     num_cpus = 2
 
 
     # get directory above
-    main_dir = "/home/dvdijcke/" # moveUp(dir, 4)
+    main_dir = "s3://ipsos-dvd/fdd" # "/home/dvdijcke/" # moveUp(dir, 4)
     data_in = os.path.join(main_dir, 'data', 'in')    
     data_out = os.path.join(main_dir, 'data', 'out')  
     
@@ -53,8 +55,12 @@ if __name__ == '__main__':
     model = FDD(Y, X, level = 32, lmbda = 150, nu = 0.008, iter = 10000, tol = 5e-5, resolution=resolution,
         pick_nu = "MS", scaled = True, scripted = False, rectangle=True)
     res = SURE(tuner=True, num_samples=num_samples, model=model, R=R, 
-        num_gpus=num_gpus, num_cpus=num_cpus, )
+        num_gpus=num_gpus, num_cpus=num_cpus, lmbda_max=100)
 
-    file_name = os.path.join(data_out, 'india_mobile_SURE.pkl')
+    file_name = 'india_mobile_SURE_95_025_lambda100.pkl'
     with open(file_name, 'wb') as file:
         pickle.dump(res, file)
+        
+    s3 = boto3.client('s3')
+    with open(file_name, "rb") as f:
+        s3.upload_fileobj(f, "ipsos-dvd", "fdd/data/out/" + file_name)
