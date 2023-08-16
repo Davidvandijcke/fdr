@@ -197,6 +197,7 @@ model = FDD(Y, X, level = 32, lmbda = lmbda, nu = nu, iter = 5000, tol = 5e-6, q
 
 import time
 
+model.grid_x.shape
     
 # model.getNearestPoint = MethodType(getNearestPoint, model)
 # model.explore = MethodType(explore, model) 

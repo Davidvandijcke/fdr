@@ -408,7 +408,7 @@ class FDD():
     #def treatmentEffects(self, u, J):
     
     def conformalSplit(self):
-        
+
         N = self.Y.shape[0]
 
         I = list(range(N))
@@ -420,7 +420,7 @@ class FDD():
             pick_nu = self.pick_nu, scaled = self.scaled, scripted = self.scripted, rectangle = self.rectangle, average=self.average, CI=False)
 
         u = model.run()['u']
-                
+
         I2 = [i for i in I if i not in I1]
         X_2 = self.X_raw[I2]
         Y_2 = self.Y_raw[I2]
@@ -467,32 +467,48 @@ class FDD():
 
 
 
+
         # Converting the list to a numpy array
         closest_indices = np.array(closest_indices)
         closest_indices_norm = np.array(closest_indices_norm)
+
+        if X_2.ndim==1:
+            closest_indices = closest_indices[:,0]
+            closest_indices_norm = closest_indices_norm[:,0]
 
         u_pred = (u.copy()) #  - np.min(model.Y_raw,axis=0)) / np.max(model.Y_raw,axis=0)
         u_diff = model.forward_differences(u_pred, D = len(u_pred.shape))
         u_norm =  np.linalg.norm(u_diff, axis = 0, ord = 2) # 2-norm
 
         # calculate interval length for function
-        R = np.abs(Y_2 - u[tuple(closest_indices.T)])
+        if X_2.ndim == 1:
+            idx = closest_indices
+        else:
+            idx = tuple(closest_indices.T)
+        R = np.abs(Y_2 - u[idx])
         k = int(np.ceil((N/2 + 1)* (1-self.alpha)))
         d = sorted(R.flatten())[k-1]
 
         # # calculate interval length for forward differences
-        R = np.abs(y_closest_norm.T[tuple(closest_indices.T)] - u_norm.T[tuple(closest_indices.T)])
+        R = np.abs(y_closest_norm.T[idx] - u_norm.T[idx])
         k = int(np.ceil((N/2 + 1)* (1-self.alpha)))
         d_norm = sorted(R.flatten())[k-1]
 
-        
+
         u_norm_lower = u_norm - d_norm
         J_lower = (u_norm_lower > 0).astype(int)
-        
+
+
+        u_norm_lower = u_norm - d_norm
+        J_lower = (u_norm_lower > 0).astype(int)
+
         return (u - d, u + d, J_lower)
     
     @staticmethod
     def castDataToGridPoints(grid_x, X, Y):
+        
+        if X.ndim == 1:
+            X = np.expand_dims(X, -1)
 
         # set up grid
         grid_y = np.zeros(list(grid_x.shape[:-1]))
