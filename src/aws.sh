@@ -4,7 +4,7 @@ conda activate pytorch
 rm -rf fdd
 git clone https://github.com/Davidvandijcke/fdd.git
 cd fdd
-pip install .
+pip install -e .
 cd src/analysis
 nohup python simulations_2d.py
 
