@@ -77,18 +77,18 @@ class FDD():
     def normalizeData(self):
         
         #min_y = np.min(self.Y, axis = 0)
-        min_x = np.min(self.X, axis = 0)
+        min_x = np.min(self.X_raw, axis = 0)
         
         # self.Y = self.Y - min_y # start at 0
         self.X = self.X - min_x
         
         # max_y = np.max(self.Y, axis = 0)
         if self.rectangle: # retain proportions between data -- should be used when units are identical along all axes
-            max_x = np.max(self.X)
+            max_x = np.max(self.X_raw)
             # self.Y = self.Y / max_y
             self.X = self.X / max_x
         else: # else scale to square
-            max_x = np.max(self.X, axis = 0)
+            max_x = np.max(self.X_raw, axis = 0)
             # self.Y = self.Y / max_y
             self.X = self.X / max_x
             
@@ -129,7 +129,7 @@ class FDD():
             if np.all(index < grid_y.shape):
                 grid_y[index] += Y[i]
                 counts[index] += 1
-                grid_x_og[index].append(X[i])
+                grid_x_og[index].append(X[i]) # TODO: needs to be X_raw
         
         # Divide the grid_y by the counts to get the average values
         grid_y = np.divide(grid_y, counts, where=counts != 0)
