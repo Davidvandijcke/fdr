@@ -48,14 +48,14 @@ if __name__ == '__main__':
     Y = np.array(gdf['count_norm'])
     X = np.stack([np.array(gdf.geometry.centroid.x), np.array(gdf.geometry.centroid.y)]).T
     
-    qtile = np.quantile(Y, 0.95)
+    qtile = np.quantile(Y, 0.9)
     Y[Y>qtile] = qtile
         
     resolution = 1/int(np.sqrt(0.25*Y.size))
     model = FDD(Y, X, level = 32, lmbda = 150, nu = 0.008, iter = 10000, tol = 5e-5, resolution=resolution,
         pick_nu = "MS", scaled = True, scripted = False, rectangle=True)
     res = SURE(tuner=True, num_samples=num_samples, model=model, R=R, 
-        num_gpus=num_gpus, num_cpus=num_cpus, lmbda_max=100)
+        num_gpus=num_gpus, num_cpus=num_cpus, lmbda_max=10) # can't remember if I set nu to 0.001, or 0.002
 
     file_name = 'india_mobile_SURE_95_025_lambda100.pkl'
     with open(file_name, 'wb') as file:
