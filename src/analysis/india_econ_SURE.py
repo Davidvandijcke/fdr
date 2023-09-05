@@ -44,14 +44,14 @@ if __name__ == '__main__':
     Y = np.array(gdf['pings_norm'])
     X = np.stack([np.array(gdf.geometry.centroid.x), np.array(gdf.geometry.centroid.y)]).T
 
-    qtile = np.quantile(Y, 0.95)
+    qtile = np.quantile(Y, 0.90)
     Y[Y>qtile] = qtile
         
     resolution = 1/int(np.sqrt(Y.size))
     model = FDD(Y, X, level = 32, lmbda = 150, nu = 0.008, iter = 10000, tol = 5e-5, resolution=resolution,
         pick_nu = "MS", scaled = True, scripted = False, rectangle=True)
     res = SURE(tuner=True, num_samples=num_samples, model=model, R=R, 
-        num_gpus=num_gpus, num_cpus=num_cpus, lmbda_max=5, nu_min=0.05) # lmbda = 5, nu_min = 0.07 
+        num_gpus=num_gpus, num_cpus=num_cpus, lmbda_max=5, nu_min=0.07) # lmbda = 5, nu_min = 0.07 
 
     file_name = os.path.join(data_out, 'india_econ_SURE_90_lambda5_nu05.pkl')
     with open(file_name, 'wb') as file:
