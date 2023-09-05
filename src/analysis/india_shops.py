@@ -201,6 +201,54 @@ def cast_to_admin(grid_gdf, gadm, gid="GID_3"):
     
     return grid_gdf
 
+def getCrossers(gdf, buffer = 40000, redo_boundary=False, append=""):
+        # calculate share of devices that crossed state boundaries 
+    states_gdf = gpd.read_file(os.path.join(data_in, 'india', 'india_states_shapefile'))
+    states_gdf = states_gdf.to_crs(grid_gdf.crs)
+    
+    # get a band around the state boundary
+    rajasthan = states_gdf[states_gdf['name_1'] == 'Rajasthan']
+    # get the boundary
+    rajasthan_boundary = rajasthan['geometry'].boundary
+    rajasthan_boundary = rajasthan_boundary.buffer(buffer) # 40 km buffer
+    
+    fig, ax = plt.subplots(1, 1)
+    rajasthan['geometry'].boundary.plot(ax=ax)
+    rajasthan_boundary.plot(ax=ax, alpha=0.5)
+    
+    if redo_boundary:
+        gdf_boundary = gdf[gdf.geometry.intersects(rajasthan_boundary.iloc[0])]
+        gdf_boundary.to_file(os.path.join(data_out, 'india', 'pings_boundary' + append + '.geojson'), driver='GeoJSON')
+        
+    gdf_boundary = gpd.read_file(os.path.join(data_out, 'india', 'pings_boundary' + append + '.geojson'))
+
+    gdf_bdy_else = gdf_boundary[~gdf_boundary.geometry.intersects(rajasthan['geometry'].iloc[0])]
+    # get rows from gdf_boundary that don't appear in gdf_bdy_else
+    gdf_bdy_raj = gdf_boundary[~gdf_boundary.index.isin(gdf_bdy_else.index)]
+    
+    return (gdf_bdy_raj, gdf_bdy_else)
+
+def plotCrossers():
+    # plot crossers figure
+    states_gdf = gpd.read_file(os.path.join(data_in, 'india', 'india_states_shapefile')).to_crs(grid_gdf.crs)
+    rajasthan = states_gdf[states_gdf['name_1'] == 'Rajasthan']
+    cmap = plt.get_cmap('coolwarm')
+    lowest_color = cmap(0.0)
+    highest_color = cmap(1.0)
+    fig, ax = plt.subplots(1, 1)
+    gdf_bdy_raj.plot(ax=ax, alpha=0.5, markersize=0.1, color=highest_color)   
+    #gdf_bdy_else.plot(ax=ax, alpha=0.05, markersize=0.1, color=lowest_color)
+    rajasthan['geometry'].boundary.plot(ax=ax, color="black")
+    # prettify figure
+    ax.set_axis_off()
+    ax.axis("equal")
+    plt.tight_layout()
+    # Rasterize the plot elements on the axis
+    for artist in ax.collections:
+        artist.set_rasterized(True)
+    plt.savefig(os.path.join(figs_dir, 'crossers.pdf'), dpi=300, bbox_inches="tight")
+
+
 
 
 if __name__ == '__main__':
@@ -214,6 +262,7 @@ if __name__ == '__main__':
     main_dir = moveUp(dir, 4)
     data_in = os.path.join(main_dir, 'data', 'in')    
     data_out = os.path.join(main_dir, 'data', 'out')  
+    figs_dir = os.path.join(main_dir, 'results', 'figs')
     
 
     #---
@@ -274,6 +323,19 @@ if __name__ == '__main__':
     # reload day of
     grid_gdf = gpd.read_file(os.path.join(data_out, 'india', 'rajasatan_cheating_grid_shops.geojson'))
     
+    redo_crossers = False
+    if redo_crossers:
+        # calculate crossers share
+        gdf_bdy_raj, gdf_bdy_else = getCrossers(gdf, meters)
+        crossers = gdf_bdy_raj.merge(gdf_bdy_else, on=['caid'], how='inner')
+        crossers.to_csv(os.path.join(data_out, 'india', 'crossers_full.csv'), index=False)
+        cross_share = crossers['caid'].nunique() / gdf_bdy_raj['caid'].nunique()
+        df = pd.DataFrame({'date' : [cheatdate], 'meters' : [meters], 'cross_share' : [cross_share]})
+        df.to_csv(os.path.join(data_out, 'india', 'cross_share.csv'), index=False)
+        
+        # plot crossers figure
+        plotCrossers()
+    
     # cast to admin regions
     gadm = gpd.read_file(os.path.join(data_in, 'india', gidname)).to_crs("epsg:3857")
     # grid_gdf = cast_to_admin(grid_gdf, gadm, gid=gid)
@@ -303,6 +365,7 @@ if __name__ == '__main__':
     #---------------
     # days before
     
+    # cast shops to grid
     if redo_shops:
         fn = os.path.join(data_out, 'india', 'before_temp.csv')
         before.to_csv(fn,  index=False)
@@ -313,13 +376,52 @@ if __name__ == '__main__':
             chunkgdf = gpd.GeoDataFrame(chunk.drop(columns="geometry"), geometry=gpd.points_from_xy(chunk.longitude, chunk.latitude), crs="epsg:4326")
             temp_result = cast_to_grid_shops(chunkgdf, shops)
             result = pd.concat([result, temp_result])
-            
+        
+
         result.rename(columns={"index_right":'pings'}, inplace=True)
         grid_before = result.groupby("geometry").sum().reset_index()  # store the final result
         
         grid_before = gpd.GeoDataFrame(grid_before, geometry=grid_before.geometry, crs="epsg:3857")
         grid_before.to_file(os.path.join(data_out, 'india', 'rajasatan_cheating_grid_before_shops.geojson'), driver='GeoJSON')
         
+    # # calculate crossers
+    # if redo_crossers:
+    #     fn = os.path.join(data_out, 'india', 'before_temp.csv')
+    #     #before.to_csv(fn,  index=False)
+    #     chunk_size = int(before.size/16)  # specify the chunk size
+    #     result = pd.DataFrame()  # create an empty dataframe to hold results
+    #     for chunk in pd.read_csv(fn, chunksize=chunk_size):  
+    #         chunkgdf = gpd.GeoDataFrame(chunk.drop(columns="geometry"), geometry=gpd.points_from_xy(chunk.longitude, chunk.latitude), crs="epsg:4326")
+
+    #         # calculate crossers share
+    #         gdf_bdy_raj, gdf_bdy_else = getCrossers(chunkgdf, meters)
+    #         crossers = gdf_bdy_raj.merge(gdf_bdy_else, on=['caid'], how='inner')
+    #         cross_share = crossers['caid'].nunique() / gdf_bdy_raj['caid'].nunique()
+    #         temp_result = pd.DataFrame({'date' : [cheatdate], 'meters' : [meters], 'cross_share' : [cross_share]})
+    #         result = pd.concat([result, temp_result])
+    #     result.to_csv(os.path.join(data_out, 'india', 'cross_share_before.csv'), index=False)
+    
+    
+    gdf_bdy_raj, gdf_bdy_else = getCrossers(before, meters, redo_boundary=False, append="_before")
+    gdf_bdy_raj['day'] = gdf_bdy_raj['date'].dt.date
+    crossers = gdf_bdy_raj.merge(gdf_bdy_else, on=['caid'], how='inner')
+    fn = os.path.join(data_out, 'india', 'cross_share_before_full.csv')
+    crossers.to_csv(fn, index=False)
+    
+    crossers = pd.read_csv(fn)
+    crossers = crossers.groupby('day').agg({'caid' : 'nunique'}).reset_index()
+    denom = gdf_bdy_raj.groupby('day').agg({'caid' : 'nunique'}).reset_index()
+    crossers = crossers.merge(denom, on='day', how='left')
+    crossers['caid'] = crossers['caid_x'] / crossers['caid_y']
+    
+    
+    cross_share = crossers['caid'].nunique() / gdf_bdy_raj['caid'].nunique()
+    df = pd.DataFrame({'date' : [cheatdate], 'meters' : [meters], 'cross_share' : [cross_share]})
+    df.to_csv(os.path.join(data_out, 'india', 'cross_share_before.csv'), index=False)
+    
+    
+    
+    
     # reload before
     grid_before = gpd.read_file(os.path.join(data_out, 'india', 'rajasatan_cheating_grid_before_shops.geojson'))
     grid_before['pings'] = grid_before['pings'] / 3

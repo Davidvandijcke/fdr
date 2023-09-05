@@ -101,9 +101,11 @@ if __name__ == "__main__":
 
         
         mse = np.mean((u - u_original)**2)
-        jump_pos = np.sum(J_grid * (1-J_original)) / np.sum(1-J_original) # false positive rate (significance)
-        jump_neg = np.sum((1-J_grid) * (J_original)) / np.sum(J_original) # false negative rate (1-power)
-        
+        jump_pos_true = (J_original + np.vstack([J_original[1:, :], np.zeros((1, J_original.shape[1]))]) + np.hstack([J_original[:, 1:], np.zeros((J_original.shape[0],1))]))
+        jump_pos = np.sum(J_grid * (1-(jump_pos_true>0))) / np.sum(1-J_original) # false positive rate (significance)
+        jump_neg_true = (J_grid + np.vstack([J_grid[1:, :], np.zeros((1, J_grid.shape[1]))]) + np.hstack([J_grid[:, 1:], np.zeros((J_grid.shape[0],1))]))
+        jump_neg = np.sum((1-(jump_neg_true>0)) * (J_original)) / np.sum(J_original) # false negative rate (1-power)
+                
         temp = pd.DataFrame(jumps)
         temp[['alpha', 'N', 'S', 's', 'sigma', 'lambda', 'nu', 'jump_neg', 
               'jump_pos', 'mse']] = jsize, N, S, config, sigma, lmbda, nu, jump_neg, jump_pos, mse
