@@ -1,0 +1,244 @@
+2023-09-05 18:01:36,260	INFO worker.py:1625 -- Started a local Ray instance.
+2023-09-05 18:01:40,914	INFO tune.py:218 -- Initializing Ray automatically. For cluster usage or custom Ray initialization, call `ray.init(...)` before `Tuner(...)`.
+[2m[36m(func pid=1521058)[0m /home/dvdijcke/fdd/src/FDD/primaldual_multi_scaled_tune.py:35: UserWarning: To copy construct from a tensor, it is recommended to use sourceTensor.clone().detach() or sourceTensor.clone().detach().requires_grad_(True), rather than torch.tensor(sourceTensor).
+[2m[36m(func pid=1521058)[0m   tauu = torch.tensor(  1.0 / torch.sqrt(denom) * res, device=dev)  # torch.tensor(  1.0 / 6.0 * res, device=dev) # *res
+[2m[36m(func pid=1521058)[0m /home/dvdijcke/fdd/src/FDD/primaldual_multi_scaled_tune.py:36: UserWarning: To copy construct from a tensor, it is recommended to use sourceTensor.clone().detach() or sourceTensor.clone().detach().requires_grad_(True), rather than torch.tensor(sourceTensor).
+[2m[36m(func pid=1521058)[0m   sigmap = torch.tensor( 1.0 / torch.sqrt(denom)  * res, device=dev) # torch.tensor( (1.0 / (3.0 + l))  * res, device=dev) # *res
+2023-09-05 18:02:35,335	WARNING util.py:244 -- The `callbacks.on_trial_result` operation took 0.613 s, which may be a performance bottleneck.
+2023-09-05 18:02:35,336	WARNING util.py:244 -- The `process_trial_result` operation took 0.614 s, which may be a performance bottleneck.
+2023-09-05 18:02:35,336	WARNING util.py:244 -- Processing trial results took 0.614 s, which may be a performance bottleneck. Please consider reporting results less frequently to Ray Tune.
+2023-09-05 18:02:35,336	WARNING util.py:244 -- The `process_trial_result` operation took 0.614 s, which may be a performance bottleneck.
+2023-09-05 18:02:50,807	INFO tune.py:945 -- Total run time: 69.89 seconds (64.30 seconds for the tuning loop).
+[2m[36m(train pid=1521518)[0m /home/dvdijcke/fdd/src/FDD/primaldual_multi_scaled_tune.py:36: UserWarning: To copy construct from a tensor, it is recommended to use sourceTensor.clone().detach() or sourceTensor.clone().detach().requires_grad_(True), rather than torch.tensor(sourceTensor).[32m [repeated 4x across cluster] (Ray deduplicates logs by default. Set RAY_DEDUP_LOGS=0 to disable log deduplication, or see https://docs.ray.io/en/master/ray-observability/ray-logging.html#log-deduplication for more options.)[0m
+[2m[36m(train pid=1521518)[0m   tauu = torch.tensor(  1.0 / torch.sqrt(denom) * res, device=dev)  # torch.tensor(  1.0 / 6.0 * res, device=dev) # *res[32m [repeated 2x across cluster][0m
+[2m[36m(train pid=1521518)[0m   sigmap = torch.tensor( 1.0 / torch.sqrt(denom)  * res, device=dev) # torch.tensor( (1.0 / (3.0 + l))  * res, device=dev) # *res[32m [repeated 2x across cluster][0m
+Running SURE
+== Status ==
+Current time: 2023-09-05 18:01:46 (running for 00:00:00.15)
+Using FIFO scheduling algorithm.
+Logical resource usage: 4.0/64 CPUs, 1.0/3 GPUs (0.0/1.0 accelerator_type:A100)
+Result logdir: /home/dvdijcke/ray_results/tune_func_2023-09-05_18-01-28
+Number of trials: 2/2 (1 PENDING, 1 RUNNING)
++-----------------------+----------+---------------------+----------+----------+
+| Trial name            | status   | loc                 |    lmbda |       nu |
+|-----------------------+----------+---------------------+----------+----------|
+| tune_func_cb15e_00000 | RUNNING  | 10.164.9.82:1521058 | 28.6809  | 1.96327  |
+| tune_func_cb15e_00001 | PENDING  |                     |  1.07254 | 0.548987 |
++-----------------------+----------+---------------------+----------+----------+
+
+
+== Status ==
+Current time: 2023-09-05 18:01:53 (running for 00:00:07.39)
+Using FIFO scheduling algorithm.
+Logical resource usage: 8.0/64 CPUs, 2.0/3 GPUs (0.0/1.0 accelerator_type:A100)
+Result logdir: /home/dvdijcke/ray_results/tune_func_2023-09-05_18-01-28
+Number of trials: 2/2 (2 RUNNING)
++-----------------------+----------+---------------------+----------+----------+
+| Trial name            | status   | loc                 |    lmbda |       nu |
+|-----------------------+----------+---------------------+----------+----------|
+| tune_func_cb15e_00000 | RUNNING  | 10.164.9.82:1521058 | 28.6809  | 1.96327  |
+| tune_func_cb15e_00001 | RUNNING  | 10.164.9.82:1521177 |  1.07254 | 0.548987 |
++-----------------------+----------+---------------------+----------+----------+
+
+
+== Status ==
+Current time: 2023-09-05 18:02:02 (running for 00:00:16.03)
+Using FIFO scheduling algorithm.
+Logical resource usage: 8.0/64 CPUs, 2.0/3 GPUs (0.0/1.0 accelerator_type:A100)
+Result logdir: /home/dvdijcke/ray_results/tune_func_2023-09-05_18-01-28
+Number of trials: 2/2 (2 RUNNING)
++-----------------------+----------+---------------------+----------+----------+
+| Trial name            | status   | loc                 |    lmbda |       nu |
+|-----------------------+----------+---------------------+----------+----------|
+| tune_func_cb15e_00000 | RUNNING  | 10.164.9.82:1521058 | 28.6809  | 1.96327  |
+| tune_func_cb15e_00001 | RUNNING  | 10.164.9.82:1521177 |  1.07254 | 0.548987 |
++-----------------------+----------+---------------------+----------+----------+
+
+
+== Status ==
+Current time: 2023-09-05 18:02:07 (running for 00:00:21.04)
+Using FIFO scheduling algorithm.
+Logical resource usage: 8.0/64 CPUs, 2.0/3 GPUs (0.0/1.0 accelerator_type:A100)
+Result logdir: /home/dvdijcke/ray_results/tune_func_2023-09-05_18-01-28
+Number of trials: 2/2 (2 RUNNING)
++-----------------------+----------+---------------------+----------+----------+
+| Trial name            | status   | loc                 |    lmbda |       nu |
+|-----------------------+----------+---------------------+----------+----------|
+| tune_func_cb15e_00000 | RUNNING  | 10.164.9.82:1521058 | 28.6809  | 1.96327  |
+| tune_func_cb15e_00001 | RUNNING  | 10.164.9.82:1521177 |  1.07254 | 0.548987 |
++-----------------------+----------+---------------------+----------+----------+
+
+
+== Status ==
+Current time: 2023-09-05 18:02:12 (running for 00:00:26.04)
+Using FIFO scheduling algorithm.
+Logical resource usage: 8.0/64 CPUs, 2.0/3 GPUs (0.0/1.0 accelerator_type:A100)
+Result logdir: /home/dvdijcke/ray_results/tune_func_2023-09-05_18-01-28
+Number of trials: 2/2 (2 RUNNING)
++-----------------------+----------+---------------------+----------+----------+
+| Trial name            | status   | loc                 |    lmbda |       nu |
+|-----------------------+----------+---------------------+----------+----------|
+| tune_func_cb15e_00000 | RUNNING  | 10.164.9.82:1521058 | 28.6809  | 1.96327  |
+| tune_func_cb15e_00001 | RUNNING  | 10.164.9.82:1521177 |  1.07254 | 0.548987 |
++-----------------------+----------+---------------------+----------+----------+
+
+
+== Status ==
+Current time: 2023-09-05 18:02:17 (running for 00:00:31.05)
+Using FIFO scheduling algorithm.
+Logical resource usage: 8.0/64 CPUs, 2.0/3 GPUs (0.0/1.0 accelerator_type:A100)
+Result logdir: /home/dvdijcke/ray_results/tune_func_2023-09-05_18-01-28
+Number of trials: 2/2 (2 RUNNING)
++-----------------------+----------+---------------------+----------+----------+
+| Trial name            | status   | loc                 |    lmbda |       nu |
+|-----------------------+----------+---------------------+----------+----------|
+| tune_func_cb15e_00000 | RUNNING  | 10.164.9.82:1521058 | 28.6809  | 1.96327  |
+| tune_func_cb15e_00001 | RUNNING  | 10.164.9.82:1521177 |  1.07254 | 0.548987 |
++-----------------------+----------+---------------------+----------+----------+
+
+
+== Status ==
+Current time: 2023-09-05 18:02:22 (running for 00:00:36.06)
+Using FIFO scheduling algorithm.
+Logical resource usage: 8.0/64 CPUs, 2.0/3 GPUs (0.0/1.0 accelerator_type:A100)
+Result logdir: /home/dvdijcke/ray_results/tune_func_2023-09-05_18-01-28
+Number of trials: 2/2 (2 RUNNING)
++-----------------------+----------+---------------------+----------+----------+
+| Trial name            | status   | loc                 |    lmbda |       nu |
+|-----------------------+----------+---------------------+----------+----------|
+| tune_func_cb15e_00000 | RUNNING  | 10.164.9.82:1521058 | 28.6809  | 1.96327  |
+| tune_func_cb15e_00001 | RUNNING  | 10.164.9.82:1521177 |  1.07254 | 0.548987 |
++-----------------------+----------+---------------------+----------+----------+
+
+
+== Status ==
+Current time: 2023-09-05 18:02:27 (running for 00:00:41.06)
+Using FIFO scheduling algorithm.
+Logical resource usage: 8.0/64 CPUs, 2.0/3 GPUs (0.0/1.0 accelerator_type:A100)
+Result logdir: /home/dvdijcke/ray_results/tune_func_2023-09-05_18-01-28
+Number of trials: 2/2 (2 RUNNING)
++-----------------------+----------+---------------------+----------+----------+
+| Trial name            | status   | loc                 |    lmbda |       nu |
+|-----------------------+----------+---------------------+----------+----------|
+| tune_func_cb15e_00000 | RUNNING  | 10.164.9.82:1521058 | 28.6809  | 1.96327  |
+| tune_func_cb15e_00001 | RUNNING  | 10.164.9.82:1521177 |  1.07254 | 0.548987 |
++-----------------------+----------+---------------------+----------+----------+
+
+
+== Status ==
+Current time: 2023-09-05 18:02:32 (running for 00:00:46.07)
+Using FIFO scheduling algorithm.
+Logical resource usage: 8.0/64 CPUs, 2.0/3 GPUs (0.0/1.0 accelerator_type:A100)
+Result logdir: /home/dvdijcke/ray_results/tune_func_2023-09-05_18-01-28
+Number of trials: 2/2 (2 RUNNING)
++-----------------------+----------+---------------------+----------+----------+
+| Trial name            | status   | loc                 |    lmbda |       nu |
+|-----------------------+----------+---------------------+----------+----------|
+| tune_func_cb15e_00000 | RUNNING  | 10.164.9.82:1521058 | 28.6809  | 1.96327  |
+| tune_func_cb15e_00001 | RUNNING  | 10.164.9.82:1521177 |  1.07254 | 0.548987 |
++-----------------------+----------+---------------------+----------+----------+
+
+
+Result for tune_func_cb15e_00001:
+  date: 2023-09-05_18-02-34
+  done: false
+  hostname: gl1024.arc-ts.umich.edu
+  iterations_since_restore: 1
+  node_ip: 10.164.9.82
+  pid: 1521177
+  score: 0.03020043091011872
+  time_since_restore: 37.197906732559204
+  time_this_iter_s: 37.197906732559204
+  time_total_s: 37.197906732559204
+  timestamp: 1693951354
+  training_iteration: 1
+  trial_id: cb15e_00001
+  
+Trial tune_func_cb15e_00001 completed.
+== Status ==
+Current time: 2023-09-05 18:02:40 (running for 00:00:53.90)
+Using FIFO scheduling algorithm.
+Logical resource usage: 4.0/64 CPUs, 1.0/3 GPUs (0.0/1.0 accelerator_type:A100)
+Result logdir: /home/dvdijcke/ray_results/tune_func_2023-09-05_18-01-28
+Number of trials: 2/2 (1 RUNNING, 1 TERMINATED)
++-----------------------+------------+---------------------+----------+----------+--------+------------------+
+| Trial name            | status     | loc                 |    lmbda |       nu |   iter |   total time (s) |
+|-----------------------+------------+---------------------+----------+----------+--------+------------------|
+| tune_func_cb15e_00000 | RUNNING    | 10.164.9.82:1521058 | 28.6809  | 1.96327  |        |                  |
+| tune_func_cb15e_00001 | TERMINATED | 10.164.9.82:1521177 |  1.07254 | 0.548987 |      1 |          37.1979 |
++-----------------------+------------+---------------------+----------+----------+--------+------------------+
+
+
+== Status ==
+Current time: 2023-09-05 18:02:45 (running for 00:00:58.91)
+Using FIFO scheduling algorithm.
+Logical resource usage: 4.0/64 CPUs, 1.0/3 GPUs (0.0/1.0 accelerator_type:A100)
+Result logdir: /home/dvdijcke/ray_results/tune_func_2023-09-05_18-01-28
+Number of trials: 2/2 (1 RUNNING, 1 TERMINATED)
++-----------------------+------------+---------------------+----------+----------+--------+------------------+
+| Trial name            | status     | loc                 |    lmbda |       nu |   iter |   total time (s) |
+|-----------------------+------------+---------------------+----------+----------+--------+------------------|
+| tune_func_cb15e_00000 | RUNNING    | 10.164.9.82:1521058 | 28.6809  | 1.96327  |        |                  |
+| tune_func_cb15e_00001 | TERMINATED | 10.164.9.82:1521177 |  1.07254 | 0.548987 |      1 |          37.1979 |
++-----------------------+------------+---------------------+----------+----------+--------+------------------+
+
+
+== Status ==
+Current time: 2023-09-05 18:02:50 (running for 00:01:03.91)
+Using FIFO scheduling algorithm.
+Logical resource usage: 4.0/64 CPUs, 1.0/3 GPUs (0.0/1.0 accelerator_type:A100)
+Result logdir: /home/dvdijcke/ray_results/tune_func_2023-09-05_18-01-28
+Number of trials: 2/2 (1 RUNNING, 1 TERMINATED)
++-----------------------+------------+---------------------+----------+----------+--------+------------------+
+| Trial name            | status     | loc                 |    lmbda |       nu |   iter |   total time (s) |
+|-----------------------+------------+---------------------+----------+----------+--------+------------------|
+| tune_func_cb15e_00000 | RUNNING    | 10.164.9.82:1521058 | 28.6809  | 1.96327  |        |                  |
+| tune_func_cb15e_00001 | TERMINATED | 10.164.9.82:1521177 |  1.07254 | 0.548987 |      1 |          37.1979 |
++-----------------------+------------+---------------------+----------+----------+--------+------------------+
+
+
+Result for tune_func_cb15e_00000:
+  date: 2023-09-05_18-02-50
+  done: false
+  hostname: gl1024.arc-ts.umich.edu
+  iterations_since_restore: 1
+  node_ip: 10.164.9.82
+  pid: 1521058
+  score: 0.011841344462780816
+  time_since_restore: 57.603166818618774
+  time_this_iter_s: 57.603166818618774
+  time_total_s: 57.603166818618774
+  timestamp: 1693951370
+  training_iteration: 1
+  trial_id: cb15e_00000
+  
+Trial tune_func_cb15e_00000 completed.
+== Status ==
+Current time: 2023-09-05 18:02:50 (running for 00:01:04.31)
+Using FIFO scheduling algorithm.
+Logical resource usage: 0/64 CPUs, 0/3 GPUs (0.0/1.0 accelerator_type:A100)
+Result logdir: /home/dvdijcke/ray_results/tune_func_2023-09-05_18-01-28
+Number of trials: 2/2 (2 TERMINATED)
++-----------------------+------------+---------------------+----------+----------+--------+------------------+
+| Trial name            | status     | loc                 |    lmbda |       nu |   iter |   total time (s) |
+|-----------------------+------------+---------------------+----------+----------+--------+------------------|
+| tune_func_cb15e_00000 | TERMINATED | 10.164.9.82:1521058 | 28.6809  | 1.96327  |      1 |          57.6032 |
+| tune_func_cb15e_00001 | TERMINATED | 10.164.9.82:1521177 |  1.07254 | 0.548987 |      1 |          37.1979 |
++-----------------------+------------+---------------------+----------+----------+--------+------------------+
+
+
+Running simulations
+Traceback (most recent call last):
+  File "/home/dvdijcke/fdd/src/analysis/simulations_2d.py", line 158, in <module>
+    results = ray.get([train.remote(config, jsize, sigma, N, lmbda, nu, S) for config in sims for N in N_list])
+  File "/home/dvdijcke/.local/lib/python3.9/site-packages/ray/_private/client_mode_hook.py", line 105, in wrapper
+    return func(*args, **kwargs)
+  File "/home/dvdijcke/.local/lib/python3.9/site-packages/ray/_private/worker.py", line 2521, in get
+    raise value.as_instanceof_cause()
+ray.exceptions.RayTaskError(ValueError): [36mray::train()[39m (pid=1521519, ip=10.164.9.82)
+  File "/home/dvdijcke/fdd/src/analysis/simulations_2d.py", line 98, in train
+    u, jumps, J_grid, nrj, eps, it = model.run()
+ValueError: too many values to unpack (expected 6)
+[2m[36m(train pid=1521519)[0m /home/dvdijcke/fdd/src/FDD/primaldual_multi_scaled_tune.py:36: UserWarning: To copy construct from a tensor, it is recommended to use sourceTensor.clone().detach() or sourceTensor.clone().detach().requires_grad_(True), rather than torch.tensor(sourceTensor).[32m [repeated 4x across cluster][0m
+[2m[36m(train pid=1521519)[0m   tauu = torch.tensor(  1.0 / torch.sqrt(denom) * res, device=dev)  # torch.tensor(  1.0 / 6.0 * res, device=dev) # *res[32m [repeated 2x across cluster][0m
+[2m[36m(train pid=1521519)[0m   sigmap = torch.tensor( 1.0 / torch.sqrt(denom)  * res, device=dev) # torch.tensor( (1.0 / (3.0 + l))  * res, device=dev) # *res[32m [repeated 2x across cluster][0m
