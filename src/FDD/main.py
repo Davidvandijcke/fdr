@@ -48,7 +48,7 @@ class FDD():
         self.average = average
 
         
-        self.normalizeData() # scale data to unit hypercube
+        self.X = self.normalizeData(self.X) # scale data to unit hypercube
         # if X only 1 dimension, add a second dimension
         if self.X.ndim == 1:
             self.X = np.expand_dims(self.X, -1)
@@ -73,24 +73,26 @@ class FDD():
         self.model = self.model.to(self.device)
         # TODO: exclude duplicate points (there shouldnt be any cause the variables are assumed to be continuous but anyway)
         
-
-    def normalizeData(self):
+    @staticmethod
+    def normalizeData(X):
         
         #min_y = np.min(self.Y, axis = 0)
-        min_x = np.min(self.X, axis = 0)
+        min_x = np.min(X, axis = 0)
         
         # self.Y = self.Y - min_y # start at 0
-        self.X = self.X - min_x
+        X = X - min_x
         
         # max_y = np.max(self.Y, axis = 0)
         if self.rectangle: # retain proportions between data -- should be used when units are identical along all axes
-            max_x = np.max(self.X)
+            max_x = np.max(X)
             # self.Y = self.Y / max_y
-            self.X = self.X / max_x
+            X = X / max_x
         else: # else scale to square
-            max_x = np.max(self.X, axis = 0)
+            max_x = np.max(X, axis = 0)
             # self.Y = self.Y / max_y
-            self.X = self.X / max_x
+            X = X / max_x
+            
+        return X
             
 
             
