@@ -68,9 +68,9 @@ if __name__ == "__main__":
     N_list = [1000, 5000, 10000]
     N_sure = max(N_list)
     S = 32
-    num_samples = 2 # 400 # 200
-    num_sims = 1 # 100 # 100
-    R = 1 #  3 # 3 # 5
+    num_samples = 400 # 400 # 200
+    num_sims = 100 # 100 # 100
+    R = 3 #  3 # 3 # 5
     num_gpus = 1
     num_cpus = 4
     fdate = "2022-08-04"
@@ -92,7 +92,7 @@ if __name__ == "__main__":
             device = torch.device("mps")
             
         resolution = 1/int(np.sqrt(N*0.05))
-        model = FDD(Y, X, level = S, lmbda = lmbda, nu = nu, iter = 100000, tol = 1e-5, resolution=resolution,
+        model = FDD(Y, X, level = S, lmbda = lmbda, nu = nu, iter = 100000, tol = 5e-5, resolution=resolution,
                 pick_nu = "MS", scaled = True, scripted = False)
         
         results = model.run()
@@ -112,6 +112,7 @@ if __name__ == "__main__":
         temp = pd.DataFrame(jumps)
         temp[['alpha', 'N', 'S', 's', 'sigma', 'lambda', 'nu', 'jump_neg', 
               'jump_pos', 'mse']] = jsize, N, S, config, sigma, lmbda, nu, jump_neg, jump_pos, mse
+        torch.cuda.empty_cache()
         return temp
 
     
@@ -122,7 +123,7 @@ if __name__ == "__main__":
         # calculate Cohen's d jump sizes
         X, Y, U = generate2D(jsize = 0, sigma=sigma, N=N_sure)
         std = np.std(Y)
-        jsizes = np.array([0.25, 0.5, 0.75]) * std
+        jsizes = np.array([0.25]) * std
 
         for jsize in jsizes: # , 0.2, 0.5]:
 
@@ -135,6 +136,7 @@ if __name__ == "__main__":
             res = SURE(tuner=True, num_samples=num_samples, model=model, R=R, 
                     num_gpus=num_gpus, num_cpus=num_cpus)
             best = res.get_best_result(metric = "score", mode = "min")
+            torch.cuda.empty_cache()
 
             config = best.metrics['config']
             lmbda, nu = config['lmbda'], config['nu']

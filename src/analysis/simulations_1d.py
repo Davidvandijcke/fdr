@@ -64,7 +64,7 @@ if __name__ == "__main__":
     N_sure = max(N_list)
     S = 50
     num_samples = 400 #  400 # 400 # 200
-    num_sims = 300 # 100 # 100 # 100
+    num_sims = 100 # 100 # 100 # 100
     R = 3 #  3 # 3 # 5
     num_gpus = 1
     num_cpus = 4
@@ -99,8 +99,10 @@ if __name__ == "__main__":
 
         
         mse = np.mean((u - u_original)**2)
-        pos =  ((1 - (J_original + np.append(J_original[1:],0 ))) * (J_grid)) # false positive if jump happens in jump pixel or the one next to it
-        neg = (J_original *  (1-(J_grid + np.append(J_grid[1:],0 ) ))) # false negative otherwise
+        pos_count = (J_original + np.append(J_original[1:],0 ))
+        pos =  ((1 - (pos_count > 0))) * (J_grid) # false positive if jump happens in jump pixel or the one next to it
+        neg_count = J_grid + np.append(J_grid[1:],0 )
+        neg = (J_original *  (1-(neg_count > 0 ))) # false negative otherwise
         jump_pos = np.sum(pos) / np.sum(1-J_original) # false positive rate (significance)
         jump_neg = np.sum(neg) / np.sum(J_original) # false negative rate (1-power)
         

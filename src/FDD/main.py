@@ -490,7 +490,7 @@ class FDD():
         d = sorted(R.flatten())[k-1]
 
         # # calculate interval length for forward differences
-        R = np.abs(y_closest_norm.T[idx] - u_norm.T[idx])
+        R = np.abs(y_closest_norm[idx] - u_norm[idx])
         k = int(np.ceil((N/2 + 1)* (1-self.alpha)))
         d_norm = sorted(R.flatten())[k-1]
 
