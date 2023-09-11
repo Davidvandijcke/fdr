@@ -413,6 +413,8 @@ class FDD():
 
         N = self.Y.shape[0]
 
+        self.alpha=0.1
+
         I = list(range(N))
         I1 = random.sample(I, int(N/2))
         X_1 = self.X_raw[I1]
@@ -427,14 +429,19 @@ class FDD():
         X_2 = self.X_raw[I2]
         Y_2 = self.Y_raw[I2]
 
-        model_temp = model = FDD(Y_2, X_2, level = self.level, lmbda = self.lmbda, nu = self.nu, iter = self.iter, tol = self.tol, resolution=self.resolution,
+        model_temp = FDD(Y_2, X_2, level = self.level, lmbda = self.lmbda, nu = self.nu, iter = self.iter, tol = self.tol, resolution=self.resolution,
             pick_nu = self.pick_nu, scaled = self.scaled, scripted = self.scripted, rectangle = self.rectangle, average=self.average, CI=False)
 
-        # Reshaping grid_x to a 2D array
-        grid_x_reshaped = model.grid_x.reshape(-1, model.grid_x.shape[-1])
+
+        grid_x_reshaped = model.grid_x.reshape(-1, model.grid_x.shape[-1])[:,::-1]
+
 
         # Initializing a list to hold the indices of the closest points
         closest_indices = []
+
+        # normalize X_2
+        X_2 = self.normalizeData(self.rectangle, X_2)
+
 
         # Looping through each point in X_2 for image function
         for point in X_2:
@@ -453,30 +460,8 @@ class FDD():
         y_closest = (y_closest) # - np.min(Y_2, axis=0)) / np.max(Y_2, axis=0)
         y_closest_norm = np.linalg.norm(model.forward_differences(y_closest, D = len(y_closest.shape)), axis=0, ord=2)
 
-        closest_indices_norm = []
-        # Looping through each point in X_2 for forward differences
-        for point in x_closest.flatten(): # x_closest.reshape(-1, x_closest.shape[-1]):
-            # Calculating the Euclidean distance between the point and all points in grid_x
-            distances = np.linalg.norm(grid_x_reshaped - point, axis=1)
-
-            # Finding the index of the closest point in grid_x
-            closest_index = np.argmin(distances)
-
-            # Converting the index to a tuple representing the location in the original grid
-            closest_grid_index = np.unravel_index(closest_index, (self.grid_x.shape[0], self.grid_x.shape[1]))
-
-            closest_indices_norm.append(closest_grid_index)
-
-
-
-
-        # Converting the list to a numpy array
+        # # Converting the list to a numpy array
         closest_indices = np.array(closest_indices)
-        closest_indices_norm = np.array(closest_indices_norm)
-
-        if X_2.ndim==1:
-            closest_indices = closest_indices[:,0]
-            closest_indices_norm = closest_indices_norm[:,0]
 
         u_pred = (u.copy()) #  - np.min(model.Y_raw,axis=0)) / np.max(model.Y_raw,axis=0)
         u_diff = model.forward_differences(u_pred, D = len(u_pred.shape))
@@ -495,10 +480,6 @@ class FDD():
         R = np.abs(y_closest_norm[idx] - u_norm[idx])
         k = int(np.ceil((N/2 + 1)* (1-self.alpha)))
         d_norm = sorted(R.flatten())[k-1]
-
-
-        u_norm_lower = u_norm - d_norm
-        J_lower = (u_norm_lower > 0).astype(int)
 
 
         u_norm_lower = u_norm - d_norm
