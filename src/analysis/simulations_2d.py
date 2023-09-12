@@ -93,7 +93,7 @@ if __name__ == "__main__":
             
         resolution = 1/int(np.sqrt(N*0.05))
         model = FDD(Y, X, level = S, lmbda = lmbda, nu = nu, iter = 100000, tol = 5e-5, resolution=resolution,
-                pick_nu = "MS", scaled = True, scripted = False)
+                pick_nu = "MS", scaled = True, scripted = False, CI=False)
         
         results = model.run()
         u = results['u']
