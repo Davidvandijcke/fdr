@@ -476,14 +476,16 @@ class FDD():
         k = int(np.ceil((N/2 + 1)* (1-self.alpha)))
         d = sorted(R.flatten())[k-1]
 
-        # # calculate interval length for forward differences
-        R = np.abs(y_closest_norm[idx] - u_norm[idx])
+        # calculate interval length for forward differences
+        indexing_tuple = (slice(None),) + idx
+        R = np.abs(y_diff[indexing_tuple] - u_diff[indexing_tuple])
         k = int(np.ceil((N/2 + 1)* (1-self.alpha)))
-        d_norm = sorted(R.flatten())[k-1]
+        d_norm = np.sort(R, axis=1)[:,k-1]
 
-
-        u_norm_lower = u_norm - d_norm
-        J_lower = (u_norm_lower > 0).astype(int)
+        # if the upper jump is below 0 or the lower jump above, we have a significant jump
+        J_lower = (u_diff -  d_norm.reshape((R.shape[0],) + (1,) * (R.shape[0])))
+        J_upper = (u_diff +  d_norm.reshape((R.shape[0],) + (1,) * (R.shape[0])))
+        J_lower = (np.sum((J_lower > 0).astype(int) + (J_upper < 0).astype(int), axis=0) > 0)
 
         return (u - d, u + d, J_lower)
     

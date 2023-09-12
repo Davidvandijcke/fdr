@@ -132,7 +132,7 @@ if __name__ == "__main__":
             X, Y, U = generate2D(jsize, sigma=sigma, N=N_sure)
             resolution = 1/int(np.sqrt(0.05*N_sure))
             model = FDD(Y, X, level = S, lmbda = 20, nu = 0.01, iter = 100000, tol = 5e-5, pick_nu = "MS", 
-                        scaled = True, resolution=resolution, scripted=False)
+                        scaled = True, resolution=resolution, scripted=False, CI=False)
             res = SURE(tuner=True, num_samples=num_samples, model=model, R=R, 
                     num_gpus=num_gpus, num_cpus=num_cpus)
             best = res.get_best_result(metric = "score", mode = "min")
