@@ -27,12 +27,12 @@ if __name__ == '__main__':
     nu = 0.02
     num_samples = 2 # 225 #  400 # 400 # 400 # 200
     R =  1 # 3 # 3 # 3 # 5
-    num_gpus = 0.5
-    num_cpus = 2
+    num_gpus = 1
+    num_cpus = 4
 
 
     # get directory above
-    main_dir = "s3://ipsos-dvd/fdd" # "/home/dvdijcke/" # moveUp(dir, 4)
+    main_dir =  "/home/dvdijcke/" # moveUp(dir, 4)
     data_in = os.path.join(main_dir, 'data', 'in')    
     data_out = os.path.join(main_dir, 'data', 'out')  
     
@@ -48,19 +48,19 @@ if __name__ == '__main__':
     Y = np.array(gdf['count_norm'])
     X = np.stack([np.array(gdf.geometry.centroid.x), np.array(gdf.geometry.centroid.y)]).T
     
-    qtile = np.quantile(Y, 0.9)
+    qtile = np.quantile(Y, 0.95)
     Y[Y>qtile] = qtile
         
     resolution = 1/int(np.sqrt(0.25*Y.size))
     model = FDD(Y, X, level = 32, lmbda = 150, nu = 0.008, iter = 10000, tol = 5e-5, resolution=resolution,
-        pick_nu = "MS", scaled = True, scripted = False, rectangle=True)
+        pick_nu = "MS", scaled = True, scripted = False, rectangle=True, CI=False)
     res = SURE(tuner=True, num_samples=num_samples, model=model, R=R, 
-        num_gpus=num_gpus, num_cpus=num_cpus, lmbda_max=10) # can't remember if I set nu to 0.001, or 0.002
+        num_gpus=num_gpus, num_cpus=num_cpus, lmbda_max=100, nu_min=0.02) # can't remember if I set nu to 0.001, or 0.002
 
-    file_name = 'india_mobile_SURE_95_025_lambda100.pkl'
+    file_name = 'india_mobile_SURE_95_025_lambda100_nu01.pkl'
     with open(file_name, 'wb') as file:
         pickle.dump(res, file)
         
-    s3 = boto3.client('s3')
-    with open(file_name, "rb") as f:
-        s3.upload_fileobj(f, "ipsos-dvd", "fdd/data/out/" + file_name)
+    # s3 = boto3.client('s3')
+    # with open(file_name, "rb") as f:
+    #     s3.upload_fileobj(f, "ipsos-dvd", "fdd/data/out/" + file_name)
