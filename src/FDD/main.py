@@ -460,7 +460,7 @@ class FDD():
 
         y_closest, x_closest = self.castDataToGridPoints(grid_x = model_temp.grid_x, X = X_2, Y = Y_2)
         y_closest = (y_closest) # - np.min(Y_2, axis=0)) / np.max(Y_2, axis=0)
-        self.y_diff = model.forward_differences(y_closest, D = len(y_closest.shape))
+        y_diff = model.forward_differences(y_closest, D = len(y_closest.shape))
         #y_closest_norm = np.linalg.norm(y_diff, axis=0, ord=2)
 
         # # Converting the list to a numpy array
@@ -499,6 +499,20 @@ class FDD():
         J_lower = (np.sum((J_lower > 0).astype(int) + (J_upper < 0).astype(int), axis=0) > 0)
         
         return (self.u_cs - d, self.u_cs + d, J_lower)
+    
+    def conformalUncertainty(self, a_bins):
+        a_bins = 1000
+
+        start = 0+1/a_bins
+        for a in np.arange(start,1,1/a_bins):
+            _, _, J_lower = model.conformalSplitBounds(alpha=a)
+            if a == start:
+                J_uc = J_lower.copy() * (1-a)
+            else:
+                J_replace = (J_uc == 0) & (J_lower > 0)
+                J_uc[J_replace] = (1-a)
+        
+        return J_uc
     
     @staticmethod
     def castDataToGridPoints(grid_x, X, Y):
