@@ -458,8 +458,8 @@ class FDD():
 
         y_closest, x_closest = self.castDataToGridPoints(grid_x = model_temp.grid_x, X = X_2, Y = Y_2)
         y_closest = (y_closest) # - np.min(Y_2, axis=0)) / np.max(Y_2, axis=0)
-        y_diff = model.forward_differences(y_closest, D = len(y_closest.shape)
-        y_closest_norm = np.linalg.norm(y_diff), axis=0, ord=2)
+        y_diff = model.forward_differences(y_closest, D = len(y_closest.shape))
+        y_closest_norm = np.linalg.norm(y_diff, axis=0, ord=2)
 
         # # Converting the list to a numpy array
         closest_indices = np.array(closest_indices)

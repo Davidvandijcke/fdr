@@ -1,0 +1,9 @@
+Traceback (most recent call last):
+  File "/home/dvdijcke/fdd/src/analysis/india_mobile_SURE.py", line 7, in <module>
+    from FDD import FDD
+  File "/home/dvdijcke/fdd/src/FDD/__init__.py", line 3, in <module>
+    from .main import FDD
+  File "/home/dvdijcke/fdd/src/FDD/main.py", line 462
+    y_closest_norm = np.linalg.norm(y_diff), axis=0, ord=2)
+    ^
+SyntaxError: invalid syntax
