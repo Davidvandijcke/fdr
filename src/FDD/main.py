@@ -22,6 +22,8 @@ class FDD():
         self.X_raw = X.copy()
         self.Y = Y.copy() # arrays I'll pass to PyTorch
         self.X = X.copy()
+        self.N = self.Y.shape[0]
+
         
         self.image = image
         self.grid = grid
@@ -36,6 +38,10 @@ class FDD():
         # confidence intervals
         self.CI = CI
         self.alpha = alpha
+        self.R_u = None # u residuals conformal split
+        self.R_J = None
+        self.u_cs = None # conformal split u estimate
+        self.u_diff = None # same for u_diff
         
         # for acceleration
         self.gamma = 1
@@ -411,19 +417,15 @@ class FDD():
     
     def conformalSplit(self):
 
-        N = self.Y.shape[0]
-
-        self.alpha=0.1
-
-        I = list(range(N))
-        I1 = random.sample(I, int(N/2))
+        I = list(range(self.N))
+        I1 = random.sample(I, int(self.N/2))
         X_1 = self.X_raw[I1]
         Y_1 = self.Y_raw[I1]
 
         model = FDD(Y_1, X_1, level = self.level, lmbda = self.lmbda, nu = self.nu, iter = self.iter, tol = self.tol, resolution=self.resolution,
             pick_nu = self.pick_nu, scaled = self.scaled, scripted = self.scripted, rectangle = self.rectangle, average=self.average, CI=False)
 
-        u = model.run()['u']
+        self.u_cs = model.run()['u']
 
         I2 = [i for i in I if i not in I1]
         X_2 = self.X_raw[I2]
@@ -458,37 +460,45 @@ class FDD():
 
         y_closest, x_closest = self.castDataToGridPoints(grid_x = model_temp.grid_x, X = X_2, Y = Y_2)
         y_closest = (y_closest) # - np.min(Y_2, axis=0)) / np.max(Y_2, axis=0)
-        y_diff = model.forward_differences(y_closest, D = len(y_closest.shape))
-        y_closest_norm = np.linalg.norm(y_diff, axis=0, ord=2)
+        self.y_diff = model.forward_differences(y_closest, D = len(y_closest.shape))
+        #y_closest_norm = np.linalg.norm(y_diff, axis=0, ord=2)
 
         # # Converting the list to a numpy array
         closest_indices = np.array(closest_indices)
 
-        u_pred = (u.copy()) #  - np.min(model.Y_raw,axis=0)) / np.max(model.Y_raw,axis=0)
-        u_diff = model.forward_differences(u_pred, D = len(u_pred.shape))
-        u_norm =  np.linalg.norm(u_diff, axis = 0, ord = 2) # 2-norm
+        u_pred = (self.u_cs.copy()) #  - np.min(model.Y_raw,axis=0)) / np.max(model.Y_raw,axis=0)
+        self.u_diff = model.forward_differences(u_pred, D = len(u_pred.shape))
+        #u_norm =  np.linalg.norm(u_diff, axis = 0, ord = 2) # 2-norm
 
         # calculate interval length for function
         if X_2.ndim == 1:
             idx = closest_indices
         else:
             idx = tuple(closest_indices.T)
-        R = np.abs(Y_2 - u[idx])
-        k = int(np.ceil((N/2 + 1)* (1-self.alpha)))
-        d = sorted(R.flatten())[k-1]
+        self.R_u = np.abs(Y_2 - self.u_cs[idx])
+        
 
         # calculate interval length for forward differences
         indexing_tuple = (slice(None),) + idx
-        R = np.abs(y_diff[indexing_tuple] - u_diff[indexing_tuple])
-        k = int(np.ceil((N/2 + 1)* (1-self.alpha)))
-        d_norm = np.sort(R, axis=1)[:,k-1]
+        self.R_J = np.abs(y_diff[indexing_tuple] - self.u_diff[indexing_tuple])
+        
+
+        return self.conformalSplitBounds(self.alpha)
+    
+    def conformalSplitBounds(self, alpha):
+        k = int(np.ceil((self.N/2 + 1)* (1-alpha)))
+        d = sorted(self.R_u.flatten())[k-1]
+        
+        k = int(np.ceil((self.N/2 + 1)* (1-alpha)))
+        d_norm = np.sort(self.R_J, axis=1)[:,k-1]
 
         # if the upper jump is below 0 or the lower jump above, we have a significant jump
-        J_lower = (u_diff -  d_norm.reshape((R.shape[0],) + (1,) * (R.shape[0])))
-        J_upper = (u_diff +  d_norm.reshape((R.shape[0],) + (1,) * (R.shape[0])))
+        shp = self.R_J.shape[0]
+        J_lower = (self.u_diff -  d_norm.reshape((shp,) + (1,) * (shp)))
+        J_upper = (self.u_diff +  d_norm.reshape((shp,) + (1,) * (shp)))
         J_lower = (np.sum((J_lower > 0).astype(int) + (J_upper < 0).astype(int), axis=0) > 0)
-
-        return (u - d, u + d, J_lower)
+        
+        return (self.u_cs - d, self.u_cs + d, J_lower)
     
     @staticmethod
     def castDataToGridPoints(grid_x, X, Y):
