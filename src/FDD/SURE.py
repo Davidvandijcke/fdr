@@ -116,7 +116,7 @@ def SURE(model, maxiter = 100, R = 1, tuner = False, eps = 0.01,
 
         search_space={
             # A random function
-            "lmbda": tune.loguniform(1, lmbda_max),
+            "lmbda": tune.uniform(1, lmbda_max),
             "nu":  tune.loguniform(nu_min, nu_max)
             # Use the `spec.config` namespace to access other hyperparameters
             #"nu":

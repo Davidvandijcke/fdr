@@ -500,12 +500,10 @@ class FDD():
         
         return (self.u_cs - d, self.u_cs + d, J_lower)
     
-    def conformalUncertainty(self, a_bins):
-        a_bins = 1000
-
+    def conformalUncertainty(self, a_bins=1000):
         start = 0+1/a_bins
         for a in np.arange(start,1,1/a_bins):
-            _, _, J_lower = model.conformalSplitBounds(alpha=a)
+            _, _, J_lower = self.conformalSplitBounds(alpha=a)
             if a == start:
                 J_uc = J_lower.copy() * (1-a)
             else:

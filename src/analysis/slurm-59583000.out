@@ -1,0 +1,308 @@
+/home/dvdijcke/fdd/src/analysis/india_mobile_SURE.py:49: UserWarning: Geometry is in a geographic CRS. Results from 'centroid' are likely incorrect. Use 'GeoSeries.to_crs()' to re-project geometries to a projected CRS before this operation.
+
+  X = np.stack([np.array(gdf.geometry.centroid.x), np.array(gdf.geometry.centroid.y)]).T
+2023-09-14 15:10:36,316	INFO worker.py:1625 -- Started a local Ray instance.
+2023-09-14 15:10:42,690	INFO tune.py:218 -- Initializing Ray automatically. For cluster usage or custom Ray initialization, call `ray.init(...)` before `Tuner(...)`.
+[2m[36m(func pid=3520884)[0m /home/dvdijcke/fdd/src/FDD/primaldual_multi_scaled_tune.py:35: UserWarning: To copy construct from a tensor, it is recommended to use sourceTensor.clone().detach() or sourceTensor.clone().detach().requires_grad_(True), rather than torch.tensor(sourceTensor).
+[2m[36m(func pid=3520884)[0m   tauu = torch.tensor(  1.0 / torch.sqrt(denom) * res, device=dev)  # torch.tensor(  1.0 / 6.0 * res, device=dev) # *res
+[2m[36m(func pid=3520884)[0m /home/dvdijcke/fdd/src/FDD/primaldual_multi_scaled_tune.py:36: UserWarning: To copy construct from a tensor, it is recommended to use sourceTensor.clone().detach() or sourceTensor.clone().detach().requires_grad_(True), rather than torch.tensor(sourceTensor).
+[2m[36m(func pid=3520884)[0m   sigmap = torch.tensor( 1.0 / torch.sqrt(denom)  * res, device=dev) # torch.tensor( (1.0 / (3.0 + l))  * res, device=dev) # *res
+2023-09-14 15:12:16,515	INFO tune.py:945 -- Total run time: 93.82 seconds (93.42 seconds for the tuning loop).
+== Status ==
+Current time: 2023-09-14 15:10:43 (running for 00:00:00.10)
+Using FIFO scheduling algorithm.
+Logical resource usage: 4.0/40 CPUs, 1.0/1 GPUs (0.0/1.0 accelerator_type:V100)
+Result logdir: /home/dvdijcke/ray_results/tune_func_2023-09-14_15-10-30
+Number of trials: 2/2 (1 PENDING, 1 RUNNING)
++-----------------------+----------+---------------------+---------+---------+
+| Trial name            | status   | loc                 |   lmbda |      nu |
+|-----------------------+----------+---------------------+---------+---------|
+| tune_func_666d1_00000 | RUNNING  | 10.164.9.68:3520884 | 3.51822 | 6.46668 |
+| tune_func_666d1_00001 | PENDING  |                     | 2.2927  | 4.63792 |
++-----------------------+----------+---------------------+---------+---------+
+
+
+== Status ==
+Current time: 2023-09-14 15:10:52 (running for 00:00:09.86)
+Using FIFO scheduling algorithm.
+Logical resource usage: 4.0/40 CPUs, 1.0/1 GPUs (0.0/1.0 accelerator_type:V100)
+Result logdir: /home/dvdijcke/ray_results/tune_func_2023-09-14_15-10-30
+Number of trials: 2/2 (1 PENDING, 1 RUNNING)
++-----------------------+----------+---------------------+---------+---------+
+| Trial name            | status   | loc                 |   lmbda |      nu |
+|-----------------------+----------+---------------------+---------+---------|
+| tune_func_666d1_00000 | RUNNING  | 10.164.9.68:3520884 | 3.51822 | 6.46668 |
+| tune_func_666d1_00001 | PENDING  |                     | 2.2927  | 4.63792 |
++-----------------------+----------+---------------------+---------+---------+
+
+
+== Status ==
+Current time: 2023-09-14 15:10:57 (running for 00:00:14.87)
+Using FIFO scheduling algorithm.
+Logical resource usage: 4.0/40 CPUs, 1.0/1 GPUs (0.0/1.0 accelerator_type:V100)
+Result logdir: /home/dvdijcke/ray_results/tune_func_2023-09-14_15-10-30
+Number of trials: 2/2 (1 PENDING, 1 RUNNING)
++-----------------------+----------+---------------------+---------+---------+
+| Trial name            | status   | loc                 |   lmbda |      nu |
+|-----------------------+----------+---------------------+---------+---------|
+| tune_func_666d1_00000 | RUNNING  | 10.164.9.68:3520884 | 3.51822 | 6.46668 |
+| tune_func_666d1_00001 | PENDING  |                     | 2.2927  | 4.63792 |
++-----------------------+----------+---------------------+---------+---------+
+
+
+== Status ==
+Current time: 2023-09-14 15:11:02 (running for 00:00:19.87)
+Using FIFO scheduling algorithm.
+Logical resource usage: 4.0/40 CPUs, 1.0/1 GPUs (0.0/1.0 accelerator_type:V100)
+Result logdir: /home/dvdijcke/ray_results/tune_func_2023-09-14_15-10-30
+Number of trials: 2/2 (1 PENDING, 1 RUNNING)
++-----------------------+----------+---------------------+---------+---------+
+| Trial name            | status   | loc                 |   lmbda |      nu |
+|-----------------------+----------+---------------------+---------+---------|
+| tune_func_666d1_00000 | RUNNING  | 10.164.9.68:3520884 | 3.51822 | 6.46668 |
+| tune_func_666d1_00001 | PENDING  |                     | 2.2927  | 4.63792 |
++-----------------------+----------+---------------------+---------+---------+
+
+
+== Status ==
+Current time: 2023-09-14 15:11:07 (running for 00:00:24.88)
+Using FIFO scheduling algorithm.
+Logical resource usage: 4.0/40 CPUs, 1.0/1 GPUs (0.0/1.0 accelerator_type:V100)
+Result logdir: /home/dvdijcke/ray_results/tune_func_2023-09-14_15-10-30
+Number of trials: 2/2 (1 PENDING, 1 RUNNING)
++-----------------------+----------+---------------------+---------+---------+
+| Trial name            | status   | loc                 |   lmbda |      nu |
+|-----------------------+----------+---------------------+---------+---------|
+| tune_func_666d1_00000 | RUNNING  | 10.164.9.68:3520884 | 3.51822 | 6.46668 |
+| tune_func_666d1_00001 | PENDING  |                     | 2.2927  | 4.63792 |
++-----------------------+----------+---------------------+---------+---------+
+
+
+== Status ==
+Current time: 2023-09-14 15:11:12 (running for 00:00:29.88)
+Using FIFO scheduling algorithm.
+Logical resource usage: 4.0/40 CPUs, 1.0/1 GPUs (0.0/1.0 accelerator_type:V100)
+Result logdir: /home/dvdijcke/ray_results/tune_func_2023-09-14_15-10-30
+Number of trials: 2/2 (1 PENDING, 1 RUNNING)
++-----------------------+----------+---------------------+---------+---------+
+| Trial name            | status   | loc                 |   lmbda |      nu |
+|-----------------------+----------+---------------------+---------+---------|
+| tune_func_666d1_00000 | RUNNING  | 10.164.9.68:3520884 | 3.51822 | 6.46668 |
+| tune_func_666d1_00001 | PENDING  |                     | 2.2927  | 4.63792 |
++-----------------------+----------+---------------------+---------+---------+
+
+
+== Status ==
+Current time: 2023-09-14 15:11:17 (running for 00:00:34.89)
+Using FIFO scheduling algorithm.
+Logical resource usage: 4.0/40 CPUs, 1.0/1 GPUs (0.0/1.0 accelerator_type:V100)
+Result logdir: /home/dvdijcke/ray_results/tune_func_2023-09-14_15-10-30
+Number of trials: 2/2 (1 PENDING, 1 RUNNING)
++-----------------------+----------+---------------------+---------+---------+
+| Trial name            | status   | loc                 |   lmbda |      nu |
+|-----------------------+----------+---------------------+---------+---------|
+| tune_func_666d1_00000 | RUNNING  | 10.164.9.68:3520884 | 3.51822 | 6.46668 |
+| tune_func_666d1_00001 | PENDING  |                     | 2.2927  | 4.63792 |
++-----------------------+----------+---------------------+---------+---------+
+
+
+== Status ==
+Current time: 2023-09-14 15:11:22 (running for 00:00:39.89)
+Using FIFO scheduling algorithm.
+Logical resource usage: 4.0/40 CPUs, 1.0/1 GPUs (0.0/1.0 accelerator_type:V100)
+Result logdir: /home/dvdijcke/ray_results/tune_func_2023-09-14_15-10-30
+Number of trials: 2/2 (1 PENDING, 1 RUNNING)
++-----------------------+----------+---------------------+---------+---------+
+| Trial name            | status   | loc                 |   lmbda |      nu |
+|-----------------------+----------+---------------------+---------+---------|
+| tune_func_666d1_00000 | RUNNING  | 10.164.9.68:3520884 | 3.51822 | 6.46668 |
+| tune_func_666d1_00001 | PENDING  |                     | 2.2927  | 4.63792 |
++-----------------------+----------+---------------------+---------+---------+
+
+
+== Status ==
+Current time: 2023-09-14 15:11:27 (running for 00:00:44.90)
+Using FIFO scheduling algorithm.
+Logical resource usage: 4.0/40 CPUs, 1.0/1 GPUs (0.0/1.0 accelerator_type:V100)
+Result logdir: /home/dvdijcke/ray_results/tune_func_2023-09-14_15-10-30
+Number of trials: 2/2 (1 PENDING, 1 RUNNING)
++-----------------------+----------+---------------------+---------+---------+
+| Trial name            | status   | loc                 |   lmbda |      nu |
+|-----------------------+----------+---------------------+---------+---------|
+| tune_func_666d1_00000 | RUNNING  | 10.164.9.68:3520884 | 3.51822 | 6.46668 |
+| tune_func_666d1_00001 | PENDING  |                     | 2.2927  | 4.63792 |
++-----------------------+----------+---------------------+---------+---------+
+
+
+Result for tune_func_666d1_00000:
+  date: 2023-09-14_15-11-30
+  done: false
+  hostname: gl1010.arc-ts.umich.edu
+  iterations_since_restore: 1
+  node_ip: 10.164.9.68
+  pid: 3520884
+  score: 0.031739907974558175
+  time_since_restore: 42.740068435668945
+  time_this_iter_s: 42.740068435668945
+  time_total_s: 42.740068435668945
+  timestamp: 1694718690
+  training_iteration: 1
+  trial_id: 666d1_00000
+  
+Trial tune_func_666d1_00000 completed.
+== Status ==
+Current time: 2023-09-14 15:11:35 (running for 00:00:52.71)
+Using FIFO scheduling algorithm.
+Logical resource usage: 4.0/40 CPUs, 1.0/1 GPUs (0.0/1.0 accelerator_type:V100)
+Result logdir: /home/dvdijcke/ray_results/tune_func_2023-09-14_15-10-30
+Number of trials: 2/2 (1 RUNNING, 1 TERMINATED)
++-----------------------+------------+---------------------+---------+---------+--------+------------------+
+| Trial name            | status     | loc                 |   lmbda |      nu |   iter |   total time (s) |
+|-----------------------+------------+---------------------+---------+---------+--------+------------------|
+| tune_func_666d1_00001 | RUNNING    | 10.164.9.68:3520884 | 2.2927  | 4.63792 |        |                  |
+| tune_func_666d1_00000 | TERMINATED | 10.164.9.68:3520884 | 3.51822 | 6.46668 |      1 |          42.7401 |
++-----------------------+------------+---------------------+---------+---------+--------+------------------+
+
+
+== Status ==
+Current time: 2023-09-14 15:11:40 (running for 00:00:57.72)
+Using FIFO scheduling algorithm.
+Logical resource usage: 4.0/40 CPUs, 1.0/1 GPUs (0.0/1.0 accelerator_type:V100)
+Result logdir: /home/dvdijcke/ray_results/tune_func_2023-09-14_15-10-30
+Number of trials: 2/2 (1 RUNNING, 1 TERMINATED)
++-----------------------+------------+---------------------+---------+---------+--------+------------------+
+| Trial name            | status     | loc                 |   lmbda |      nu |   iter |   total time (s) |
+|-----------------------+------------+---------------------+---------+---------+--------+------------------|
+| tune_func_666d1_00001 | RUNNING    | 10.164.9.68:3520884 | 2.2927  | 4.63792 |        |                  |
+| tune_func_666d1_00000 | TERMINATED | 10.164.9.68:3520884 | 3.51822 | 6.46668 |      1 |          42.7401 |
++-----------------------+------------+---------------------+---------+---------+--------+------------------+
+
+
+== Status ==
+Current time: 2023-09-14 15:11:45 (running for 00:01:02.72)
+Using FIFO scheduling algorithm.
+Logical resource usage: 4.0/40 CPUs, 1.0/1 GPUs (0.0/1.0 accelerator_type:V100)
+Result logdir: /home/dvdijcke/ray_results/tune_func_2023-09-14_15-10-30
+Number of trials: 2/2 (1 RUNNING, 1 TERMINATED)
++-----------------------+------------+---------------------+---------+---------+--------+------------------+
+| Trial name            | status     | loc                 |   lmbda |      nu |   iter |   total time (s) |
+|-----------------------+------------+---------------------+---------+---------+--------+------------------|
+| tune_func_666d1_00001 | RUNNING    | 10.164.9.68:3520884 | 2.2927  | 4.63792 |        |                  |
+| tune_func_666d1_00000 | TERMINATED | 10.164.9.68:3520884 | 3.51822 | 6.46668 |      1 |          42.7401 |
++-----------------------+------------+---------------------+---------+---------+--------+------------------+
+
+
+== Status ==
+Current time: 2023-09-14 15:11:50 (running for 00:01:07.73)
+Using FIFO scheduling algorithm.
+Logical resource usage: 4.0/40 CPUs, 1.0/1 GPUs (0.0/1.0 accelerator_type:V100)
+Result logdir: /home/dvdijcke/ray_results/tune_func_2023-09-14_15-10-30
+Number of trials: 2/2 (1 RUNNING, 1 TERMINATED)
++-----------------------+------------+---------------------+---------+---------+--------+------------------+
+| Trial name            | status     | loc                 |   lmbda |      nu |   iter |   total time (s) |
+|-----------------------+------------+---------------------+---------+---------+--------+------------------|
+| tune_func_666d1_00001 | RUNNING    | 10.164.9.68:3520884 | 2.2927  | 4.63792 |        |                  |
+| tune_func_666d1_00000 | TERMINATED | 10.164.9.68:3520884 | 3.51822 | 6.46668 |      1 |          42.7401 |
++-----------------------+------------+---------------------+---------+---------+--------+------------------+
+
+
+== Status ==
+Current time: 2023-09-14 15:11:55 (running for 00:01:12.73)
+Using FIFO scheduling algorithm.
+Logical resource usage: 4.0/40 CPUs, 1.0/1 GPUs (0.0/1.0 accelerator_type:V100)
+Result logdir: /home/dvdijcke/ray_results/tune_func_2023-09-14_15-10-30
+Number of trials: 2/2 (1 RUNNING, 1 TERMINATED)
++-----------------------+------------+---------------------+---------+---------+--------+------------------+
+| Trial name            | status     | loc                 |   lmbda |      nu |   iter |   total time (s) |
+|-----------------------+------------+---------------------+---------+---------+--------+------------------|
+| tune_func_666d1_00001 | RUNNING    | 10.164.9.68:3520884 | 2.2927  | 4.63792 |        |                  |
+| tune_func_666d1_00000 | TERMINATED | 10.164.9.68:3520884 | 3.51822 | 6.46668 |      1 |          42.7401 |
++-----------------------+------------+---------------------+---------+---------+--------+------------------+
+
+
+== Status ==
+Current time: 2023-09-14 15:12:00 (running for 00:01:17.74)
+Using FIFO scheduling algorithm.
+Logical resource usage: 4.0/40 CPUs, 1.0/1 GPUs (0.0/1.0 accelerator_type:V100)
+Result logdir: /home/dvdijcke/ray_results/tune_func_2023-09-14_15-10-30
+Number of trials: 2/2 (1 RUNNING, 1 TERMINATED)
++-----------------------+------------+---------------------+---------+---------+--------+------------------+
+| Trial name            | status     | loc                 |   lmbda |      nu |   iter |   total time (s) |
+|-----------------------+------------+---------------------+---------+---------+--------+------------------|
+| tune_func_666d1_00001 | RUNNING    | 10.164.9.68:3520884 | 2.2927  | 4.63792 |        |                  |
+| tune_func_666d1_00000 | TERMINATED | 10.164.9.68:3520884 | 3.51822 | 6.46668 |      1 |          42.7401 |
++-----------------------+------------+---------------------+---------+---------+--------+------------------+
+
+
+== Status ==
+Current time: 2023-09-14 15:12:05 (running for 00:01:22.74)
+Using FIFO scheduling algorithm.
+Logical resource usage: 4.0/40 CPUs, 1.0/1 GPUs (0.0/1.0 accelerator_type:V100)
+Result logdir: /home/dvdijcke/ray_results/tune_func_2023-09-14_15-10-30
+Number of trials: 2/2 (1 RUNNING, 1 TERMINATED)
++-----------------------+------------+---------------------+---------+---------+--------+------------------+
+| Trial name            | status     | loc                 |   lmbda |      nu |   iter |   total time (s) |
+|-----------------------+------------+---------------------+---------+---------+--------+------------------|
+| tune_func_666d1_00001 | RUNNING    | 10.164.9.68:3520884 | 2.2927  | 4.63792 |        |                  |
+| tune_func_666d1_00000 | TERMINATED | 10.164.9.68:3520884 | 3.51822 | 6.46668 |      1 |          42.7401 |
++-----------------------+------------+---------------------+---------+---------+--------+------------------+
+
+
+== Status ==
+Current time: 2023-09-14 15:12:10 (running for 00:01:27.75)
+Using FIFO scheduling algorithm.
+Logical resource usage: 4.0/40 CPUs, 1.0/1 GPUs (0.0/1.0 accelerator_type:V100)
+Result logdir: /home/dvdijcke/ray_results/tune_func_2023-09-14_15-10-30
+Number of trials: 2/2 (1 RUNNING, 1 TERMINATED)
++-----------------------+------------+---------------------+---------+---------+--------+------------------+
+| Trial name            | status     | loc                 |   lmbda |      nu |   iter |   total time (s) |
+|-----------------------+------------+---------------------+---------+---------+--------+------------------|
+| tune_func_666d1_00001 | RUNNING    | 10.164.9.68:3520884 | 2.2927  | 4.63792 |        |                  |
+| tune_func_666d1_00000 | TERMINATED | 10.164.9.68:3520884 | 3.51822 | 6.46668 |      1 |          42.7401 |
++-----------------------+------------+---------------------+---------+---------+--------+------------------+
+
+
+== Status ==
+Current time: 2023-09-14 15:12:15 (running for 00:01:32.75)
+Using FIFO scheduling algorithm.
+Logical resource usage: 4.0/40 CPUs, 1.0/1 GPUs (0.0/1.0 accelerator_type:V100)
+Result logdir: /home/dvdijcke/ray_results/tune_func_2023-09-14_15-10-30
+Number of trials: 2/2 (1 RUNNING, 1 TERMINATED)
++-----------------------+------------+---------------------+---------+---------+--------+------------------+
+| Trial name            | status     | loc                 |   lmbda |      nu |   iter |   total time (s) |
+|-----------------------+------------+---------------------+---------+---------+--------+------------------|
+| tune_func_666d1_00001 | RUNNING    | 10.164.9.68:3520884 | 2.2927  | 4.63792 |        |                  |
+| tune_func_666d1_00000 | TERMINATED | 10.164.9.68:3520884 | 3.51822 | 6.46668 |      1 |          42.7401 |
++-----------------------+------------+---------------------+---------+---------+--------+------------------+
+
+
+Result for tune_func_666d1_00001:
+  date: 2023-09-14_15-12-16
+  done: false
+  hostname: gl1010.arc-ts.umich.edu
+  iterations_since_restore: 1
+  node_ip: 10.164.9.68
+  pid: 3520884
+  score: 0.032435097418756526
+  time_since_restore: 45.70821928977966
+  time_this_iter_s: 45.70821928977966
+  time_total_s: 45.70821928977966
+  timestamp: 1694718736
+  training_iteration: 1
+  trial_id: 666d1_00001
+  
+Trial tune_func_666d1_00001 completed.
+== Status ==
+Current time: 2023-09-14 15:12:16 (running for 00:01:33.43)
+Using FIFO scheduling algorithm.
+Logical resource usage: 0/40 CPUs, 0/1 GPUs (0.0/1.0 accelerator_type:V100)
+Result logdir: /home/dvdijcke/ray_results/tune_func_2023-09-14_15-10-30
+Number of trials: 2/2 (2 TERMINATED)
++-----------------------+------------+---------------------+---------+---------+--------+------------------+
+| Trial name            | status     | loc                 |   lmbda |      nu |   iter |   total time (s) |
+|-----------------------+------------+---------------------+---------+---------+--------+------------------|
+| tune_func_666d1_00000 | TERMINATED | 10.164.9.68:3520884 | 3.51822 | 6.46668 |      1 |          42.7401 |
+| tune_func_666d1_00001 | TERMINATED | 10.164.9.68:3520884 | 2.2927  | 4.63792 |      1 |          45.7082 |
++-----------------------+------------+---------------------+---------+---------+--------+------------------+
+
+

@@ -25,7 +25,7 @@ if __name__ == '__main__':
     N = 1000
     lmbda = 1000
     nu = 0.02
-    num_samples = 225 # 225 #  400 # 400 # 400 # 200
+    num_samples = 400 # 225 #  400 # 400 # 400 # 200
     R =  3 # 3 # 3 # 3 # 5
     num_gpus = 1
     num_cpus = 2
@@ -51,9 +51,9 @@ if __name__ == '__main__':
     model = FDD(Y, X, level = 32, lmbda = 150, nu = 0.008, iter = 10000, tol = 5e-5, resolution=resolution,
         pick_nu = "MS", scaled = True, scripted = False, rectangle=True)
     res = SURE(tuner=True, num_samples=num_samples, model=model, R=R, 
-        num_gpus=num_gpus, num_cpus=num_cpus, lmbda_max=5, nu_min=0.07) # lmbda = 5, nu_min = 0.07 
+        num_gpus=num_gpus, num_cpus=num_cpus, lmbda_max=40, nu_min=0.2) # lmbda = 5, nu_min = 0.07 
 
-    file_name = os.path.join(data_out, 'india_econ_SURE_90_lambda5_nu05.pkl')
+    file_name = os.path.join(data_out, 'india_econ_SURE_90_lambda40_nu2.pkl')
     with open(file_name, 'wb') as file:
         pickle.dump(res, file)
         

@@ -68,7 +68,7 @@ if __name__ == "__main__":
     N_list = [1000, 5000, 10000]
     N_sure = max(N_list)
     S = 32
-    num_samples = 400 # 400 # 200
+    num_samples = 225 # 400 # 200
     num_sims = 100 # 100 # 100
     R = 3 #  3 # 3 # 5
     num_gpus = 1
@@ -123,7 +123,7 @@ if __name__ == "__main__":
         # calculate Cohen's d jump sizes
         X, Y, U = generate2D(jsize = 0, sigma=sigma, N=N_sure)
         std = np.std(Y)
-        jsizes = np.array([0.25]) * std
+        jsizes = np.array([0.25, 0.5, 0.75]) * std
 
         for jsize in jsizes: # , 0.2, 0.5]:
 
