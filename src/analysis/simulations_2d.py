@@ -1,13 +1,22 @@
 from FDD import FDD
 from FDD.SURE import SURE
+from FDD.utils import *
+from FDD.primaldual_multi_scaled_tune import PrimalDual
 import numpy as np
 import pandas as pd
 import torch 
+from functools import partial
 from matplotlib import pyplot as plt
 import ray
+import time
 from ray import tune
-#import boto3
+import gc
+import boto3
 import os
+from ray.air.config import RunConfig
+from ray.tune import CLIReporter, JupyterNotebookReporter
+
+
 
 def f(x,y, jsize):
   temp = np.sqrt((x-1/2)**2 + (y-1/2)**2)
@@ -15,6 +24,19 @@ def f(x,y, jsize):
       return temp
   else:
       return temp + jsize
+  
+def get_reporter(max_progress_rows=10, metric_column="custom_metric"):
+    # Check if ipykernel is loaded
+    is_jupyter = 'ipykernel' in sys.modules
+
+    if is_jupyter:
+        reporter = JupyterNotebookReporter(overwrite=True)
+    else:
+        reporter = CLIReporter(max_progress_rows=max_progress_rows)
+
+    reporter.add_metric_column(metric_column)
+
+    return reporter
 
 def generate2D(jsize=0.1, sigma = 0.02, N=500):
   data = np.random.rand(N, 2) # draw 1000 2D points from a uniform
@@ -71,12 +93,14 @@ if __name__ == "__main__":
     num_samples = 225 # 400 # 200
     num_sims = 100 # 100 # 100
     R = 3 #  3 # 3 # 5
-    num_gpus = 1
-    num_cpus = 4
-    fdate = "2022-08-04"
+    num_gpus = 0.5
+    num_cpus = 3
+    fdate = "2023-09-21"
 
-    @ray.remote(num_gpus=num_gpus, num_cpus=num_cpus)  # This decorator indicates that this function will be distributed, with each task using one GPU.
-    def train(config, jsize, sigma, N, lmbda, nu, S):
+    #@ray.remote(num_gpus=num_gpus, num_cpus=num_cpus)  # This decorator indicates that this function will be distributed, with each task using one GPU.
+    def train_func(config, jsize, sigma, lmbda, nu, S):
+        s = config['s']
+        N = config['N']
         # Here we randomly generate training data.
         X, Y, U = generate2D(jsize=jsize, sigma=sigma, N=N)
         
@@ -94,12 +118,31 @@ if __name__ == "__main__":
         resolution = 1/int(np.sqrt(N*0.05))
         model = FDD(Y, X, level = S, lmbda = lmbda, nu = nu, iter = 100000, tol = 5e-5, resolution=resolution,
                 pick_nu = "MS", scaled = True, scripted = False, CI=False)
+        # model = FDD(Y, X, level = S, lmbda = lmbda, nu = nu, iter = 100000, tol = 5e-5, resolution=resolution,
+        #         pick_nu = "MS", scaled = True, scripted = False, CI=False)
         
-        results = model.run()
-        u = results['u']
-        J_grid = results['J']
-        jumps = results['jumps']
+        f, repeats, level, lmbda, nu, tol = \
+            arraysToTensors(model.grid_y, model.iter, model.level, model.lmbda, model.nu, model.tol, device)
         
+        start = time.time()
+        temp = tune_func_model(f, repeats, level, lmbda, nu, tol, N, s, model)
+        secs = time.time() - start
+        print(f"Seconds model {secs}")
+                    
+        start = time.time()
+        temp.to_csv("s3://projects-fdd/data/out/simulations/" + fdate + "/simulation_2d_N" + str(N) + "_sim" + str(s) + "_" + str(sigma) + "_jsize_" + str(jsize) + ".csv", index=False)      
+        secs = time.time() - start
+        print(f"Seconds writing {secs}")
+        return None
+    
+    def tune_func_model(f, repeats, level, lmbda, nu, tol, N, s, model):
+        primal = PrimalDual()
+        results = primal.forward(f, repeats, level, lmbda, nu, tol)
+                
+        u, jumps, J_grid, nrj, eps, it = model.processResults(results)
+        
+        u_lower, u_upper, J_lower = None, None, None
+                
         u_original, J_original = getOriginalImage(model, jsize)
 
         
@@ -111,96 +154,121 @@ if __name__ == "__main__":
                 
         temp = pd.DataFrame(jumps)
         temp[['alpha', 'N', 'S', 's', 'sigma', 'lambda', 'nu', 'jump_neg', 
-              'jump_pos', 'mse']] = jsize, N, S, config, sigma, lmbda, nu, jump_neg, jump_pos, mse
-        torch.cuda.empty_cache()
+              'jump_pos', 'mse']] = jsize, N, S, s, sigma, model.lmbda, model.nu, jump_neg, jump_pos, mse
         return temp
 
-    
-    dflist = []
-
-    for sigma in [0.05]: #, 0.05]:
         
-        # calculate Cohen's d jump sizes
-        X, Y, U = generate2D(jsize = 0, sigma=sigma, N=N_sure)
-        std = np.std(Y)
-        jsizes = np.array([0.25, 0.5, 0.75]) * std
 
-        for jsize in jsizes: # , 0.2, 0.5]:
+    
+    # dflist = []
 
-            print("Running SURE")
-            # run SURE once for largest N
-            X, Y, U = generate2D(jsize, sigma=sigma, N=N_sure)
-            resolution = 1/int(np.sqrt(0.05*N_sure))
-            model = FDD(Y, X, level = S, lmbda = 20, nu = 0.01, iter = 100000, tol = 5e-5, pick_nu = "MS", 
-                        scaled = True, resolution=resolution, scripted=False, CI=False)
-            res = SURE(tuner=True, num_samples=num_samples, model=model, R=R, 
-                    num_gpus=num_gpus, num_cpus=num_cpus)
-            best = res.get_best_result(metric = "score", mode = "min")
-            torch.cuda.empty_cache()
+    # for sigma in [0.05]: #, 0.05]:
+        
+    #     # calculate Cohen's d jump sizes
+    #     X, Y, U = generate2D(jsize = 0, sigma=sigma, N=N_sure)
+    #     std = np.std(Y)
+    #     jsizes = np.array([0.25, 0.5, 0.75]) * std
 
-            config = best.metrics['config']
-            lmbda, nu = config['lmbda'], config['nu']
+    #     for jsize in jsizes: # , 0.2, 0.5]:
+
+    #         print("Running SURE")
+    #         # run SURE once for largest N
+    #         X, Y, U = generate2D(jsize, sigma=sigma, N=N_sure)
+    #         resolution = 1/int(np.sqrt(0.05*N_sure))
+    #         model = FDD(Y, X, level = S, lmbda = 20, nu = 0.01, iter = 100000, tol = 5e-5, pick_nu = "MS", 
+    #                     scaled = True, resolution=resolution, scripted=False, CI=False)
+    #         res = SURE(tuner=True, num_samples=num_samples, model=model, R=R, 
+    #                 num_gpus=num_gpus, num_cpus=num_cpus)
+    #         best = res.get_best_result(metric = "score", mode = "min")
+    #         torch.cuda.empty_cache()
+
+    #         config = best.metrics['config']
+    #         lmbda, nu = config['lmbda'], config['nu']
             
-            # lmbda = 120
-            # nu = 0.0016
-            # model.lmbda = lmbda
-            # model.nu = nu
-            # model.tol = 5e-6
-            # u, jumps, J_grid, nrj, eps, it = model.run()
-            # temp = pd.DataFrame(jumps)
-            # temp['Y_jumpsize'].abs().mean()
+    #         # lmbda = 120
+    #         # nu = 0.0016
+    #         # model.lmbda = lmbda
+    #         # model.nu = nu
+    #         # model.tol = 5e-6
+    #         # u, jumps, J_grid, nrj, eps, it = model.run()
+    #         # temp = pd.DataFrame(jumps)
+    #         # temp['Y_jumpsize'].abs().mean()
             
-            # plt.hist(temp['Y_jumpsize'])
-            # plt.show()
+    #         # plt.hist(temp['Y_jumpsize'])
+    #         # plt.show()
             
-            # test = temp[temp['Y_jumpsize'].abs() < 0.02]
-            # plt.scatter(test['X_0'], test['X_1'], color = "blue")
-            # test = temp[temp['Y_jumpsize'].abs() > 0.02]
-            # plt.scatter(test['X_0'], test['X_1'], color = "red")
+    #         # test = temp[temp['Y_jumpsize'].abs() < 0.02]
+    #         # plt.scatter(test['X_0'], test['X_1'], color = "blue")
+    #         # test = temp[temp['Y_jumpsize'].abs() > 0.02]
+    #         # plt.scatter(test['X_0'], test['X_1'], color = "red")
 
+    #         print("Running simulations")
+    #         sims = list(range(num_sims))  # 100 simulations
+    #         results = ray.get([train.remote(config, jsize, sigma, N, lmbda, nu, S) for config in sims for N in N_list])
+
+    #         temp = pd.concat(results)
+    #         dflist.append(temp)
+    #         temp.to_csv("/home/dvdijcke/data/out/simulations/" + fdate + "/simulations_2d_sigma_" + str(sigma) + "_jsize_" + str(jsize) + ".csv", index=False)
+            
+    #         print(f"Done with sigma {sigma}, jump size {jsize}")
+            
+    dflist = []
+    
+    # get file names in s3 folder s3://ipsos-dvd/fdd/data/2022-06-09/    
+    # s3 = boto3.resource('s3')
+    # bucket = s3.Bucket('ipsos-dvd')
+    # objs = bucket.objects.filter(Prefix="fdd/data/2022-06-09/")
+    
+    s3_resource = boto3.resource('s3')
+
+    # List objects
+    bucket = "projects-fdd"
+    files = s3_resource.Bucket(bucket).objects.filter(Prefix='data/out/simulations/2022-08-02/')
+    
+    # loop over sigmas, jzies and files and run the simulations but not the SURE
+    for file in files:
+        if "csv" in file.key:
+
+    
+            # load files
+            df = pd.read_csv(os.path.join("s3://", bucket, file.key))
+            
+            # get parameters
+            lmbda = df['lambda'].iloc[0]
+            nu = df['nu'].iloc[0]
+            jsize = df['alpha'].iloc[0]
+            sigma = df['sigma'].iloc[0]
+            
             print("Running simulations")
             sims = list(range(num_sims))  # 100 simulations
-            results = ray.get([train.remote(config, jsize, sigma, N, lmbda, nu, S) for config in sims for N in N_list])
+            
+            search_space={
+                # A random function
+                "N": tune.grid_search(N_list),
+                "s":  tune.grid_search(sims)
+                # Use the `spec.config` namespace to access other hyperparameters
+                #"nu":
+            }
+            trainable_with_resources = tune.with_resources(
+                partial(train_func, jsize=jsize, sigma=sigma, lmbda=lmbda, nu=nu, S=S), 
+                {"cpu": num_cpus, "gpu": num_gpus}
+            )
+                    # Start the Ray Tune run
+            analysis = tune.Tuner(
+                trainable_with_resources,
+                param_space=search_space,
+                run_config=RunConfig(progress_reporter=get_reporter())
+            )
 
-            temp = pd.concat(results)
-            dflist.append(temp)
-            temp.to_csv("/home/dvdijcke/data/out/simulations/" + fdate + "/simulations_2d_sigma_" + str(sigma) + "_jsize_" + str(jsize) + ".csv", index=False)
+            # Get the hyperparameters of the best trial
+            results = analysis.fit() #get_best_trial("objective", "min", "last")
+                
+            # temp = pd.concat(results)
+            # dflist.append(temp)
             
+            # # save to s3
+            # temp.to_csv("/home/dvdijcke/data/out/simulations/2022-07-07/" + str(sigma) + "_jsize_" + str(jsize) + ".csv", index=False)
             print(f"Done with sigma {sigma}, jump size {jsize}")
-            
-    # dflist = []
-    
-    # # get file names in s3 folder s3://ipsos-dvd/fdd/data/2022-06-09/    
-    # # s3 = boto3.resource('s3')
-    # # bucket = s3.Bucket('ipsos-dvd')
-    # # objs = bucket.objects.filter(Prefix="fdd/data/2022-06-09/")
-    
-    # # get file names in folder /home/dvdijcke/data/out/simulations/2022-06-28/
-    # fn = "/home/dvdijcke/data/out/simulations/2022-06-28/"
-    # files = os.listdir(fn)
-    
-    # # loop over sigmas, jzies and files and run the simulations but not the SURE
-    # for file in files:
-  
-    #     # load files
-    #     df = pd.read_csv(fn + file)
-        
-    #     # get parameters
-    #     lmbda = df['lambda'].iloc[0]
-    #     nu = df['nu'].iloc[0]
-    #     jsize = df['alpha'].iloc[0]
-    #     sigma = df['sigma'].iloc[0]
-        
-    #     print("Running simulations")
-    #     sims = list(range(num_sims))  # 100 simulations
-    #     results = ray.get([train.remote(config, jsize, sigma, N, lmbda, nu, S) for config in sims for N in N_list])
-            
-    #     temp = pd.concat(results)
-    #     dflist.append(temp)
-        
-    #     # save to s3
-    #     temp.to_csv("/home/dvdijcke/data/out/simulations/2022-07-07/" + str(sigma) + "_jsize_" + str(jsize) + ".csv", index=False)
-    #     print(f"Done with sigma {sigma}, jump size {jsize}")
             
     # # sys.stdout = old_stdout
     # # log_file.close()

@@ -267,14 +267,22 @@ if __name__ == '__main__':
 
     #---
     # parameters
-    fn_india = os.path.join(data_in, 'india', 'rajasatan_sundays_sep_2021')
-    cheatdate =  "2021-09-26"
+    fn_india = os.path.join(data_in, 'india', 'rajasatan_monday_sep_2021')
     gid = "GID_3"
     gidname = "gadm41_IND_3.json"
     meters = 40000
-    #---
+    weekdy = "monday" # monday or sundays
     
-    fn = os.path.join(data_out, 'india', 'rajasatan_cheating')
+    #-------
+    
+    if weekdy == "monday":
+        cheatdate =  "2021-09-27"
+        wkdy_suffix = "_monday"
+    else:
+        cheatdate =  "2021-09-26"
+        wkdy_suffix = ""
+    
+    fn = os.path.join(data_out, 'india', 'rajasatan_cheating' + wkdy_suffix)
     
     # read csv file inside fn folder
     files_in_directory = os.listdir(fn)
@@ -282,7 +290,7 @@ if __name__ == '__main__':
 
     cheat = pd.read_csv(*csv_files, compression="gzip")
     
-    fn = os.path.join(data_out, 'india', 'rajasatan_cheating_before')
+    fn = os.path.join(data_out, 'india', 'rajasatan_cheating_before' + wkdy_suffix)
     
     # read csv file inside fn folder
     files_in_directory = os.listdir(fn)
@@ -301,8 +309,8 @@ if __name__ == '__main__':
     before = before.set_crs("epsg:4326")
     before = before.to_crs(epsg=3857)  # Project into Mercator (units in meters)
 
-    redo_shops = False
-    fn = os.path.join(data_out, 'india', 'shops.shp')
+    redo_shops = True
+    fn = os.path.join(data_out, 'india', 'shops' + wkdy_suffix + '.shp')
 
     if redo_shops:
         shops = get_shops(bbox)
@@ -315,13 +323,24 @@ if __name__ == '__main__':
     #------ 
     # day of
     if redo_shops:
-        grid_gdf = cast_to_grid_shops(gdf, shops)
-        grid_gdf.rename(columns={"index_right":'pings'}, inplace=True)
-        grid_gdf = gpd.GeoDataFrame(grid_gdf, geometry=grid_gdf.geometry)
-        grid_gdf.to_file(os.path.join(data_out, 'india', 'rajasatan_cheating_grid_shops.geojson'), driver='GeoJSON')
+        fn = os.path.join(data_out, 'india', 'cheating_temp' + wkdy_suffix + '.csv')
+        gdf.to_csv(fn,  index=False)
+        chunk_size = int(before.size/50)  # specify the chunk size
+        result = pd.DataFrame()  # create an empty dataframe to hold results
+
+        for chunk in pd.read_csv(fn, chunksize=chunk_size):  
+            chunkgdf = gpd.GeoDataFrame(chunk.drop(columns="geometry"), geometry=gpd.points_from_xy(chunk.longitude, chunk.latitude), crs="epsg:4326")
+            temp_result = cast_to_grid_shops(chunkgdf, shops)
+            result = pd.concat([result, temp_result])
+        
+        result.rename(columns={"index_right":'pings'}, inplace=True)
+        gdf = result.groupby("geometry").sum().reset_index()  # store the final result
+        
+        grid_gdf = gpd.GeoDataFrame(gdf, geometry=gdf.geometry)
+        grid_gdf.to_file(os.path.join(data_out, 'india', 'rajasatan_cheating_grid_shops' + wkdy_suffix + '.geojson'), driver='GeoJSON')
         
     # reload day of
-    grid_gdf = gpd.read_file(os.path.join(data_out, 'india', 'rajasatan_cheating_grid_shops.geojson'))
+    grid_gdf = gpd.read_file(os.path.join(data_out, 'india', 'rajasatan_cheating_grid_shops' + wkdy_suffix + '.geojson'))
     
     redo_crossers = False
     if redo_crossers:
@@ -345,7 +364,7 @@ if __name__ == '__main__':
     
     
     # read csv file inside fn folder
-    fn = os.path.join(data_out, 'india', 'rajasatan_cheating')
+    fn = os.path.join(data_out, 'india', 'rajasatan_cheating' + wkdy_suffix)
     files_in_directory = os.listdir(fn)
     csv_files = [os.path.join(fn, file) for file in files_in_directory if file.endswith(".csv.gz")]
 
@@ -367,7 +386,7 @@ if __name__ == '__main__':
     
     # cast shops to grid
     if redo_shops:
-        fn = os.path.join(data_out, 'india', 'before_temp.csv')
+        fn = os.path.join(data_out, 'india', 'before_temp' + wkdy_suffix + '.csv')
         before.to_csv(fn,  index=False)
         chunk_size = int(before.size/16)  # specify the chunk size
         result = pd.DataFrame()  # create an empty dataframe to hold results
@@ -382,7 +401,7 @@ if __name__ == '__main__':
         grid_before = result.groupby("geometry").sum().reset_index()  # store the final result
         
         grid_before = gpd.GeoDataFrame(grid_before, geometry=grid_before.geometry, crs="epsg:3857")
-        grid_before.to_file(os.path.join(data_out, 'india', 'rajasatan_cheating_grid_before_shops.geojson'), driver='GeoJSON')
+        grid_before.to_file(os.path.join(data_out, 'india', 'rajasatan_cheating_grid_before_shops' + wkdy_suffix + '.geojson'), driver='GeoJSON')
         
     # # calculate crossers
     # if redo_crossers:
@@ -405,7 +424,7 @@ if __name__ == '__main__':
     gdf_bdy_raj, gdf_bdy_else = getCrossers(before, meters, redo_boundary=False, append="_before")
     gdf_bdy_raj['day'] = gdf_bdy_raj['date'].dt.date
     crossers = gdf_bdy_raj.merge(gdf_bdy_else, on=['caid'], how='inner')
-    fn = os.path.join(data_out, 'india', 'cross_share_before_full.csv')
+    fn = os.path.join(data_out, 'india', 'cross_share_before_full' + wkdy_suffix + '.csv')
     crossers.to_csv(fn, index=False)
     
     crossers = pd.read_csv(fn)
@@ -417,13 +436,13 @@ if __name__ == '__main__':
     
     cross_share = crossers['caid'].nunique() / gdf_bdy_raj['caid'].nunique()
     df = pd.DataFrame({'date' : [cheatdate], 'meters' : [meters], 'cross_share' : [cross_share]})
-    df.to_csv(os.path.join(data_out, 'india', 'cross_share_before.csv'), index=False)
+    df.to_csv(os.path.join(data_out, 'india', 'cross_share_before' + wkdy_suffix + '.csv'), index=False)
     
     
     
     
     # reload before
-    grid_before = gpd.read_file(os.path.join(data_out, 'india', 'rajasatan_cheating_grid_before_shops.geojson'))
+    grid_before = gpd.read_file(os.path.join(data_out, 'india', 'rajasatan_cheating_grid_before_shops' + wkdy_suffix + '.geojson'))
     grid_before['pings'] = grid_before['pings'] / 3
     #grid_before = cast_to_admin(grid_before, gadm, gid=gid)
     # grid_before = grid_before[~grid_before.pings.isna() ]
@@ -436,7 +455,7 @@ if __name__ == '__main__':
     grid_gdf = test.copy()
     grid_gdf = gpd.GeoDataFrame(grid_gdf, geometry=grid_gdf.geometry)
     
-    fn = os.path.join(data_out, 'india', 'rajasatan_cheating_before')
+    fn = os.path.join(data_out, 'india', 'rajasatan_cheating_before' + wkdy_suffix)
     files_in_directory = os.listdir(fn)
     csv_files = [os.path.join(fn, file) for file in files_in_directory if file.endswith(".csv.gz")]
 
@@ -470,7 +489,7 @@ if __name__ == '__main__':
     
     merged = gpd.GeoDataFrame(merged, geometry=merged.geometry)
     
-    merged.to_file(os.path.join(data_out, 'india', 'rajasatan_cheating_shops_merged_40K.geojson'), driver='GeoJSON')
+    merged.to_file(os.path.join(data_out, 'india', 'rajasatan_cheating_shops_merged_40K' + wkdy_suffix + '.geojson'), driver='GeoJSON')
     # calculate total pings
     
     
