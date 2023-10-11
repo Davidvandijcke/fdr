@@ -87,10 +87,10 @@ if __name__ == "__main__":
     #-------------
     # parameters
     #-------------
-    N_list = [1000, 5000, 10000]
+    N_list = [5000, 10000, 20000]
     N_sure = max(N_list)
     S = 32
-    num_samples = 225 # 400 # 200
+    num_samples = 400 # 400 # 200
     num_sims = 100 # 100 # 100
     R = 3 #  3 # 3 # 5
     num_gpus = 0.5
@@ -116,7 +116,7 @@ if __name__ == "__main__":
             device = torch.device("mps")
             
         resolution = 1/int(np.sqrt(N*0.05))
-        model = FDD(Y, X, level = S, lmbda = lmbda, nu = nu, iter = 100000, tol = 5e-5, resolution=resolution,
+        model = FDD(Y, X, level = S, lmbda = lmbda, nu = nu, iter = 15000, tol = 5e-5, resolution=resolution,
                 pick_nu = "MS", scaled = True, scripted = False, CI=False)
         # model = FDD(Y, X, level = S, lmbda = lmbda, nu = nu, iter = 100000, tol = 5e-5, resolution=resolution,
         #         pick_nu = "MS", scaled = True, scripted = False, CI=False)
