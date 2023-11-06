@@ -6,6 +6,7 @@ src/FDD/main.py
 src/FDD/primaldual_multi.py
 src/FDD/primaldual_multi_scaled.py
 src/FDD/primaldual_multi_scaled_tune.py
+src/FDD/subsampling.py
 src/FDD/test_ray.py
 src/FDD/tests.py
 src/FDD/trash.py

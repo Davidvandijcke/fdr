@@ -95,12 +95,16 @@ if __name__ == "__main__":
     with open(fn, "rb") as f:
         s3.upload_fileobj(f, "projects-fdd", "data/out/subsampling/" + fn)
         
-    test = model.subSampling(nboot = 2)    
+    (test, b) = model.subSampling(nboot = 500)    
     test = np.stack(test, axis=0)
     fn = "1d_boots.npy"
     np.save(fn, test)
     with open(fn, "rb") as f:
         s3.upload_fileobj(f, "projects-fdd", "data/out/subsampling/" + fn)
         
-    import numpy as np
+    fn = "1d_b.npy"
+    np.save(fn, b)
+    with open(fn, "rb") as f:
+        s3.upload_fileobj(f, "projects-fdd", "data/out/subsampling/" + fn)
+        
     
