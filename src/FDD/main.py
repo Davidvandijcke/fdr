@@ -576,8 +576,7 @@ class FDD():
         nrj = nrj.cpu().detach().numpy()
         eps = eps.cpu().detach().numpy()
         
-        u = self.isosurface(v) 
-        
+        u = self.isosurface(v)
         
         u, J_grid, jumps = self.boundary(u)
         
