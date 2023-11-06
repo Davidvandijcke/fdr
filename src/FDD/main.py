@@ -8,12 +8,13 @@ from .primaldual_multi_scaled_tune import PrimalDual
 from matplotlib import pyplot as plt
 import pandas as pd
 import random
+import ray
 
 class FDD():
     def __init__(self, Y : np.array, X : np.array, pick_nu : str="kmeans", level : int=16, 
                  lmbda : float=1, nu : float=0.01, iter : int=1000, tol : float=5e-5, rectangle : bool=False, 
                  qtile : float=0.05, image : bool=False, grid : bool=False, resolution : float=None,
-                 scaled=False, scripted=True, average=False, CI=True, alpha=0.05) -> None:
+                 scaled=False, scripted=True, average=False, CI=True, alpha=0.05, num_cpus=1, num_gpus=1) -> None:
 
         self.device = setDevice()
         torch.set_grad_enabled(False)
@@ -42,6 +43,8 @@ class FDD():
         self.R_J = None
         self.u_cs = None # conformal split u estimate
         self.u_diff = None # same for u_diff
+        self.num_gpus = num_gpus
+        self.num_cpus = num_cpus
         
         # for acceleration
         self.gamma = 1
@@ -511,6 +514,38 @@ class FDD():
                 J_uc[J_replace] = (1-a)
         
         return J_uc
+    
+    @staticmethod
+    def bootstrap_trial_factory(num_gpus, num_cpus):
+        @ray.remote(num_gpus=num_gpus, num_cpus=num_cpus)
+        def bootstrap_trial(model, b, I, s):
+            Y_raw = model.Y_raw.copy()
+            X_raw = model.X_raw.copy()
+            res = np.empty((len(b),) + model.grid_x.squeeze().shape)
+            I_star = I.copy()
+            for j in range(len(b)):
+                I_star = random.sample(I_star, b[j])
+                X_star = X_raw[I_star]
+                Y_star = Y_raw[I_star]
+                print(f"Running trial {s}")
+                model_temp = FDD(Y_star, X_star, level = model.level, lmbda = model.lmbda, nu = model.nu, iter = model.iter, tol = model.tol, resolution=model.resolution,
+                    pick_nu = model.pick_nu, scaled = model.scaled, scripted = model.scripted, rectangle = model.rectangle, average=model.average, CI=False)
+                results = model_temp.run()
+                print(f"Done with trial {s}")
+                res[j,...] = results['u'] 
+            return res
+        return bootstrap_trial
+    
+    def subSampling(self, nboot=300):
+        boots = list(range(nboot))
+        n = self.Y_raw.shape[0]
+        N = self.grid_x.size
+        b = sorted(np.random.randint(low=2*N, high=2*N+0.1*N, size=4), reverse=True)
+        I = list(range(self.Y_raw.shape[0]))
+        bootstrap_trial_dynamic = self.bootstrap_trial_factory(num_gpus=self.num_gpus, num_cpus=self.num_cpus)
+        results = ray.get([bootstrap_trial_dynamic.remote(self, b, I, s) for s in boots])
+        
+        return results
     
     @staticmethod
     def castDataToGridPoints(grid_x, X, Y):
