@@ -540,7 +540,7 @@ class FDD():
         boots = list(range(nboot))
         n = self.Y_raw.shape[0]
         N = self.grid_x.size
-        b = np.random.randint(low=2*N, high=2*N+0.1*N, size=4)
+        b = sorted(np.random.randint(low=2*N, high=2*N+0.1*N, size=4), reverse=True)
         I = list(range(self.Y_raw.shape[0]))
         bootstrap_trial_dynamic = self.bootstrap_trial_factory(num_gpus=self.num_gpus, num_cpus=self.num_cpus)
         results = ray.get([bootstrap_trial_dynamic.remote(self, b, I, s) for s in boots])
