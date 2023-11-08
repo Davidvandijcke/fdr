@@ -72,7 +72,7 @@ def setDevice():
     elif torch.backends.mps.is_available(): # mac gpus
         device = torch.device("mps")
     elif torch.backends.mkl.is_available(): # intel cpus
-        device = torch.device("mkl")
+        device = torch.device("mkldnn")
     torch.set_grad_enabled(True)
     return device
 

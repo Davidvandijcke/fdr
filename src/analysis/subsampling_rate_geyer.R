@@ -3,7 +3,6 @@ X <- read.table(url("http://www.stat.umn.edu/geyer/5601/mydata/big-unif.txt"),
                header = TRUE)
 attach(X)
 
-# estimating the rate
 print(n <- length(x))
 print(theta.hat <- max(x))
 
@@ -38,7 +37,31 @@ for (i in 1:length(b)) {
 names(qlist) <- b
 
 lqlist <- lapply(qlist, log)
-
+stripchart(lqlist, xlab = "subsample size",
+           ylab = "log(high quantile - low quantile)",
+           vertical = TRUE)
 
 y <- sapply(lqlist, mean)
+print(beta <- cov(- y, log(b)) / var(log(b)))
 
+# confidence interval calculation
+m <- 3
+b <- b[m]
+theta.star <- theta.star[ , m]
+alpha <- 0.05
+z.star <- b^beta * (theta.star - theta.hat)
+
+# two-sided interval
+crit.val <- sort(z.star)[(nboot + 1) * c(1 - alpha / 2, alpha / 2)]
+theta.hat - crit.val / n^beta
+
+# histogram from which critical values are derived
+hist(z.star)
+abline(v = crit.val, lty = 2)
+
+# one-sided confidence interval actually makes more sense
+# since we know theta.hat < theta
+crit.val <- sort(z.star)[(nboot + 1) * alpha]
+theta.hat - c(0, crit.val) / n^beta
+
+cat("Calculation took", proc.time()[1], "seconds\n")
