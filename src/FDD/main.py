@@ -62,7 +62,7 @@ class FDD():
         if self.X.ndim == 1:
             self.X = np.expand_dims(self.X, -1)
         self.grid_x_og, self.grid_x, self.grid_y = self.castDataToGrid(self.X, self.Y)
-        self.grid_y = (self.grid_y - np.min(self.Y_raw, axis=0)) / np.max(self.Y_raw, axis=0)
+        self.grid_y = (self.grid_y - np.min(self.Y_raw, axis=0)) / (np.max(self.Y_raw, axis=0) - np.min(self.Y_raw, axis=0))
         
 
         self.nu = nu
