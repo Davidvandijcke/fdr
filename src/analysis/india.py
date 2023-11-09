@@ -89,7 +89,6 @@ if __name__ == '__main__':
     weekdy = "monday" # monday or sundays
     
     #-------
-    
     if weekdy == "monday":
         cheatdate =  "2021-09-27"
         wkdy_suffix = "_monday"

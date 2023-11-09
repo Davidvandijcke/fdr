@@ -61,6 +61,11 @@ if __name__ == '__main__':
     with open(file_name, 'wb') as file:
         pickle.dump(res, file)
         
+    file_name = 'india_econ_SURE_90_lambda25_nu025.pkl'
+    with open(file_name, 'rb') as file:
+        res = pickle.load(file)
+    best = res.get_best_result(metric = "score", mode = "min")
+
     # s3 = boto3.client('s3')
     # with open(file_name, "rb") as f:
     #     s3.upload_fileobj(f, "ipsos-dvd", "fdd/data/out/" + file_name)

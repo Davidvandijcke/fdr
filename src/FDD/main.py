@@ -475,14 +475,17 @@ class FDD():
 
         # calculate interval length for function
         if X_2.ndim == 1:
-            idx = closest_indices
+            idx = closest_indices[:,0]
+            y_diff = y_diff.squeeze()
+            self.u_diff = self.u_diff.squeeze()
+            indexing_tuple = idx
         else:
             idx = tuple(closest_indices.T)
+            indexing_tuple = (slice(None),) + idx
         self.R_u = np.abs(Y_2 - self.u_cs[idx])
-        
+
 
         # calculate interval length for forward differences
-        indexing_tuple = (slice(None),) + idx
         self.R_J = np.abs(y_diff[indexing_tuple] - self.u_diff[indexing_tuple])
         
 

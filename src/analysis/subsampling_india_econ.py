@@ -31,6 +31,13 @@ if __name__ == '__main__':
     data_in = os.path.join(main_dir, 'data', 'in')    
     data_out = os.path.join(main_dir, 'data', 'out')  
     
+    # get raw data to resample
+    
+    
+    # get grid before
+    grid_before = gpd.read_file(os.path.join(data_out, 'india', 'rajasatan_cheating_grid_before_shops' + wkdy_suffix + '.geojson'))
+    grid_before['pings'] = grid_before['pings'] / 3
+    
     # get SURE parameters
     fto = os.path.join(data_out, 'india_econ_SURE_90_lambda25_nu025.pkl') 
     with open(fto, "rb") as f:

@@ -271,7 +271,7 @@ if __name__ == '__main__':
     gid = "GID_3"
     gidname = "gadm41_IND_3.json"
     meters = 40000
-    weekdy = "monday" # monday or sundays
+    weekdy = "sunday" # monday or sundays
     
     #-------
     
@@ -481,7 +481,7 @@ if __name__ == '__main__':
     merged['pings_share'] = merged['pings'] / merged['count']
     merged.loc[(merged['pings'] == 0) | (merged['pings_before'] == 0), 'pings_norm'] = 0
     merged.loc[(merged['pings'] == 0) | (merged['count'] == 0), 'pings_share'] = 0
-    merged['pings_share_pre'] = merged['pings_before'] / (merged['count_before']/3)
+    merged['pings_share_pre'] = merged['pings_before'] / (merged['count_before'])
     merged.loc[(merged['pings_before'] == 0) | (merged['count_before'] == 0), 'pings_share_pre'] = 0
     merged['pings_share_change'] = merged['pings_share'] - merged['pings_share_pre']
     merged['pings_share_norm'] = merged['pings_share_change'] / merged['pings_share_pre']
@@ -523,7 +523,7 @@ if __name__ == '__main__':
 
     # Plot the data
     vmax = 1.5
-    p = gdf.plot(column="pings_norm", cmap='coolwarm',  ax=ax, legend=True, vmax=vmax)
+    p = gdf.plot(column="pings_share_norm", cmap='coolwarm_r',  ax=ax, legend=True, vmax=0, vmin=-1)
 
     # Plot the Rajasthan border
     rajasthan_geometry.boundary.plot(color='k', linewidth=2, ax=ax, alpha=0.5)
