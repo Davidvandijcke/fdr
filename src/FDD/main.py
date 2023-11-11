@@ -405,7 +405,7 @@ class FDD():
 
         # scale u back to get correct jump sizes
         if not self.image:
-            u = u * np.max(self.Y_raw, axis = 0) + np.min(self.Y_raw, axis = 0)
+            u = u * (np.max(self.Y_raw, axis = 0) - np.min(self.Y_raw, axis = 0))  + np.min(self.Y_raw, axis = 0)
 
         ## find the boundary on the point cloud
         jumps = self.boundaryGridToData(J_grid, u, self.average)
