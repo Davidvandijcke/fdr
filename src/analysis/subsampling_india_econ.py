@@ -4,7 +4,6 @@ import numpy as np
 from matplotlib import pyplot as plt
 from FDD import FDD
 from FDD.SURE import SURE
-import geopandas as gpd
 import pickle
 import boto3
 import ray
@@ -29,17 +28,13 @@ if __name__ == '__main__':
     data_in = os.path.join(main_dir, 'data', 'in')    
     data_out = os.path.join(main_dir, 'data', 'out')  
     
-    # get raw data to resample
-    
-    
-    # get grid before
-    grid_before = gpd.read_file(os.path.join(data_out, 'india', 'rajasatan_cheating_grid_before_shops' + wkdy_suffix + '.geojson'))
-    grid_before['pings'] = grid_before['pings'] / 3
+    s3 = boto3.client('s3')
+
+
     
     # get SURE parameters
     fn = 'india_econ_SURE_90_lambda25_nu025.pkl'
     fto = os.path.join(data_out, fn) 
-    s3 = boto3.client('s3')
     
     with open(fn, 'wb') as f:
         s3.download_fileobj('projects-fdd', 'data/out/' + fn, f)
@@ -51,8 +46,30 @@ if __name__ == '__main__':
     config = best.metrics['config']
     lmbda, nu = config['lmbda'], config['nu']
 
-    fn_merged = os.path.join(data_out, 'india', 'rajasatan_cheating_shops_merged_40K.geojson')
-    gdf = gpd.read_file(fn_merged)
+    ## get raw data for subsampling
+    # pull it down from s3 first
+    bucket = 'projects-fdd'
+    fn = 'grid_subsampling.csv.gz'
+    s3.download_file('projects-fdd', 'data/out/' + fn, fn)
+    gdf = pd.read_csv(fn)
+    gdf['post'] = (gdf['date'] == "2021-09-26").astype(int)
+    
+    df = gdf.copy()
+    def aggregatePings(df):
+        df_pre = df[df['post'] == 0]
+        df_post = df[df['post'] == 1]
+        df_pre = df_pre.groupby(['x', 'y']).agg(econ=("shop", "mean")).reset_index()
+        df_post = df_post.groupby(['x', 'y']).agg(econ=("shop", "mean")).reset_index()
+        df = df_pre.merge(df_post, on=['x', 'y'], suffixes=('_pre', '_post'))
+        df['pings_share_change'] = df['econ_post'] - df['econ_pre']
+        df['pings_share_norm'] = df['pings_share_change'] / df['econ_pre']
+        df.loc[df.econ_pre == 0, 'pings_share_norm' ] = 0
+        
+        return df
+    
+    import geopandas as gpd
+    temp = gpd.GeoDataFrame(df, geometry=gpd.points_from_xy(df.x, df.y))
+
     
     gdf['pings_norm'] = gdf['pings_norm'] * 100
     print(gdf.head())
