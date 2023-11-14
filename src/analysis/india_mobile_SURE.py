@@ -25,7 +25,7 @@ if __name__ == '__main__':
     N = 1000
     lmbda = 1000
     nu = 0.02
-    num_samples = 225 # 225 #  400 # 400 # 400 # 200
+    num_samples = 400 # 225 #  400 # 400 # 400 # 200
     R =  3 # 3 # 3 # 3 # 5
     num_gpus = 1
     num_cpus = 4
@@ -45,6 +45,7 @@ if __name__ == '__main__':
 
     
     gdf['count_norm'] = gdf['count_norm'] * 100
+    gdf['count_norm'] = np.where(gdf['count_before'] == 0, 100, gdf['count_norm'])
     Y = np.array(gdf['count_norm'])
     X = np.stack([np.array(gdf.geometry.centroid.x), np.array(gdf.geometry.centroid.y)]).T
     
@@ -55,16 +56,16 @@ if __name__ == '__main__':
     model = FDD(Y, X, level = 32, lmbda = 150, nu = 0.008, iter = 10000, tol = 5e-5, resolution=resolution,
         pick_nu = "MS", scaled = True, scripted = False, rectangle=True, CI=False)
     res = SURE(tuner=True, num_samples=num_samples, model=model, R=R, 
-        num_gpus=num_gpus, num_cpus=num_cpus, lmbda_max=100, nu_min=0.02) # can't remember if I set nu to 0.001, or 0.002
+        num_gpus=num_gpus, num_cpus=num_cpus, lmbda_max=100, nu_min=0.001, nu_max=0.1) # can't remember if I set nu to 0.001, or 0.002
 
-    file_name = 'india_mobile_SURE_95_025_lambda100_nu01.pkl'
+    file_name = 'india_mobile_SURE_95_025_lambda100_nu01_index100.pkl'
     with open(file_name, 'wb') as file:
         pickle.dump(res, file)
         
-    file_name = 'india_econ_SURE_90_lambda25_nu025.pkl'
-    with open(file_name, 'rb') as file:
-        res = pickle.load(file)
-    best = res.get_best_result(metric = "score", mode = "min")
+    # file_name = 'india_econ_SURE_90_lambda25_nu025.pkl'
+    # with open(file_name, 'rb') as file:
+    #     res = pickle.load(file)
+    # best = res.get_best_result(metric = "score", mode = "min")
 
     # s3 = boto3.client('s3')
     # with open(file_name, "rb") as f:

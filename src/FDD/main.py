@@ -575,8 +575,8 @@ class FDD():
 
         return (grid_y, grid_x_og)
         
-        
-    def forward_differences(self, ubar, D : int):
+    @staticmethod    
+    def forward_differences(ubar, D : int):
 
         diffs = []
 

@@ -49,10 +49,11 @@ if __name__ == '__main__':
     ## get raw data for subsampling
     # pull it down from s3 first
     bucket = 'projects-fdd'
-    fn = 'grid_subsampling.csv.gz'
-    s3.download_file('projects-fdd', 'data/out/' + fn, fn)
+    fn = '/Users/davidvandijcke/Dropbox (University of Michigan)/rdd/data/out/grid_subsampling/grid_subsampling.csv.gz'
+    # s3.download_file('projects-fdd', 'data/out/' + fn, fn)
     gdf = pd.read_csv(fn)
-    gdf['post'] = (gdf['date'] == "2021-09-26").astype(int)
+    gdf.loc[gdf['post'].isna(), 'post'] = (gdf.loc[gdf['post'].isna(), 'date'] == "2021-09-26").astype(int)
+    gdf['shop'] = gdf['shop'].fillna(0)
     
     df = gdf.copy()
     def aggregatePings(df):
@@ -69,6 +70,8 @@ if __name__ == '__main__':
     
     import geopandas as gpd
     temp = gpd.GeoDataFrame(df, geometry=gpd.points_from_xy(df.x, df.y))
+    temp['geometry'] = temp.buffer(20000, cap_style = 3)
+    temp.plot(column="pings_share_norm", legend=True, vmax=0, vmin=-1, cmap="coolwarm")
 
     
     gdf['pings_norm'] = gdf['pings_norm'] * 100

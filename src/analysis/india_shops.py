@@ -5,6 +5,7 @@ import os
 os.environ['USE_PYGEOS'] = '0'
 import numpy as np
 import geopandas as gpd
+import dask_geopandas as dgpd
 from shapely.geometry import box, Polygon, Point
 from rasterio.plot import show
 from rasterio.warp import calculate_default_transform, reproject, Resampling
@@ -153,9 +154,6 @@ def cast_to_grid_shops(df, shops):
     
     df = df.to_crs(epsg=3857)  # Project into Mercator (units in meters)
 
-    # Get bounds
-    minx, miny, maxx, maxy = df.geometry.total_bounds
-
     # merge
     df = gpd.sjoin(shops, df, how="left", op="intersects")
     
@@ -284,33 +282,41 @@ if __name__ == '__main__':
     
     fn = os.path.join(data_out, 'india', 'rajasatan_cheating' + wkdy_suffix)
     
-    # read csv file inside fn folder
-    files_in_directory = os.listdir(fn)
-    csv_files = [os.path.join(fn, file) for file in files_in_directory if file.endswith(".csv.gz")]
+    redo_pings=True
+    if redo_pings:
+        # read csv file inside fn folder
+        files_in_directory = os.listdir(fn)
+        csv_files = [os.path.join(fn, file) for file in files_in_directory if file.endswith(".csv.gz")]
 
-    cheat = pd.read_csv(*csv_files, compression="gzip")
-    
-    fn = os.path.join(data_out, 'india', 'rajasatan_cheating_before' + wkdy_suffix)
-    
-    # read csv file inside fn folder
-    files_in_directory = os.listdir(fn)
-    csv_files = [os.path.join(fn, file) for file in files_in_directory if file.endswith(".csv.gz")]
-    before = pd.read_csv(*csv_files, compression="gzip")
+        cheat = pd.read_csv(*csv_files, compression="gzip")
+        
+        fn = os.path.join(data_out, 'india', 'rajasatan_cheating_before' + wkdy_suffix)
+        
+        # read csv file inside fn folder
+        files_in_directory = os.listdir(fn)
+        csv_files = [os.path.join(fn, file) for file in files_in_directory if file.endswith(".csv.gz")]
+        before = pd.read_csv(*csv_files, compression="gzip")
 
-    
-    # convert to geopandas
-    gdf = gpd.GeoDataFrame(cheat, geometry=gpd.points_from_xy(cheat.longitude, cheat.latitude))
-    gdf = gdf.set_crs("epsg:4326")
-    bbox = list(gdf.total_bounds)
-    gdf = gdf.to_crs(epsg=3857)  # Project into Mercator (units in meters)
+        
+        # convert to geopandas
+        gdf = gpd.GeoDataFrame(cheat, geometry=gpd.points_from_xy(cheat.longitude, cheat.latitude))
+        gdf = gdf.set_crs("epsg:4326")
+        bbox = list(gdf.total_bounds)
+        gdf = gdf.to_crs(epsg=3857)  # Project into Mercator (units in meters)
+        gdf.to_file(os.path.join(data_out, 'india', 'rajasatan_cheating_shops' + wkdy_suffix + '.geojson'), driver='GeoJSON')
 
-    
-    before = gpd.GeoDataFrame(before, geometry=gpd.points_from_xy(before.longitude, before.latitude))
-    before = before.set_crs("epsg:4326")
-    before = before.to_crs(epsg=3857)  # Project into Mercator (units in meters)
+        
+        before = gpd.GeoDataFrame(before, geometry=gpd.points_from_xy(before.longitude, before.latitude))
+        before = before.set_crs("epsg:4326")
+        before = before.to_crs(epsg=3857)  # Project into Mercator (units in meters)
 
-    redo_shops = True
-    fn = os.path.join(data_out, 'india', 'shops' + wkdy_suffix + '.shp')
+        before.to_file(os.path.join(data_out, 'india', 'rajasatan_cheating_shops_before' + wkdy_suffix + '.geojson'), driver='GeoJSON')
+    else:
+        gdf = gpd.read_file(os.path.join(data_out, 'india', 'rajasatan_cheating_shops' + wkdy_suffix + '.geojson'))
+        before = gpd.read_file(os.path.join(data_out, 'india', 'rajasatan_cheating_shops_before' + wkdy_suffix + '.geojson'))
+
+    redo_shops = False
+    fn = os.path.join(data_out, 'india', 'shops.shp')
 
     if redo_shops:
         shops = get_shops(bbox)
@@ -318,7 +324,10 @@ if __name__ == '__main__':
         shops.to_file(fn)
     
     shops = gpd.read_file(fn)
+    # convert to json for aws
+    shops.to_file(os.path.join(data_out, 'india', 'shops.geojson'), driver='GeoJSON')
         #---- overlay grid onto data
+    shops = gpd.read_file(os.path.join(data_out, 'india', 'shops.geojson'))
 
     #------ 
     # day of
@@ -336,8 +345,10 @@ if __name__ == '__main__':
         result.rename(columns={"index_right":'pings'}, inplace=True)
         gdf = result.groupby("geometry").sum().reset_index()  # store the final result
         
-        grid_gdf = gpd.GeoDataFrame(gdf, geometry=gdf.geometry)
-        grid_gdf.to_file(os.path.join(data_out, 'india', 'rajasatan_cheating_grid_shops' + wkdy_suffix + '.geojson'), driver='GeoJSON')
+            
+        # merge
+        df = gpd.sjoin(gdf, shops, how="left", op="intersects")
+
         
     # reload day of
     grid_gdf = gpd.read_file(os.path.join(data_out, 'india', 'rajasatan_cheating_grid_shops' + wkdy_suffix + '.geojson'))
@@ -441,13 +452,14 @@ if __name__ == '__main__':
     
     
     
-    # reload before
+    # reload shops before
     grid_before = gpd.read_file(os.path.join(data_out, 'india', 'rajasatan_cheating_grid_before_shops' + wkdy_suffix + '.geojson'))
     grid_before['pings'] = grid_before['pings'] / 3
     #grid_before = cast_to_admin(grid_before, gadm, gid=gid)
     # grid_before = grid_before[~grid_before.pings.isna() ]
 
-    # left off here
+    # merge with shop pings before, sum all pings inside shops, take mean of other pings since they're already gridded
+    # we're only summing the before pings since those haven't been cast to the grid yet
     grid_before.rename(columns = {'pings' : 'pings_before'}, inplace=True)
     test = (grid_gdf.sjoin(grid_before, how="left", op="intersects")
                     .groupby("geometry").agg({'pings' : 'mean', 'pings_before' : 'sum', 'count' : 'mean'}).reset_index())
@@ -455,6 +467,7 @@ if __name__ == '__main__':
     grid_gdf = test.copy()
     grid_gdf = gpd.GeoDataFrame(grid_gdf, geometry=grid_gdf.geometry)
     
+    # reload pings before
     fn = os.path.join(data_out, 'india', 'rajasatan_cheating_before' + wkdy_suffix)
     files_in_directory = os.listdir(fn)
     csv_files = [os.path.join(fn, file) for file in files_in_directory if file.endswith(".csv.gz")]
@@ -469,7 +482,7 @@ if __name__ == '__main__':
     
     grid_gdf = cheat.sjoin(grid_gdf, how="right", op="intersects").groupby("geometry").agg({'pings' : 'mean', 'count' : 'mean', 
                                                                           'pings_before' : 'mean', 'caid' : 'count'}).reset_index()
-    grid_gdf.rename(columns = {'caid' : 'count_before'}, inplace=True)
+    grid_gdf.rename(columns = {'caid' : 'count_before'}, inplace=True) # count the number of pings on the days before cheating
 
     # merge back on index_right for cheat and index for grid_gdf
     grid_gdf['count_before'] = grid_gdf['count'].fillna(0)
