@@ -332,26 +332,15 @@ if __name__ == '__main__':
     #------ 
     # day of
     if redo_shops:
-        fn = os.path.join(data_out, 'india', 'cheating_temp' + wkdy_suffix + '.csv')
-        gdf.to_csv(fn,  index=False)
-        chunk_size = int(before.size/50)  # specify the chunk size
-        result = pd.DataFrame()  # create an empty dataframe to hold results
-
-        for chunk in pd.read_csv(fn, chunksize=chunk_size):  
-            chunkgdf = gpd.GeoDataFrame(chunk.drop(columns="geometry"), geometry=gpd.points_from_xy(chunk.longitude, chunk.latitude), crs="epsg:4326")
-            temp_result = cast_to_grid_shops(chunkgdf, shops)
-            result = pd.concat([result, temp_result])
-        
-        result.rename(columns={"index_right":'pings'}, inplace=True)
-        gdf = result.groupby("geometry").sum().reset_index()  # store the final result
-        
-            
-        # merge
-        df = gpd.sjoin(gdf, shops, how="left", op="intersects")
+        grid_gdf = cast_to_grid_shops(gdf, shops)
+        grid_gdf.rename(columns={"index_right":'pings'}, inplace=True)
+        grid_gdf = gpd.GeoDataFrame(grid_gdf, geometry=grid_gdf.geometry)
+        grid_gdf.to_file(os.path.join(data_out, 'india', 'rajasatan_cheating_grid_shops.geojson'), driver='GeoJSON')
 
         
     # reload day of
     grid_gdf = gpd.read_file(os.path.join(data_out, 'india', 'rajasatan_cheating_grid_shops' + wkdy_suffix + '.geojson'))
+
     
     redo_crossers = False
     if redo_crossers:
@@ -366,7 +355,7 @@ if __name__ == '__main__':
         # plot crossers figure
         plotCrossers()
     
-    # cast to admin regions
+    # cast to admin regions !!!! TODO don't forget I'm doing this...
     gadm = gpd.read_file(os.path.join(data_in, 'india', gidname)).to_crs("epsg:3857")
     # grid_gdf = cast_to_admin(grid_gdf, gadm, gid=gid)
     # grid_gdf = grid_gdf[~grid_gdf.pings.isna() ]
@@ -386,6 +375,8 @@ if __name__ == '__main__':
     cheat = cast_to_admin(cheat,gadm,gid=gid)
     cheat = cheat[~cheat['pings'].isna()]
     cheat.rename(columns = {'pings' : 'count'}, inplace=True)
+    
+    test = cheat.sjoin(grid_gdf, how="right", op="intersects").groupby("geometry").agg({'pings' : 'mean', 'count' : 'mean'}).reset_index()
     
     grid_gdf = cheat.sjoin(grid_gdf, how="right", op="intersects").groupby("geometry").agg({'pings' : 'mean', 'count' : 'mean'}).reset_index()
     # merge back on index_right for cheat and index for grid_gdf
@@ -454,7 +445,7 @@ if __name__ == '__main__':
     
     # reload shops before
     grid_before = gpd.read_file(os.path.join(data_out, 'india', 'rajasatan_cheating_grid_before_shops' + wkdy_suffix + '.geojson'))
-    grid_before['pings'] = grid_before['pings'] / 3
+    grid_before['pings'] = grid_before['pings'] / 3 # this is bcs we already summed the 3 sundays by shop
     #grid_before = cast_to_admin(grid_before, gadm, gid=gid)
     # grid_before = grid_before[~grid_before.pings.isna() ]
 
@@ -485,7 +476,7 @@ if __name__ == '__main__':
     grid_gdf.rename(columns = {'caid' : 'count_before'}, inplace=True) # count the number of pings on the days before cheating
 
     # merge back on index_right for cheat and index for grid_gdf
-    grid_gdf['count_before'] = grid_gdf['count'].fillna(0)
+    grid_gdf['count_before'] = grid_gdf['count'].fillna(0) # TODO this is the problem
     grid_gdf = gpd.GeoDataFrame(grid_gdf, geometry=grid_gdf.geometry)
     
     merged = grid_gdf.copy()        
@@ -551,7 +542,89 @@ if __name__ == '__main__':
     
     
     
-        # Create a custom colorbar
+    # Create a custom colorbar
     norm = mpl.colors.Normalize()
     cbar = plt.cm.ScalarMappable(norm=norm, cmap='coolwarm')
     fig.colorbar(cbar, ax=ax, orientation="vertical", pad=0, label=f"% of Monthly Average")
+
+
+
+
+
+#-----------------------------------------
+
+import subprocess
+def convert_to_geojson(fout, output_prefix, geom_types=('points', 'lines', 'polygons', 'multipolygons')):
+    for geom_type in geom_types:
+        output_file = f"{output_prefix}{geom_type}.geojson"
+        cmd = f'ogr2ogr -f "GeoJSON" "{output_file}" "{fout}" {geom_type}'
+        subprocess.run(cmd, shell=True)
+        
+def read_multiple_geojsons_to_gdf(filenames):
+    # Read each file into a GeoDataFrame and store in a list
+    gdfs = [gpd.read_file(filename) for filename in filenames]
+
+    # Concatenate all the GeoDataFrames into a single one
+    return pd.concat(gdfs, ignore_index=True)
+
+def getOSM(data_out):
+    # get Gaza OSM data
+    fp = os.path.join(data_in, 'india', "india-220101.osm.pbf")
+    fout = os.path.join(data_in, 'india', "india-220101_shops.pbf")
+    cmd = f"osmium tags-filter '{fp}' \
+        nwr/shop=* \
+        nwr/office=* \
+        nwr/amenity=restaurant \
+        nwr/amenity=cafe \
+        nwr/amenity=bank \
+        nwr/amenity=hotel \
+        nwr/amenity=guest_house \
+        nwr/amenity=bar \
+        nwr/amenity=fast_food \
+        nwr/amenity=pub \
+        nwr/amenity=cinema \
+        nwr/amenity=nightclub \
+        nwr/amenity=theatre \
+        nwr/amenity=marketplace \
+        nwr/amenity=car_rental \
+        nwr/amenity=car_wash \
+        nwr/amenity=car_repair \
+        nwr/amenity=bicycle_rental \
+        nwr/amenity=taxi \
+        nwr/building=retail \
+        nwr/building=commercial \
+        nwr/landuse=retail \
+        nwr/landuse=commercial \
+        nwr/landuse=industrial \
+        nwr/industrial=* \
+        nwr/craft=* \
+        nwr/payment=* \
+        nwr/website=* \
+        nwr/contact:phone=* \
+        nwr/contact:email=* \
+        nwr/contact:website=* \
+        nwr/contact:facebook=* \
+        nwr/contact:twitter=* \
+        nwr/opening_hours=* \
+        nwr/brand=* \
+        -o '{fout}' --overwrite"
+
+    subprocess.run(cmd, shell=True)
+
+
+    output_prefix = os.path.join(data_in, 'india', 'osm/')
+    convert_to_geojson(fout, output_prefix)
+
+
+    # Example usage:
+    geom_types = ['points', 'multipolygons']
+
+    # Generate the list of filenames
+    filenames = [f"{output_prefix}{geom_type}.geojson" for geom_type in geom_types]
+
+    # Read them into a single GeoDataFrame
+    gdf = read_multiple_geojsons_to_gdf(filenames)
+    gdf = gpd.GeoDataFrame(gdf, geometry='geometry')
+    gdf.to_file(os.path.join(data_out, 'osm_buildings_pbf.geojson'), driver='GeoJSON')
+    
+    
