@@ -36,24 +36,26 @@ if __name__ == '__main__':
     data_in = os.path.join(main_dir, 'data', 'in')    
     data_out = os.path.join(main_dir, 'data', 'out')  
     
-    fn_merged = os.path.join(data_out, 'india', 'rajasatan_cheating_shops_merged_40K.geojson')
-    gdf = gpd.read_file(fn_merged)
-    
-    gdf['pings_norm'] = gdf['pings_norm'] * 100
-    print(gdf.head())
-    Y = np.array(gdf['pings_norm'])
-    X = np.stack([np.array(gdf.geometry.centroid.x), np.array(gdf.geometry.centroid.y)]).T
+    fn_merged = os.path.join(data_out, 'india', 'rajasatan_cheating_shops_merged_40K_devices_agg.csv')
+    gdf = pd.read_csv(fn_merged)
+    # gdf = gdf.to_crs('epsg:3857')
 
-    qtile = np.quantile(Y, 0.90)
+    gdf['shops_ratio'] = gdf['shops_ratio'] * 100
+    # gdf['shops_ratio'] = np.where(gdf['count_before'] == 0, 100, gdf['count_norm'])
+    print(gdf.head())
+    Y = np.array(gdf['shops_ratio'])
+    X = np.stack([np.array(gdf.y), np.array(gdf.x)]).T
+
+    qtile = 150 # np.quantile(Y, 0.85)
     Y[Y>qtile] = qtile
         
     resolution = 1/int(np.sqrt(Y.size))
     model = FDD(Y, X, level = 32, lmbda = 150, nu = 0.008, iter = 10000, tol = 5e-5, resolution=resolution,
         pick_nu = "MS", scaled = True, scripted = False, rectangle=True)
     res = SURE(tuner=True, num_samples=num_samples, model=model, R=R, 
-        num_gpus=num_gpus, num_cpus=num_cpus, lmbda_max=40, nu_min=0.2) # lmbda = 5, nu_min = 0.07 
+        num_gpus=num_gpus, num_cpus=num_cpus, lmbda_max=5, nu_min=0.05, nu_max=0.1) # lmbda = 5, nu_min = 0.07 
 
-    file_name = os.path.join(data_out, 'india_econ_SURE_90_lambda40_nu2.pkl')
+    file_name = os.path.join(data_out, 'india_econ_SURE_devices_lambda5_nu05-01.pkl')
     with open(file_name, 'wb') as file:
         pickle.dump(res, file)
         
