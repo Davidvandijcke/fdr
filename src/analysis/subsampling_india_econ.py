@@ -13,14 +13,15 @@ import ray
 import random
 
 
-def subSampling(nboot=300, Y, X)
-    boots = list(range(nboot))
-    n = Y.shape[0]
-    N = self.grid_x.size
-    b = sorted(np.random.randint(low=2*N, high=2*N+0.1*n, size=4))
-    I = list(range(self.Y_raw.shape[0]))
-    bootstrap_trial_dynamic = self.bootstrap_trial_factory(num_gpus=self.num_gpus, num_cpus=self.num_cpus)
-    results = ray.get([bootstrap_trial_dynamic.remote(self, b, I, s) for s in boots])
+
+# def subSampling(nboot=300, Y, X)
+#     boots = list(range(nboot))
+#     n = Y.shape[0]
+#     N = self.grid_x.size
+#     b = sorted(np.random.randint(low=2*N, high=2*N+0.1*n, size=4))
+#     I = list(range(self.Y_raw.shape[0]))
+#     bootstrap_trial_dynamic = self.bootstrap_trial_factory(num_gpus=self.num_gpus, num_cpus=self.num_cpus)
+#     results = ray.get([bootstrap_trial_dynamic.remote(self, b, I, s) for s in boots])
 
 
 
@@ -62,7 +63,6 @@ if __name__ == '__main__':
 
     gdf['shops_ratio'] = gdf['shops_ratio'] * 100
     # gdf['shops_ratio'] = np.where(gdf['count_before'] == 0, 100, gdf['count_norm'])
-    print(gdf.head())
     Y = np.array(gdf['shops_ratio'])
     X = np.stack([np.array(gdf.y), np.array(gdf.x)]).T
 
@@ -79,8 +79,6 @@ if __name__ == '__main__':
     b = sorted(np.random.randint(low=0.5*n, high=0.6*n, size=4))
     I = list(range(n))
     
-    bootstrap_trial_dynamic = self.bootstrap_trial_factory(num_gpus=self.num_gpus, num_cpus=self.num_cpus)
-    results = ray.get([bootstrap_trial_dynamic.remote(self, b, I, s) for s in boots])
     
     crs = "epsg:3857"
 
@@ -136,13 +134,28 @@ if __name__ == '__main__':
         @ray.remote(num_gpus=num_gpus, num_cpus=num_cpus)
         def bootstrap_trial(model, b, I, s):
             res = np.empty((len(b),) + model.grid_x.squeeze().shape)
-            I_star = I.copy()
+            I_star = I
             for j in range(len(b)-1, -1, -1):
                 I_star = random.sample(I_star, b[j])
-                devices_sample = devices.sample(I_star)
                 
-                dfagg = aggregateRawPings(devices, gadm)
+                devices_sample = devices.loc[I_star].copy()
+
                 
+                dfagg = aggregateRawPings(devices_sample, gadm)
+                
+                dfagg['shops_ratio'] = dfagg['shops_ratio'] * 100
+                Y_star = np.array(dfagg['shops_ratio'])
+                X_star = np.stack([np.array(dfagg.y), np.array(dfagg.x)]).T
+
+                qtile = 150 # np.quantile(Y, 0.85)
+                Y[Y>qtile] = qtile
+                    
+                resolution = 1/int(np.sqrt(Y.size)) # note that the resolution will always be the same cause 
+                                                    # we cast it to a fixed grid
+                model = FDD(Y_star, X_star, level = model.level, lmbda = model.lmbda, nu = model.nu, 
+                            iter = model.iter, tol = model.tol, 
+                            resolution=resolution, pick_nu = "MS", scaled = True, 
+                            scripted = False, rectangle=True, CI=False)
                 
                 print(f"Running trial {s}")
                 model_temp = FDD(Y_star, X_star, level = model.level, lmbda = model.lmbda, nu = model.nu, iter = model.iter, tol = model.tol, resolution=model.resolution,
@@ -152,3 +165,29 @@ if __name__ == '__main__':
                 res[j,...] = results['u'] 
             return res
         return bootstrap_trial
+    
+    # run the original model once just to have the original function estimate
+    results = model.run()
+    u = results['u']
+    fn = "india_econ_u.npy"
+    np.save(fn, u)
+    
+    s3 = boto3.client('s3')
+    with open(fn, "rb") as f:
+        s3.upload_fileobj(f, "projects-fdd", "data/out/subsampling/" + fn)
+       
+    # run the subsampling 
+    bootstrap_trial_dynamic = bootstrap_trial_factory(num_gpus=num_gpus, num_cpus=num_cpus)
+    test = ray.get([bootstrap_trial_dynamic.remote(model, b, I, s) for s in boots])
+    
+    
+    test = np.stack(test, axis=0)
+    fn = "india_econ_boots.npy"
+    np.save(fn, test)
+    with open(fn, "rb") as f:
+        s3.upload_fileobj(f, "projects-fdd", "data/out/subsampling/" + fn)
+        
+    fn = "india_econ_boots_b.npy"
+    np.save(fn, b)
+    with open(fn, "rb") as f:
+        s3.upload_fileobj(f, "projects-fdd", "data/out/subsampling/" + fn)
