@@ -68,9 +68,23 @@ if __name__ == '__main__':
 
     qtile = 150 # np.quantile(Y, 0.85)
     Y[Y>qtile] = qtile
+    
+    # get SURE parameters
+    s3 = boto3.client('s3')
+    fto = "parms.pkl"
+    s3.download_file("projects-fdd", "data/out/india/india_econ_SURE_devices_lambda5_nu075-015.pkl", fto)
+    with open(fto, "rb") as f:
+        res = pickle.load(f)
+    # best = res.get_best_result(metric = "score", mode = "min")
+
+    # config = best.metrics['config']
+    # lmbda, nu = config['lmbda'], config['nu']
+    
+    lmbda, nu = 4.98126140267338, 0.07543764833087317 # setting it manually because of ray version conflict with get_best_result function and don't want to restart everything
+    
         
     resolution = 1/int(np.sqrt(Y.size))
-    model = FDD(Y, X, level = 32, lmbda = 150, nu = 0.008, iter = 10000, tol = 5e-5, 
+    model = FDD(Y, X, level = 32, lmbda = lmbda, nu = nu, iter = 10000, tol = 5e-5, 
                 resolution=resolution, pick_nu = "MS", scaled = True, 
                 scripted = False, rectangle=True, CI=False)
     
@@ -127,14 +141,13 @@ if __name__ == '__main__':
         
         return dfagg
     
-    test = aggregateRawPings(devices, gadm)
 
 
     def bootstrap_trial_factory(num_gpus, num_cpus):
         @ray.remote(num_gpus=num_gpus, num_cpus=num_cpus)
         def bootstrap_trial(model, b, I, s):
-            res = np.empty((len(b),) + model.grid_x.squeeze().shape)
-            I_star = I
+            res = np.empty((len(b),) + model.grid_y.squeeze().shape)
+            I_star = I.copy()
             for j in range(len(b)-1, -1, -1):
                 I_star = random.sample(I_star, b[j])
                 
@@ -148,23 +161,18 @@ if __name__ == '__main__':
                 X_star = np.stack([np.array(dfagg.y), np.array(dfagg.x)]).T
 
                 qtile = 150 # np.quantile(Y, 0.85)
-                Y[Y>qtile] = qtile
-                    
-                resolution = 1/int(np.sqrt(Y.size)) # note that the resolution will always be the same cause 
-                                                    # we cast it to a fixed grid
-                model = FDD(Y_star, X_star, level = model.level, lmbda = model.lmbda, nu = model.nu, 
-                            iter = model.iter, tol = model.tol, 
-                            resolution=resolution, pick_nu = "MS", scaled = True, 
-                            scripted = False, rectangle=True, CI=False)
-                
+                Y_star[Y_star>qtile] = qtile
+
                 print(f"Running trial {s}")
-                model_temp = FDD(Y_star, X_star, level = model.level, lmbda = model.lmbda, nu = model.nu, iter = model.iter, tol = model.tol, resolution=model.resolution,
-                    pick_nu = model.pick_nu, scaled = model.scaled, scripted = model.scripted, rectangle = model.rectangle, average=model.average, CI=False)
+                model_temp = FDD(Y_star, X_star, level = model.level, lmbda = model.lmbda, nu = model.nu, iter = model.iter, tol = model.tol, 
+                            resolution=model.resolution, pick_nu = "MS", scaled = True, 
+                            scripted = False, rectangle=True, CI=False)
                 results = model_temp.run()
                 print(f"Done with trial {s}")
                 res[j,...] = results['u'] 
             return res
         return bootstrap_trial
+    
     
     # run the original model once just to have the original function estimate
     results = model.run()
@@ -172,9 +180,10 @@ if __name__ == '__main__':
     fn = "india_econ_u.npy"
     np.save(fn, u)
     
-    s3 = boto3.client('s3')
     with open(fn, "rb") as f:
         s3.upload_fileobj(f, "projects-fdd", "data/out/subsampling/" + fn)
+        
+    
        
     # run the subsampling 
     bootstrap_trial_dynamic = bootstrap_trial_factory(num_gpus=num_gpus, num_cpus=num_cpus)

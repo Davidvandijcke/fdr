@@ -524,7 +524,7 @@ class FDD():
         def bootstrap_trial(model, b, I, s):
             Y_raw = model.Y_raw.copy()
             X_raw = model.X_raw.copy()
-            res = np.empty((len(b),) + model.grid_x.squeeze().shape)
+            res = np.empty((len(b),) + model.grid_y.squeeze().shape)
             I_star = I.copy()
             for j in range(len(b)-1, -1, -1):
                 I_star = random.sample(I_star, b[j])
