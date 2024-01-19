@@ -145,34 +145,33 @@ if __name__ == '__main__':
 
     def bootstrap_trial_factory(num_gpus, num_cpus):
         @ray.remote(num_gpus=num_gpus, num_cpus=num_cpus)
-        def bootstrap_trial(model, b, I, s):
-            res = np.empty((len(b),) + model.grid_y.squeeze().shape)
-            I_star = I.copy()
-            for j in range(len(b)-1, -1, -1):
-                I_star = random.sample(I_star, b[j])
-                
-                devices_sample = devices.loc[I_star].copy()
+        def bootstrap_trial(devices, model, b, I, s):
+            res = np.zeros((len(b)*len(s),) + model.grid_y.squeeze().shape)
+            for i in s:
+                I_star = I.copy()
+                for j in range(len(b)-1, -1, -1):
+                    I_star = random.sample(I_star, b[j])
+                    
+                    devices_sample = devices.loc[I_star].copy()
 
-                
-                dfagg = aggregateRawPings(devices_sample, gadm)
-                
-                dfagg['shops_ratio'] = dfagg['shops_ratio'] * 100
-                Y_star = np.array(dfagg['shops_ratio'])
-                X_star = np.stack([np.array(dfagg.y), np.array(dfagg.x)]).T
+                    
+                    dfagg = aggregateRawPings(devices_sample, gadm)
+                    
+                    dfagg['shops_ratio'] = dfagg['shops_ratio'] * 100
+                    Y_star = np.array(dfagg['shops_ratio'])
+                    X_star = np.stack([np.array(dfagg.y), np.array(dfagg.x)]).T
 
-                qtile = 150 # np.quantile(Y, 0.85)
-                Y_star[Y_star>qtile] = qtile
+                    qtile = 150 # np.quantile(Y, 0.85)
+                    Y_star[Y_star>qtile] = qtile
 
-                print(f"Running trial {s}")
-                model_temp = FDD(Y_star, X_star, level = model.level, lmbda = model.lmbda, nu = model.nu, iter = model.iter, tol = model.tol, 
-                            resolution=model.resolution, pick_nu = "MS", scaled = True, 
-                            scripted = False, rectangle=True, CI=False)
-                results = model_temp.run()
-                print(f"Done with trial {s}")
-                res[j,...] = results['u'] 
+                    print(f"Running trial {i}, sample {b}")
+                    model_temp = FDD(Y_star, X_star, level = model.level, lmbda = model.lmbda, nu = model.nu, iter = model.iter, tol = model.tol, resolution=model.resolution, pick_nu = "MS", scaled = True, scripted = False, rectangle=True, CI=False)
+                    results = model_temp.run()
+                    print(f"Done with trial {i}, sample {b}")
+                    res[j+(i*len(b)),...] = results['u'] 
             return res
         return bootstrap_trial
-    
+
     
     # run the original model once just to have the original function estimate
     results = model.run()
@@ -182,13 +181,13 @@ if __name__ == '__main__':
     
     with open(fn, "rb") as f:
         s3.upload_fileobj(f, "projects-fdd", "data/out/subsampling/" + fn)
-        
-    
+
+    ncores = 8 # want to pass data to cores only once, so set this to number of gpus
+    s_chunks = [range(int(np.ceil(nboot/ncores))) for i in range(ncores)]
        
     # run the subsampling 
     bootstrap_trial_dynamic = bootstrap_trial_factory(num_gpus=num_gpus, num_cpus=num_cpus)
-    test = ray.get([bootstrap_trial_dynamic.remote(model, b, I, s) for s in boots])
-    
+    test = ray.get([bootstrap_trial_dynamic.remote(devices, model, b, I, s) for s in s_chunks]) # boots
     
     test = np.stack(test, axis=0)
     fn = "india_econ_boots.npy"
