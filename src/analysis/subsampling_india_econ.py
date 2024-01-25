@@ -15,6 +15,8 @@ from datetime import datetime
 
 
 
+
+
 # def subSampling(nboot=300, Y, X)
 #     boots = list(range(nboot))
 #     n = Y.shape[0]
@@ -48,12 +50,19 @@ if __name__ == '__main__':
 
 
     # get directory above
-    main_dir = "s3://projects-fdd/" #  "/home/dvdijcke/" # moveUp(dir, 4)
+    main_dir = "/Users/davidvandijcke/Dropbox (University of Michigan)/rdd/" #  "s3://projects-fdd/" #  "/home/dvdijcke/" # moveUp(dir, 4)
     data_in = os.path.join(main_dir, 'data', 'in')    
     data_out = os.path.join(main_dir, 'data', 'out')  
     
     fn = os.path.join(data_out, 'india', 'rajasatan_cheating_shops_merged_40K_devices (1).csv')
     # download from s3
+    
+    # count rows to get sample size without loading
+    chunk = 1024*1024   # Process 1 MB at a time.
+    f = np.memmap(fn)
+    num_newlines = sum(np.sum(f[i:i+chunk] == ord('\n'))
+                    for i in range(0, len(f), chunk))
+    print(f"Number of rows: {num_newlines}")
     
     devices = pd.read_csv(fn)
     
@@ -153,17 +162,11 @@ if __name__ == '__main__':
                 for j in range(len(b)-1, -1, -1):
                     I_star = random.sample(I_star, b[j])
                     
-<<<<<<< HEAD
                     if (j == len(b)-1):
                         devices_sample = devices.loc[I_star].copy()
                     else:
                         devices_sample = devices_sample.loc[I_star].copy()
 
-=======
-                    devices_sample = devices.loc[I_star].copy()
-
-                    
->>>>>>> eeddf464984a30a38b18693590fe09af62fc9500
                     dfagg = aggregateRawPings(devices_sample, gadm)
                     
                     dfagg['shops_ratio'] = dfagg['shops_ratio'] * 100
@@ -173,17 +176,10 @@ if __name__ == '__main__':
                     qtile = 150 # np.quantile(Y, 0.85)
                     Y_star[Y_star>qtile] = qtile
 
-<<<<<<< HEAD
                     print(f"Running trial {i}, sample {b[j]}, time {datetime.utcnow()}")
                     model_temp = FDD(Y_star, X_star, level = model.level, lmbda = model.lmbda, nu = model.nu, iter = model.iter, tol = model.tol, resolution=model.resolution, pick_nu = "MS", scaled = True, scripted = False, rectangle=True, CI=False)
                     results = model_temp.run()
                     print(f"Done with trial {i}, sample {b[j]}, time {datetime.utcnow()}")
-=======
-                    print(f"Running trial {i}, sample {b}")
-                    model_temp = FDD(Y_star, X_star, level = model.level, lmbda = model.lmbda, nu = model.nu, iter = model.iter, tol = model.tol, resolution=model.resolution, pick_nu = "MS", scaled = True, scripted = False, rectangle=True, CI=False)
-                    results = model_temp.run()
-                    print(f"Done with trial {i}, sample {b}")
->>>>>>> eeddf464984a30a38b18693590fe09af62fc9500
                     res[j+(i*len(b)),...] = results['u'] 
             return res
         return bootstrap_trial

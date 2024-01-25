@@ -550,3 +550,4 @@ if __name__ == '__main__':
 
 
 
+    gadm = gpd.read_file("/Users/davidvandijcke/Dropbox (University of Michigan)/rdd/data/in/india/gadm41_IND_3.json")
