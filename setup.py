@@ -15,19 +15,19 @@ install_requires = [
             'scikit-learn',
             'scipy',
             'pywavelets',
-            "ray[tune]",
+            "ray[tune]>=2.8.0",
             "pandas"
         ]
 
 setup(
-    name="FDD",
+    name="FDR",
     version="0.1",
     package_dir={'': 'src'},  # Tell Python to look for packages in src/
     packages=find_packages(where='src'),  # Find packages in src/
     python_requires=">=3.6,<3.11", # ray doesn't support 3.11 as of now
     install_requires=install_requires,
         package_data={
-        'FDD': ['models/*.pt'],
+        'FDR': ['models/*.pt'],
     },
         cmdclass={
         'install': PostInstallCommand,

@@ -7,8 +7,8 @@ export PATH="$HOME/miniconda/bin:$PATH"
 conda init
 . ~/.bashrc
 
-conda create -n fdd python=3.9 -y
-conda activate fdd
+conda create -n fdr python=3.9 -y
+conda activate fdr
 conda install -c conda-forge pip -y
 conda install pytorch torchvision torchaudio pytorch-cuda=11.8 -c pytorch -c nvidia -y
 

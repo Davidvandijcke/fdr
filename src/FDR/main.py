@@ -10,7 +10,7 @@ import pandas as pd
 import random
 import ray
 
-class FDD():
+class FDR():
     def __init__(self, Y : np.array, X : np.array, pick_nu : str="kmeans", level : int=16, 
                  lmbda : float=1, nu : float=0.01, iter : int=1000, tol : float=5e-5, rectangle : bool=False, 
                  qtile : float=0.05, image : bool=False, grid : bool=False, resolution : float=None,
@@ -425,7 +425,7 @@ class FDD():
         X_1 = self.X_raw[I1]
         Y_1 = self.Y_raw[I1]
 
-        model = FDD(Y_1, X_1, level = self.level, lmbda = self.lmbda, nu = self.nu, iter = self.iter, tol = self.tol, resolution=self.resolution,
+        model = FDR(Y_1, X_1, level = self.level, lmbda = self.lmbda, nu = self.nu, iter = self.iter, tol = self.tol, resolution=self.resolution,
             pick_nu = self.pick_nu, scaled = self.scaled, scripted = self.scripted, rectangle = self.rectangle, average=self.average, CI=False)
 
         self.u_cs = model.run()['u']
@@ -434,7 +434,7 @@ class FDD():
         X_2 = self.X_raw[I2]
         Y_2 = self.Y_raw[I2]
 
-        model_temp = FDD(Y_2, X_2, level = self.level, lmbda = self.lmbda, nu = self.nu, iter = self.iter, tol = self.tol, resolution=self.resolution,
+        model_temp = FDR(Y_2, X_2, level = self.level, lmbda = self.lmbda, nu = self.nu, iter = self.iter, tol = self.tol, resolution=self.resolution,
             pick_nu = self.pick_nu, scaled = self.scaled, scripted = self.scripted, rectangle = self.rectangle, average=self.average, CI=False)
 
 
@@ -531,7 +531,7 @@ class FDD():
                 X_star = X_raw[I_star]
                 Y_star = Y_raw[I_star]
                 print(f"Running trial {s}")
-                model_temp = FDD(Y_star, X_star, level = model.level, lmbda = model.lmbda, nu = model.nu, iter = model.iter, tol = model.tol, resolution=model.resolution,
+                model_temp = FDR(Y_star, X_star, level = model.level, lmbda = model.lmbda, nu = model.nu, iter = model.iter, tol = model.tol, resolution=model.resolution,
                     pick_nu = model.pick_nu, scaled = model.scaled, scripted = model.scripted, rectangle = model.rectangle, average=model.average, CI=False)
                 results = model_temp.run()
                 print(f"Done with trial {s}")

@@ -1,9 +1,9 @@
 #!/bin/bash
 
 conda activate pytorch
-rm -rf fdd
-git clone https://github.com/Davidvandijcke/fdd.git
-cd fdd
+rm -rf fdr
+git clone https://github.com/Davidvandijcke/fdr.git
+cd fdr
 pip install -e .
 cd src/analysis
 nohup python simulations_2d.py
