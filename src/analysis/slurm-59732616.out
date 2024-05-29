@@ -1,7 +1,0 @@
-2023-09-17 14:03:47,162	INFO worker.py:1625 -- Started a local Ray instance.
-2023-09-17 14:03:53,506	INFO tune.py:218 -- Initializing Ray automatically. For cluster usage or custom Ray initialization, call `ray.init(...)` before `Tuner(...)`.
-[2m[36m(func pid=3702351)[0m /home/dvdijcke/fdd/src/FDD/primaldual_multi_scaled_tune.py:35: UserWarning: To copy construct from a tensor, it is recommended to use sourceTensor.clone().detach() or sourceTensor.clone().detach().requires_grad_(True), rather than torch.tensor(sourceTensor).
-[2m[36m(func pid=3702351)[0m   tauu = torch.tensor(  1.0 / torch.sqrt(denom) * res, device=dev)  # torch.tensor(  1.0 / 6.0 * res, device=dev) # *res
-[2m[36m(func pid=3702351)[0m /home/dvdijcke/fdd/src/FDD/primaldual_multi_scaled_tune.py:36: UserWarning: To copy construct from a tensor, it is recommended to use sourceTensor.clone().detach() or sourceTensor.clone().detach().requires_grad_(True), rather than torch.tensor(sourceTensor).
-[2m[36m(func pid=3702351)[0m   sigmap = torch.tensor( 1.0 / torch.sqrt(denom)  * res, device=dev) # torch.tensor( (1.0 / (3.0 + l))  * res, device=dev) # *res
-slurmstepd: error: *** JOB 59732616 ON gl1000 CANCELLED AT 2023-09-17T14:05:46 ***
