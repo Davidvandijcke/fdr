@@ -169,7 +169,6 @@ class FDR():
     
     def castDataToGridSmooth(self, X, Y):
         
-        self.grid_n = np.array([20, 30, 50])
 
         if self.grid_n is not None: # if they pre-specified the number of grid points along each dimension
             self.resolution = 1/np.max(self.grid_n)
