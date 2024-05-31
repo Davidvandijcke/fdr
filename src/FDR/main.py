@@ -11,10 +11,73 @@ import random
 import ray
 
 class FDR():
+    r""" Free Discontinuity Regression
+
+    Parameters
+    ----------
+    Y : np.array
+        The outcome variable
+    X : np.array
+        The feature matrix
+    pick_nu : str
+        How to pick the threshold for the gradient norm. Options are "kmeans" or "sqrt". Default is "kmeans".
+    level : int
+        The level of the contour plot. Default is 16.
+    lmbda : float
+        The data term parameter. Default is 1.
+    nu : float
+        The parameter on the boundary regularity penalty. Default is 0.01.
+    iter : int
+        The number of iterations for the primal-dual algorithm. Default is 1000.
+    tol : float
+        The tolerance for the primal-dual algorithm. Default is 5e-5.
+    rectangle : bool
+        Whether to relax the scaling of the domain to a unit hypercube, to allow for rectangular domains. Default is False.
+    image : bool
+        Whether the outcome is an image, in which case we don't scale the function back to the original values. Default is False. TODO: remove argument.
+    resolution : float
+        The resolution of the grid. Default is None, in which case it is calculated based on the number of data points.
+    grid_n : np.array
+        An optional number of pre-specified grid points along each dimension, in case the user wants to impose a specific discretization. Default is None.
+    scaled : bool
+        Whether to scale the gradients in the primal-dual algorithm. Default is False.
+    scripted : bool
+        Whether to use the scripted version of the primal-dual algorithm. Default is False.
+    average : bool
+        Whether to average the size of the jump points along each jump direction. Default is False, in which case the direction with the largest jump size is used
+        to calculate the overall jump size.
+    CI : bool
+        Whether to calculate conformal prediction bands for the jump points. Default is True.
+    alpha : float
+        The significance level for the conformal prediction bands. Default is 0.05.
+    num_cpus : int
+        The number of CPUs to use for the primal-dual algorithm. Default is 1.
+    num_gpus : int
+        The number of GPUs to use for the primal-dual algorithm. Default is 1.
+    
+
+    Example 
+    -------
+
+
+    
+    Note
+    ----
+
+
+
+    References
+    ----------
+
+    .. bibliography::    
+            
+
+    """
+
     def __init__(self, Y : np.array, X : np.array, pick_nu : str="kmeans", level : int=16, 
                  lmbda : float=1, nu : float=0.01, iter : int=1000, tol : float=5e-5, rectangle : bool=False, 
-                 qtile : float=0.05, image : bool=False, grid : bool=False, resolution : float=None,
-                 scaled=False, scripted=True, average=False, CI=True, alpha=0.05, num_cpus=1, num_gpus=1) -> None:
+                 image : bool=False, resolution : float=None, grid_n : np.array=None,
+                 scaled=True, scripted=False, average=False, CI=True, alpha=0.05, num_cpus=1, num_gpus=1) -> None:
 
         self.device = setDevice()
         torch.set_grad_enabled(False)
@@ -27,13 +90,11 @@ class FDR():
 
         
         self.image = image
-        self.grid = grid
         self.level = level
         self.lmbda = lmbda
         self.iter = iter
         self.tol = tol
         self.rectangle = rectangle
-        self.qtile = qtile
         self.resolution = resolution
         
         # confidence intervals
@@ -108,10 +169,19 @@ class FDR():
     
     def castDataToGridSmooth(self, X, Y):
         
-        if self.resolution is None:
-            self.resolution = 1/int(self.X_raw.max(axis=0).min()) # int so we get a natural number of grid cells
+        self.grid_n = np.array([20, 30, 50])
+
+        if self.grid_n is not None: # if they pre-specified the number of grid points along each dimension
+            self.resolution = 1/np.max(self.grid_n)
+            xmax = self.resolution * self.grid_n
         
-        xmax = np.max(X, axis=0)
+        else: 
+            if self.resolution is None:
+                self.resolution = 1/int(self.X_raw.max(axis=0).min()) # int so we get a natural number of grid cells
+            
+            xmax = np.max(X, axis=0)
+        
+        
         
         # set up grid
         grid_x = np.meshgrid(*[np.arange(0, xmax[i], self.resolution) for i in reversed(range(X.shape[1]))])
@@ -137,6 +207,7 @@ class FDR():
         # Iterate through the data points and accumulate their values in grid_y and grid_x_og
         for i, index_tuple in enumerate(indices):
             index = tuple(index_tuple)
+            print(index)
             if np.all(index < grid_y.shape):
                 grid_y[index] += Y[i]
                 counts[index] += 1

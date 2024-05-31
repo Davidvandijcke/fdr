@@ -1,5 +1,5 @@
-from FDD import FDD
-from FDD.SURE import SURE
+from FDR import FDR
+from FDR.SURE import SURE
 import numpy as np
 import pandas as pd
 import torch 
@@ -16,8 +16,12 @@ def ft(x, y, z, jsize):
     else:
         return temp + jsize
 
-def generate3D(jsize=0.1, sigma=0.02, N=500):
+def generate3D(jsize=0.1, sigma=0.02, N=500, uneven_x=False):
     data = np.random.rand(N, 3) # draw 1000 3D points from a uniform
+    
+    # make domain skewed to test the gridding algorithm for that case
+    if uneven_x: 
+        data[:,1] = data[:,1] * 10
 
     # now sample the function values on the data points
     grid_sample = np.zeros((data.shape[0],1))
@@ -72,15 +76,17 @@ if __name__ == "__main__":
     #----
     
     X, Y, U = generate3D(jsize = 0, sigma=sigma, N=10000)
+    X[:,]
     std = np.std(Y)
     jsize = 0.5 * std
     
-    X, Y, U = generate3D(jsize = jsize, sigma=sigma, N=10000)
+    X, Y, U = generate3D(jsize = jsize, sigma=sigma, N=10000,  uneven_x=True)
 
     N = Y.size
     resolution = 1/int((N*2/3)**(1/3))
-    model = FDD(Y, X, level = S, lmbda = 1, nu = 0.01, iter = 5000, tol = 5e-6, resolution=resolution,
-            pick_nu = "MS", scaled = True, scripted = False)
+    model = FDR(Y, X, level = S, lmbda = 1, nu = 0.01, iter = 5000, tol = 5e-6, 
+                rectangle=True,
+                resolution=resolution, pick_nu = "MS", scaled = True, scripted = False)
     
     #u, jumps, J_grid, nrj, eps, it = model.run()
     

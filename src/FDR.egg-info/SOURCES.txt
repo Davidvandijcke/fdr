@@ -1,0 +1,17 @@
+LICENSE
+setup.py
+src/FDR/SURE.py
+src/FDR/__init__.py
+src/FDR/main.py
+src/FDR/primaldual_multi.py
+src/FDR/primaldual_multi_scaled.py
+src/FDR/primaldual_multi_scaled_tune.py
+src/FDR/trash.py
+src/FDR/utils.py
+src/FDR.egg-info/PKG-INFO
+src/FDR.egg-info/SOURCES.txt
+src/FDR.egg-info/dependency_links.txt
+src/FDR.egg-info/requires.txt
+src/FDR.egg-info/top_level.txt
+src/FDR/models/scripted_primal_dual.pt
+src/FDR/models/scripted_primal_dual_scaled.pt
