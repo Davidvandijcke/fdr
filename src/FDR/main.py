@@ -207,7 +207,6 @@ class FDR():
         # Iterate through the data points and accumulate their values in grid_y and grid_x_og
         for i, index_tuple in enumerate(indices):
             index = tuple(index_tuple)
-            print(index)
             if np.all(index < grid_y.shape):
                 grid_y[index] += Y[i]
                 counts[index] += 1
