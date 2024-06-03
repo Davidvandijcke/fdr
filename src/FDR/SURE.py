@@ -87,7 +87,27 @@ def custom_loguniform(lower=0.001, upper=50, alpha=1.5, beta_b=1, size = 100):
     
 def SURE(model, maxiter = 100, R = 1, tuner = False, eps = 0.01, 
          wavelet = "db1", num_cpus = 4, num_gpus = 1, num_samples = 200, 
-         nu_min = 0.001, nu_max=10, lmbda_max=500):
+         nu_min = 0.001, nu_max=1, lmbda_min=1, lmbda_max=500):
+    """ 
+
+    Args:
+        model (FDR class): 
+        maxiter (int, optional): maximum number of iterations per model run. Defaults to 100.
+        R (int, optional): number of times to compute model per iteration for Monte-Carlo averaged SURE. Defaults to 1 (no averaging).
+        tuner (bool, optional): _description_. Defaults to False.
+        eps (float, optional): step size to use for Monte-Carlo divergence computation (delta in paper). Defaults to 0.01.
+        wavelet (str, optional): type of wavelet to use for computation of error variance. Defaults to "db1".
+        num_cpus (int, optional): number of CPUs to assign to each parallel computation. Defaults to 4.
+        num_gpus (int, optional): number of GPUs to assign to each parallel computation. Allows for fractional GPU usage (e.g. 0.25). Defaults to 1.
+        num_samples (int, optional): number of hyperparameter combinations to compute the SURE for. Defaults to 200.
+        nu_min (float, optional): lower bound on the boundary regularity parameter. Defaults to 0.001.
+        nu_max (int, optional): upper bound on the boundary regularity parameter. Defaults to 10.
+        lmbda_min (int, optional): lower bound on the data term parameter. Defaults to 1.
+        lmbda_max (int, optional): upper bound on the data term parameter. Defaults to 500.
+
+    Returns:
+        ResultGrid: a Ray Tune grid object containing the hyperparameters and the corresponding SURE value.
+    """
 
     sigma_sq = waveletDenoising(y=model.grid_y, wavelet=wavelet)
     N = model.grid_y.size
@@ -116,7 +136,7 @@ def SURE(model, maxiter = 100, R = 1, tuner = False, eps = 0.01,
 
         search_space={
             # A random function
-            "lmbda": tune.uniform(1, lmbda_max),
+            "lmbda": tune.uniform(lmbda_min, lmbda_max),
             "nu":  tune.uniform(nu_min, nu_max)
             # Use the `spec.config` namespace to access other hyperparameters
             #"nu":

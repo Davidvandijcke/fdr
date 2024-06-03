@@ -96,6 +96,7 @@ class FDR():
         self.tol = tol
         self.rectangle = rectangle
         self.resolution = resolution
+        self.grid_n = grid_n
         
         # confidence intervals
         self.CI = CI
