@@ -56,15 +56,14 @@ if __name__ == "__main__":
     #----------------
     # parameters
     #----------------
-    sigma=0.05
-    S = 32
+    S = 16
     N = 1000
     lmbda = 50
     nu = 0.05
-    num_samples = 2 # 225 #  400 # 400 # 400 # 200
+    num_samples = 100 # 225 #  400 # 400 # 400 # 200
     R = 1 # 3 # 3 # 3 # 5
     num_gpus = 1
-    num_cpus = 2
+    num_cpus = 4
     iter = 50000
     lmbda_max = 50
     nu_min = 0.001
@@ -74,8 +73,8 @@ if __name__ == "__main__":
     # process data
     #----------------
     
-    start = 9
-    end = 52
+    start = 27
+    end = 37
     X, X_t, Y_t, no_weeks = getSpaceTimeDwells(start, end)
 
     # segment
@@ -86,15 +85,15 @@ if __name__ == "__main__":
     model = FDR(Y_t, X_t, level = S, lmbda = lmbda, nu = nu, iter = iter, tol = 5e-5, pick_nu = "MS", 
                 CI=False, rectangle=True, grid_n=grid_n, scripted=False)
 
-    test = model.run()
-    file_name = 'frontline_dwells_temporal_SURE.pkl'
-    with open(file_name, 'wb') as file:
-        pickle.dump(test, file)
-    
-    # res = SURE(tuner=True, num_samples=num_samples, model=model, R=R, 
-    #     num_gpus=num_gpus, num_cpus=num_cpus, lmbda_max=lmbda_max,
-    #     nu_min=nu_min, nu_max=nu_max)
-
+    # test = model.run()
     # file_name = 'frontline_dwells_temporal_SURE.pkl'
     # with open(file_name, 'wb') as file:
-    #     pickle.dump(res, file)
+    #     pickle.dump(test, file)
+    
+    res = SURE(tuner=True, num_samples=num_samples, model=model, R=R, 
+        num_gpus=num_gpus, num_cpus=num_cpus, lmbda_max=lmbda_max,
+        nu_min=nu_min, nu_max=nu_max)
+
+    file_name = 'frontline_dwells_temporal_SURE_27_37.pkl'
+    with open(file_name, 'wb') as file:
+        pickle.dump(res, file)

@@ -120,8 +120,7 @@ class PrimalDual(torch.nn.Module):
             px, pt = self.parabola(px, pt, ubar, mux, lmbda, l, f, k_indices, dims, sigmap) # project onto parabola (set K)s
 
             sx = self.l2projection(sx, mubarx, sigmas, nu) # project onto l2 ball 
-            gc.collect()
-            torch.cuda.empty_cache()
+  
             #print("l2projection: ", time.time() - start)
             #start = time.time()
             mux, mubarx = self.mu(px, sx, mux, proj, l, k1_k2_combinations, tau) # constrain lagrange multipliers
@@ -134,9 +133,6 @@ class PrimalDual(torch.nn.Module):
                 if torch.le(nrj/(torch.prod(torch.tensor(dims[:-1] + [int(l)]))), tol): # if tolerance criterion is met,
                     it_total = it
                     break
-            
-            gc.collect()
-            torch.cuda.empty_cache()
 
             #tauu, tau, sigmap, sigmas = self.updateStepSizes(tauu, tau, sigmap, sigmas, gamma_u, gamma_mu, theta_u, theta_mu) # update step sizes
 
