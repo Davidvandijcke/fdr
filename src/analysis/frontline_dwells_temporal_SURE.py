@@ -61,7 +61,7 @@ if __name__ == "__main__":
     N = 1000
     lmbda = 50
     nu = 0.05
-    num_samples = 200 # 225 #  400 # 400 # 400 # 200
+    num_samples = 2 # 225 #  400 # 400 # 400 # 200
     R = 1 # 3 # 3 # 3 # 5
     num_gpus = 1
     num_cpus = 2
