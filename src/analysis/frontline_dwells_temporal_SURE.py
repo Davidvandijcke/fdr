@@ -86,10 +86,15 @@ if __name__ == "__main__":
     model = FDR(Y_t, X_t, level = S, lmbda = lmbda, nu = nu, iter = iter, tol = 5e-5, pick_nu = "MS", 
                 CI=False, rectangle=True, grid_n=grid_n, scripted=False)
 
-    res = SURE(tuner=True, num_samples=num_samples, model=model, R=R, 
-        num_gpus=num_gpus, num_cpus=num_cpus, lmbda_max=lmbda_max,
-        nu_min=nu_min, nu_max=nu_max)
-
+    test = model.run()
     file_name = 'frontline_dwells_temporal_SURE.pkl'
     with open(file_name, 'wb') as file:
-        pickle.dump(res, file)
+        pickle.dump(test, file)
+    
+    # res = SURE(tuner=True, num_samples=num_samples, model=model, R=R, 
+    #     num_gpus=num_gpus, num_cpus=num_cpus, lmbda_max=lmbda_max,
+    #     nu_min=nu_min, nu_max=nu_max)
+
+    # file_name = 'frontline_dwells_temporal_SURE.pkl'
+    # with open(file_name, 'wb') as file:
+    #     pickle.dump(res, file)

@@ -111,7 +111,7 @@ class PrimalDual(torch.nn.Module):
         # START loop
         for it in range(int(repeats)):
             
-            u_old, mux_old, px_old, pt_old, sx_old = u.clone(), mux.clone(), px.clone(), pt.clone(), sx.clone()
+            # u_old, mux_old, px_old, pt_old, sx_old = u.clone(), mux.clone(), px.clone(), pt.clone(), sx.clone()
 
             px, pt = self.parabola(px, pt, ubar, mux, lmbda, l, f, k_indices, dims, sigmap) # project onto parabola (set K)s
 
