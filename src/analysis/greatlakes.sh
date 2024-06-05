@@ -1,4 +1,6 @@
 #!/bin/bash
+rm -rf fdr
+git clone https://github.com/Davidvandijcke/fdr.git
 
 scp -r "/Users/davidvandijcke/Dropbox (University of Michigan)/rdd/code/fdd/src/" dvdijcke@greatlakes-xfer.arc-ts.umich.edu:/home/dvdijcke/fdr/src/
 
