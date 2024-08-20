@@ -119,7 +119,7 @@ class FDR():
         self.average = average
 
         
-        self.X = self.normalizeData(self.rectangle, self.X) # scale data to unit hypercube
+        self.X = self.normalizeData(self.rectangle, self.grid_n, self.X) # scale data to unit hypercube
         # if X only 1 dimension, add a second dimension
         if self.X.ndim == 1:
             self.X = np.expand_dims(self.X, -1)
@@ -144,17 +144,23 @@ class FDR():
         self.model = self.model.to(self.device)
         # TODO: exclude duplicate points (there shouldnt be any cause the variables are assumed to be continuous but anyway)
         
-    @staticmethod
-    def normalizeData(rectangle, X):
-        
+    def normalizeData(self, rectangle, grid_n, X):
+
+
         #min_y = np.min(self.Y, axis = 0)
         min_x = np.min(X, axis = 0)
-        
+
         # self.Y = self.Y - min_y # start at 0
         X = X - min_x
-        
+
         # max_y = np.max(self.Y, axis = 0)
-        if rectangle: # retain proportions between data -- should be used when units are identical along all axes
+            
+        if self.grid_n is not None:
+            self.resolution = 1/np.max(self.grid_n)
+            x_scale = self.resolution * self.grid_n
+            max_x =  np.max(X, axis=0)
+            X = X * x_scale / max_x
+        elif rectangle: # retain proportions between data -- should be used when units are identical along all axes
             max_x = np.max(X)
             # self.Y = self.Y / max_y
             X = X / max_x
@@ -162,7 +168,7 @@ class FDR():
             max_x = np.max(X, axis = 0)
             # self.Y = self.Y / max_y
             X = X / max_x
-            
+
         return X
             
 
@@ -174,17 +180,17 @@ class FDR():
         if self.grid_n is not None: # if they pre-specified the number of grid points along each dimension
             self.resolution = 1/np.max(self.grid_n)
             xmax = self.resolution * self.grid_n
-        
+
         else: 
             if self.resolution is None:
                 self.resolution = 1/int(self.X_raw.max(axis=0).min()) # int so we get a natural number of grid cells
-            
+
             xmax = np.max(X, axis=0)
-        
-        
-        
+
+
+
         # set up grid
-        grid_x = np.meshgrid(*[np.arange(0, xmax[i], self.resolution) for i in reversed(range(X.shape[1]))])
+        grid_x = np.meshgrid(*[np.arange(0, xmax[i], self.resolution) for i in range(X.shape[1])], indexing="ij")
         grid_x = np.stack(grid_x, axis=-1)
 
         if Y.ndim > 1: # account for vector-valued outcomes
@@ -192,7 +198,7 @@ class FDR():
         else:
             grid_y = np.zeros(list(grid_x.shape[:-1]))
         grid_x_og = np.empty(list(grid_x.shape[:-1]), dtype=object) # assign original x values as well for later
-        
+
         # Get the indices of the grid cells for each data point
         indices = [(np.clip(X[:, i] // self.resolution, 0, grid_y.shape[i] - 1)).astype(int) for i in range(X.shape[1])]
         indices = np.array(indices).T
