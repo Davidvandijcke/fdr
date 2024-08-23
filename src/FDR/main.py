@@ -502,7 +502,8 @@ class FDR():
         Y_1 = self.Y_raw[I1]
 
         model = FDR(Y_1, X_1, level = self.level, lmbda = self.lmbda, nu = self.nu, iter = self.iter, tol = self.tol, resolution=self.resolution,
-            pick_nu = self.pick_nu, scaled = self.scaled, scripted = self.scripted, rectangle = self.rectangle, average=self.average, CI=False)
+            pick_nu = self.pick_nu, scaled = self.scaled, scripted = self.scripted, rectangle = self.rectangle, average=self.average, CI=False, 
+            grid_n = self.grid_n)
 
         self.u_cs = model.run()['u']
 
@@ -511,7 +512,8 @@ class FDR():
         Y_2 = self.Y_raw[I2]
 
         model_temp = FDR(Y_2, X_2, level = self.level, lmbda = self.lmbda, nu = self.nu, iter = self.iter, tol = self.tol, resolution=self.resolution,
-            pick_nu = self.pick_nu, scaled = self.scaled, scripted = self.scripted, rectangle = self.rectangle, average=self.average, CI=False)
+            pick_nu = self.pick_nu, scaled = self.scaled, scripted = self.scripted, rectangle = self.rectangle, average=self.average, CI=False,
+            grid_n = self.grid_n)
 
 
         grid_x_reshaped = model.grid_x.reshape(-1, model.grid_x.shape[-1])[:,::-1]
@@ -521,7 +523,7 @@ class FDR():
         closest_indices = []
 
         # normalize X_2
-        X_2 = self.normalizeData(self.rectangle, X_2)
+        X_2 = self.normalizeData(self.rectangle, self.grid_n, X_2)
 
 
         # Looping through each point in X_2 for image function
@@ -608,7 +610,8 @@ class FDR():
                 Y_star = Y_raw[I_star]
                 print(f"Running trial {s}")
                 model_temp = FDR(Y_star, X_star, level = model.level, lmbda = model.lmbda, nu = model.nu, iter = model.iter, tol = model.tol, resolution=model.resolution,
-                    pick_nu = model.pick_nu, scaled = model.scaled, scripted = model.scripted, rectangle = model.rectangle, average=model.average, CI=False)
+                    pick_nu = model.pick_nu, scaled = model.scaled, scripted = model.scripted, rectangle = model.rectangle, average=model.average, CI=False, 
+                    grid_n = model.grid_n)
                 results = model_temp.run()
                 print(f"Done with trial {s}")
                 res[j,...] = results['u'] 
