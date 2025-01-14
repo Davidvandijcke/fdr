@@ -12,6 +12,13 @@ from ray.tune import CLIReporter, JupyterNotebookReporter
 import sys
 from ray.air.config import RunConfig
 
+from ray.train import CheckpointConfig
+
+checkpoint_config = CheckpointConfig( 
+    checkpoint_frequency=0,  # Disable periodic checkpoints
+    checkpoint_at_end=False  # Do not save a checkpoint at the end
+)
+
 
 def gridSearch(theta, args):
     lmbda_list = [1, 5, 10, 20, 50, 100, 300, 500]
@@ -87,7 +94,27 @@ def custom_loguniform(lower=0.001, upper=50, alpha=1.5, beta_b=1, size = 100):
     
 def SURE(model, maxiter = 100, R = 1, tuner = False, eps = 0.01, 
          wavelet = "db1", num_cpus = 4, num_gpus = 1, num_samples = 200, 
-         nu_min = 0.001, nu_max=10):
+         nu_min = 0.001, nu_max=1, lmbda_min=1, lmbda_max=500):
+    """ 
+
+    Args:
+        model (FDR class): 
+        maxiter (int, optional): maximum number of iterations per model run. Defaults to 100.
+        R (int, optional): number of times to compute model per iteration for Monte-Carlo averaged SURE. Defaults to 1 (no averaging).
+        tuner (bool, optional): _description_. Defaults to False.
+        eps (float, optional): step size to use for Monte-Carlo divergence computation (delta in paper). Defaults to 0.01.
+        wavelet (str, optional): type of wavelet to use for computation of error variance. Defaults to "db1".
+        num_cpus (int, optional): number of CPUs to assign to each parallel computation. Defaults to 4.
+        num_gpus (int, optional): number of GPUs to assign to each parallel computation. Allows for fractional GPU usage (e.g. 0.25). Defaults to 1.
+        num_samples (int, optional): number of hyperparameter combinations to compute the SURE for. Defaults to 200.
+        nu_min (float, optional): lower bound on the boundary regularity parameter. Defaults to 0.001.
+        nu_max (int, optional): upper bound on the boundary regularity parameter. Defaults to 10.
+        lmbda_min (int, optional): lower bound on the data term parameter. Defaults to 1.
+        lmbda_max (int, optional): upper bound on the data term parameter. Defaults to 500.
+
+    Returns:
+        ResultGrid: a Ray Tune grid object containing the hyperparameters and the corresponding SURE value.
+    """
 
     sigma_sq = waveletDenoising(y=model.grid_y, wavelet=wavelet)
     N = model.grid_y.size
@@ -116,8 +143,8 @@ def SURE(model, maxiter = 100, R = 1, tuner = False, eps = 0.01,
 
         search_space={
             # A random function
-            "lmbda": tune.loguniform(1, 5e2),
-            "nu":  tune.loguniform(nu_min, nu_max)
+            "lmbda": tune.uniform(lmbda_min, lmbda_max),
+            "nu":  tune.uniform(nu_min, nu_max)
             # Use the `spec.config` namespace to access other hyperparameters
             #"nu":
         }
@@ -170,20 +197,27 @@ def SURE_objective_tune(theta, tol, eps, f, repeats, level, grid_y, sigma_sq, b,
     u = isosurface(v.cpu().detach().numpy(), lvl, grid_y)
 
     u_dist = np.mean(np.abs(grid_y.flatten() - u.flatten())**2)
+    
+    torch.cuda.empty_cache()
 
-    for r in range(R):
+    stream = torch.cuda.Stream()
+    with torch.cuda.stream(stream):
+        for r in range(R):
 
-        bt = b[...,r]
-        f_eps = f + bt * eps
-        f_eps = torch.clamp(f_eps, min = 0, max = 1)
+            bt = b[...,r]
+            f_eps = f + bt * eps
+            f_eps = torch.clamp(f_eps, min = 0, max = 1)
 
-        v_eps = model.forward(f_eps, repeats, level, lmbda_torch, nu_torch, tol)[0]
-        u_eps = isosurface(v_eps.cpu().detach().numpy(), lvl, grid_y)
+            v_eps = model.forward(f_eps, repeats, level, lmbda_torch, nu_torch, tol)[0]
+            u_eps = isosurface(v_eps.cpu().detach().numpy(), lvl, grid_y)
 
-        divf_y = np.real(np.vdot(bt.cpu().detach().numpy().squeeze().flatten(), 
-                                u_eps.flatten() - u.flatten())) / (eps)
-        sure.append(u_dist - sigma_sq + 2 * sigma_sq * divf_y / n)
-        # TODO: should be euclidean norm
+            divf_y = np.real(np.vdot(bt.cpu().detach().numpy().squeeze().flatten(), 
+                                    u_eps.flatten() - u.flatten())) / (eps)
+            sure.append(u_dist - sigma_sq + 2 * sigma_sq * divf_y / n)
+            # TODO: should be euclidean norm
+    torch.cuda.synchronize()  # Ensure all operations are complete
     sure = np.mean(sure)
+    
+    torch.cuda.empty_cache()
 
     return sure

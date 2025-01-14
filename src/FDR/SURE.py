@@ -12,6 +12,13 @@ from ray.tune import CLIReporter, JupyterNotebookReporter
 import sys
 from ray.air.config import RunConfig
 
+from ray.train import CheckpointConfig
+
+checkpoint_config = CheckpointConfig( 
+    checkpoint_frequency=0,  # Disable periodic checkpoints
+    checkpoint_at_end=False  # Do not save a checkpoint at the end
+)
+
 
 def gridSearch(theta, args):
     lmbda_list = [1, 5, 10, 20, 50, 100, 300, 500]
@@ -190,20 +197,27 @@ def SURE_objective_tune(theta, tol, eps, f, repeats, level, grid_y, sigma_sq, b,
     u = isosurface(v.cpu().detach().numpy(), lvl, grid_y)
 
     u_dist = np.mean(np.abs(grid_y.flatten() - u.flatten())**2)
+    
+    torch.cuda.empty_cache()
 
-    for r in range(R):
+    stream = torch.cuda.Stream()
+    with torch.cuda.stream(stream):
+        for r in range(R):
 
-        bt = b[...,r]
-        f_eps = f + bt * eps
-        f_eps = torch.clamp(f_eps, min = 0, max = 1)
+            bt = b[...,r]
+            f_eps = f + bt * eps
+            f_eps = torch.clamp(f_eps, min = 0, max = 1)
 
-        v_eps = model.forward(f_eps, repeats, level, lmbda_torch, nu_torch, tol)[0]
-        u_eps = isosurface(v_eps.cpu().detach().numpy(), lvl, grid_y)
+            v_eps = model.forward(f_eps, repeats, level, lmbda_torch, nu_torch, tol)[0]
+            u_eps = isosurface(v_eps.cpu().detach().numpy(), lvl, grid_y)
 
-        divf_y = np.real(np.vdot(bt.cpu().detach().numpy().squeeze().flatten(), 
-                                u_eps.flatten() - u.flatten())) / (eps)
-        sure.append(u_dist - sigma_sq + 2 * sigma_sq * divf_y / n)
-        # TODO: should be euclidean norm
+            divf_y = np.real(np.vdot(bt.cpu().detach().numpy().squeeze().flatten(), 
+                                    u_eps.flatten() - u.flatten())) / (eps)
+            sure.append(u_dist - sigma_sq + 2 * sigma_sq * divf_y / n)
+            # TODO: should be euclidean norm
+    torch.cuda.synchronize()  # Ensure all operations are complete
     sure = np.mean(sure)
+    
+    torch.cuda.empty_cache()
 
     return sure

@@ -1,7 +1,7 @@
-from FDD import FDD
-from FDD.SURE import SURE
-from FDD.utils import *
-from FDD.primaldual_multi_scaled_tune import PrimalDual
+from FDR import FDR
+from FDR.SURE import SURE
+from FDR.utils import *
+from FDR.primaldual_multi_scaled_tune import PrimalDual
 import numpy as np
 import pandas as pd
 import torch 
@@ -78,6 +78,7 @@ def getOriginalImage(model, jsize):
 if __name__ == "__main__":
     np.random.seed(0)
     import sys
+    import glob
     old_stdout = sys.stdout
 
     # log_file = open("message.log","w")
@@ -116,9 +117,9 @@ if __name__ == "__main__":
             device = torch.device("mps")
             
         resolution = 1/int(np.sqrt(N*0.05))
-        model = FDD(Y, X, level = S, lmbda = lmbda, nu = nu, iter = 15000, tol = 5e-5, resolution=resolution,
+        model = FDR(Y, X, level = S, lmbda = lmbda, nu = nu, iter = 15000, tol = 5e-5, resolution=resolution,
                 pick_nu = "MS", scaled = True, scripted = False, CI=False)
-        # model = FDD(Y, X, level = S, lmbda = lmbda, nu = nu, iter = 100000, tol = 5e-5, resolution=resolution,
+        # model = FDR(Y, X, level = S, lmbda = lmbda, nu = nu, iter = 100000, tol = 5e-5, resolution=resolution,
         #         pick_nu = "MS", scaled = True, scripted = False, CI=False)
         
         f, repeats, level, lmbda, nu, tol = \
@@ -130,7 +131,7 @@ if __name__ == "__main__":
         print(f"Seconds model {secs}")
                     
         start = time.time()
-        temp.to_csv("s3://projects-fdd/data/out/simulations/" + fdate + "/simulation_2d_N" + str(N) + "_sim" + str(s) + "_" + str(sigma) + "_jsize_" + str(jsize) + ".csv", index=False)      
+        temp.to_csv("/home/dvdijcke/data/out/simulations/" + fdate + "/simulation_2d_N" + str(N) + "_sim" + str(s) + "_" + str(sigma) + "_jsize_" + str(jsize) + ".csv", index=False)      
         secs = time.time() - start
         print(f"Seconds writing {secs}")
         return None
@@ -175,7 +176,7 @@ if __name__ == "__main__":
     #         # run SURE once for largest N
     #         X, Y, U = generate2D(jsize, sigma=sigma, N=N_sure)
     #         resolution = 1/int(np.sqrt(0.05*N_sure))
-    #         model = FDD(Y, X, level = S, lmbda = 20, nu = 0.01, iter = 100000, tol = 5e-5, pick_nu = "MS", 
+    #         model = FDR(Y, X, level = S, lmbda = 20, nu = 0.01, iter = 100000, tol = 5e-5, pick_nu = "MS", 
     #                     scaled = True, resolution=resolution, scripted=False, CI=False)
     #         res = SURE(tuner=True, num_samples=num_samples, model=model, R=R, 
     #                 num_gpus=num_gpus, num_cpus=num_cpus)
@@ -219,19 +220,14 @@ if __name__ == "__main__":
     # bucket = s3.Bucket('ipsos-dvd')
     # objs = bucket.objects.filter(Prefix="fdd/data/2022-06-09/")
     
-    s3_resource = boto3.resource('s3')
-
-    # List objects
-    bucket = "projects-fdd"
-    files = s3_resource.Bucket(bucket).objects.filter(Prefix='data/out/simulations/2022-08-02/')
-    
+    # List files in the directory
+    directory = "/home/dvdijcke/"
+    files = glob.glob(os.path.join(directory, '*.csv'))
     # loop over sigmas, jzies and files and run the simulations but not the SURE
     for file in files:
-        if "csv" in file.key:
-
-    
+        if file.endswith(".csv"):
             # load files
-            df = pd.read_csv(os.path.join("s3://", bucket, file.key))
+            df = pd.read_csv(file)
             
             # get parameters
             lmbda = df['lambda'].iloc[0]
@@ -242,18 +238,16 @@ if __name__ == "__main__":
             print("Running simulations")
             sims = list(range(num_sims))  # 100 simulations
             
-            search_space={
-                # A random function
+            search_space = {
                 "N": tune.grid_search(N_list),
-                "s":  tune.grid_search(sims)
-                # Use the `spec.config` namespace to access other hyperparameters
-                #"nu":
+                "s": tune.grid_search(sims)
             }
             trainable_with_resources = tune.with_resources(
                 partial(train_func, jsize=jsize, sigma=sigma, lmbda=lmbda, nu=nu, S=S), 
                 {"cpu": num_cpus, "gpu": num_gpus}
             )
-                    # Start the Ray Tune run
+            
+            # Start the Ray Tune run
             analysis = tune.Tuner(
                 trainable_with_resources,
                 param_space=search_space,
@@ -261,15 +255,9 @@ if __name__ == "__main__":
             )
 
             # Get the hyperparameters of the best trial
-            results = analysis.fit() #get_best_trial("objective", "min", "last")
-                
-            # temp = pd.concat(results)
-            # dflist.append(temp)
+            results = analysis.fit()
             
-            # # save to s3
-            # temp.to_csv("/home/dvdijcke/data/out/simulations/2022-07-07/" + str(sigma) + "_jsize_" + str(jsize) + ".csv", index=False)
             print(f"Done with sigma {sigma}, jump size {jsize}")
-            
     # # sys.stdout = old_stdout
     # # log_file.close()
 

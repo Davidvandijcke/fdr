@@ -1,5 +1,6 @@
 
 from torch import Tensor
+import gc
 import torch
 from typing import Tuple, List, Dict
 #from .utils import setDevice
@@ -95,6 +96,7 @@ class PrimalDual(torch.nn.Module):
                     K += 1
             k_indices[z] = K_indices
         
+        
         # preallocate indices for helper variable
         k1_k2_combinations =  torch.jit.annotate(List[Tensor], []) # TODO: take this out of loops
         for k1 in range(int(l)):
@@ -104,18 +106,21 @@ class PrimalDual(torch.nn.Module):
         k1_k2_combinations = torch.cat(k1_k2_combinations, dim=0)
             
         h_un = torch.zeros_like(u)  # Initialize h_un with a default value (None in this case)
-        h_u = torch.zeros_like(u)  # Initialize h_u with a default value (None in this case)
+        # h_u = torch.zeros_like(u)  # Initialize h_u with a default value (None in this case)
         nrj = torch.tensor([0], device = dev)  # Initialize nrj with a default value (None in this case)
         it_total = 0
+        
+        del()
         
         # START loop
         for it in range(int(repeats)):
             
-            u_old, mux_old, px_old, pt_old, sx_old = u.clone(), mux.clone(), px.clone(), pt.clone(), sx.clone()
+            # u_old, mux_old, px_old, pt_old, sx_old = u.clone(), mux.clone(), px.clone(), pt.clone(), sx.clone()
 
             px, pt = self.parabola(px, pt, ubar, mux, lmbda, l, f, k_indices, dims, sigmap) # project onto parabola (set K)s
 
             sx = self.l2projection(sx, mubarx, sigmas, nu) # project onto l2 ball 
+  
             #print("l2projection: ", time.time() - start)
             #start = time.time()
             mux, mubarx = self.mu(px, sx, mux, proj, l, k1_k2_combinations, tau) # constrain lagrange multipliers
@@ -124,19 +129,18 @@ class PrimalDual(torch.nn.Module):
                 h_un = u.detach().clone()
             u, ubar = self.clipping(px, pt, u, tauu, dims, l) # project onto set C
             if it%10 == 0:
-                h_u = u.detach().clone()
-                nrj = self.energy(h_u, h_un) # .detach().item() # calculate energy
+                nrj = self.energy(u, h_un) # .detach().item() # calculate energy
                 if torch.le(nrj/(torch.prod(torch.tensor(dims[:-1] + [int(l)]))), tol): # if tolerance criterion is met,
                     it_total = it
                     break
-                
+
             #tauu, tau, sigmap, sigmas = self.updateStepSizes(tauu, tau, sigmap, sigmas, gamma_u, gamma_mu, theta_u, theta_mu) # update step sizes
 
  
             # if torch.equal(iter, repeats-1):
             #     print("debug")
         
-        torch.cuda.empty_cache()
+        # torch.cuda.empty_cache()
         
         return (u, nrj, nrj/(torch.prod(torch.tensor(dims[:-1] + [int(l)]))), it_total)
         
@@ -290,10 +294,11 @@ class PrimalDual(torch.nn.Module):
             t_list.append(px[..., k[0].item():(k[1].item() + 1)].sum(dim=-1))
 
         t = torch.stack(t_list, dim=-1)
-
-        cx = mux.detach().clone()
-        mux = cx+tau*(sx-t)
-        mubarx = 2.0 * mux - cx
+        
+        # cx = mux.detach().clone()
+        # mux = cx+tau*(sx-t)
+        mubarx = 2.0 * mux+tau*(sx-t) - mux
+        mux.add_(tau * (sx - t))
         
         return mux, mubarx
 
