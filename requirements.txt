@@ -91,7 +91,7 @@ requests==2.29.0
 scikit-learn==1.2.1
 scipy==1.9.3
 Send2Trash==1.8.0
-setuptools==67.8.0
+setuptools==70.0.0
 six==1.16.0
 soupsieve==2.3.2.post1
 stack-data==0.6.2
