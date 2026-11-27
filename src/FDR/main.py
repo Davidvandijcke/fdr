@@ -578,10 +578,12 @@ class FDR():
         d = sorted(self.R_u.flatten())[k-1]
         
         k = int(np.ceil((self.N/2 + 1)* (1-alpha)))
-        d_norm = np.sort(self.R_J, axis=1)[:,k-1]
+        # A one-dimensional fit stores one row of gradient residuals as a vector.
+        residuals = np.atleast_2d(self.R_J)
+        d_norm = np.sort(residuals, axis=1)[:,k-1]
 
         # if the upper jump is below 0 or the lower jump above, we have a significant jump
-        shp = self.R_J.shape[0]
+        shp = residuals.shape[0]
         J_lower = (self.u_diff -  d_norm.reshape((shp,) + (1,) * (shp)))
         J_upper = (self.u_diff +  d_norm.reshape((shp,) + (1,) * (shp)))
         J_lower = (np.sum((J_lower > 0).astype(int) + (J_upper < 0).astype(int), axis=0) > 0)
