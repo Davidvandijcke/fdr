@@ -2,7 +2,7 @@ import numpy as np
 import torch
 from scipy.optimize import minimize
 import pywt
-from .primaldual_multi_scaled_tune import PrimalDual
+from .primaldual_multi_scaled_tune import make_solver
 from functools import partial
 from ray import tune
 from .utils import *
@@ -65,7 +65,8 @@ def waveletDenoising(y, wavelet : str = "db1"):
     return sigma**2
     
     
-def tune_func(config, tol, eps, f, repeats, level, grid_y, sigma_sq, R):
+def tune_func(config, tol, eps, f, repeats, level, grid_y, sigma_sq, R,
+              solver_options=None, probe_seed=None):
     #tune.utils.wait_for_gpu(target_util = 0.1, retry = 100)
     if torch.cuda.is_available(): # cuda gpus
         device_id = torch.cuda.current_device() 
@@ -74,17 +75,27 @@ def tune_func(config, tol, eps, f, repeats, level, grid_y, sigma_sq, R):
 
     elif torch.backends.mps.is_available(): # mac gpus
         device = torch.device("mps")
+    else:
+        device = torch.device("cpu")
         
 
     f, repeats, level, lmbda, nu, tol = \
         arraysToTensors(grid_y, repeats, level, 0, 0, tol, device)
-    b = torch.randn(list(f.shape) + [R], device = device) 
+    b = make_probes(f, R, probe_seed)
     
     theta = np.array([config['lmbda'], config['nu']])
 
     score = SURE_objective_tune(theta, tol=tol, eps=eps, f=f, repeats=repeats, 
-                    level=level, grid_y=grid_y, sigma_sq=sigma_sq, b=b, R=R)
+                    level=level, grid_y=grid_y, sigma_sq=sigma_sq, b=b, R=R, solver_options=solver_options)
     return {'score' : score}
+
+
+def make_probes(f, count, seed):
+    generator = torch.Generator(device="cpu")
+    if seed is None:
+        seed = torch.randint(2**31-1, (), device="cpu").item()
+    generator.manual_seed(int(seed))
+    return torch.randn(list(f.shape)+[count], device="cpu", dtype=f.dtype, generator=generator).to(f.device)
 
 def custom_loguniform(lower=0.001, upper=50, alpha=1.5, beta_b=1, size = 100):
     val = beta.rvs(alpha, beta_b, size=size)
@@ -94,7 +105,7 @@ def custom_loguniform(lower=0.001, upper=50, alpha=1.5, beta_b=1, size = 100):
     
 def SURE(model, maxiter = 100, R = 1, tuner = False, eps = 0.01, 
          wavelet = "db1", num_cpus = 4, num_gpus = 1, num_samples = 200, 
-         nu_min = 0.001, nu_max=1, lmbda_min=1, lmbda_max=500):
+         nu_min = 0.001, nu_max=1, lmbda_min=1, lmbda_max=500, probe_seed=None):
     """ 
 
     Args:
@@ -113,33 +124,35 @@ def SURE(model, maxiter = 100, R = 1, tuner = False, eps = 0.01,
         lmbda_max (int, optional): upper bound on the data term parameter. Defaults to 500.
 
     Returns:
-        ResultGrid: a Ray Tune grid object containing the hyperparameters and the corresponding SURE value.
+        Ray ResultGrid with tuner=True, or SciPy OptimizeResult for the bounded local search.
+        probe_seed fixes the finite-difference perturbations shared across candidates.
     """
 
+    if R < 1 or eps <= 0 or not (0 <= nu_min <= nu_max and 0 <= lmbda_min <= lmbda_max):
+        raise ValueError("Provide positive probe count and epsilon and ordered nonnegative search bounds")
     sigma_sq = waveletDenoising(y=model.grid_y, wavelet=wavelet)
-    N = model.grid_y.size
-    y = model.grid_y.squeeze()
-    y_diff = model.forward_differences(y, D = len(y.shape)) / model.resolution
-    y_norm = np.linalg.norm(y_diff, ord = 2, axis = 0)**2
-
-
-
-    reporter = get_reporter()
+    solver_options = dict(scaled=model.scaled, scripted=model.scripted,
+                          legacy_jump_projection=getattr(model, "legacy_jump_projection", True),
+                          step_safety=getattr(model, "step_safety", 1.0))
+    if probe_seed is None:
+        probe_seed = torch.randint(2**31-1, (), device="cpu").item()
 
     if not tuner:
-        config = {'lmbda' : 1, 'nu' : 0.01}
-        res = \
-            minimize(SURE_objective_tune, config, 
-                    tuple([model.tol, eps, model.grid_y, model.iter, model.level, model.grid_y, sigma_sq, R]),
-                    method = "BFGS", tol = 1*10**(-9), 
-                    options = {'disp' : True, 'maxiter' : maxiter}, bounds = ((1, 200), (0, nu_max)))
+        f, repeats, levels, _, _, tol = model.arraysToTensors(
+            model.grid_y, model.iter, model.level, model.lmbda, model.nu, model.tol)
+        probes = make_probes(f, R, probe_seed)
+        initial = [np.clip(model.lmbda,lmbda_min,lmbda_max), np.clip(model.nu,nu_min,nu_max)]
+        # The half-level readout is piecewise smooth. Use a bounded
+        # derivative-free search with identical probes at every evaluation.
+        return minimize(SURE_objective_tune, initial,
+                        args=(tol, eps, f, repeats, levels, model.grid_y, sigma_sq, probes, R, solver_options),
+                        bounds=((lmbda_min,lmbda_max),(nu_min,nu_max)), method="Powell",
+                        options={"maxiter": maxiter})
     elif tuner:
     #     search_space = {
     #     "lmbda": tune.uniform(1, 2e2),
     #     "nu": tune.sample_from(lambda spec:   lower * ((nu_max/lower) ** beta.rvs(0.5, 1))),
     # }
-        nu_grid = custom_loguniform(lower = nu_min, upper = nu_max, size = 10000, alpha = 0.5)
-        lmbda_grid = custom_loguniform(lower = 1, upper = 500, size = 10000, alpha = 1.5)
 
         search_space={
             # A random function
@@ -150,7 +163,8 @@ def SURE(model, maxiter = 100, R = 1, tuner = False, eps = 0.01,
         }
         trainable_with_resources = tune.with_resources(
             partial(tune_func, tol=model.tol, eps=eps, f=model.grid_y, repeats=model.iter, 
-                    level=model.level, grid_y=model.grid_y, sigma_sq=sigma_sq, R=R), 
+                    level=model.level, grid_y=model.grid_y, sigma_sq=sigma_sq, R=R,
+                    solver_options=solver_options, probe_seed=probe_seed),
             {"cpu": num_cpus, "gpu": num_gpus}
         )
                 # Start the Ray Tune run
@@ -158,7 +172,7 @@ def SURE(model, maxiter = 100, R = 1, tuner = False, eps = 0.01,
             trainable_with_resources,
             param_space=search_space,
             tune_config=tune.TuneConfig(num_samples=num_samples),  # number of different hyperparameter combinations to try
-            run_config=RunConfig(progress_reporter=reporter)
+            run_config=RunConfig(progress_reporter=get_reporter())
         )
 
         # Get the hyperparameters of the best trial
@@ -181,43 +195,28 @@ def get_reporter(max_progress_rows=10, metric_column="custom_metric"):
     return reporter
 
 
-def SURE_objective_tune(theta, tol, eps, f, repeats, level, grid_y, sigma_sq, b, R):
-
+def SURE_objective_tune(theta, tol, eps, f, repeats, level, grid_y, sigma_sq, b, R, solver_options=None):
+    """Cell-mean MC-SURE with the same FDR solver for the base and each perturbation."""
+    if R < 1 or eps <= 0 or tuple(b.shape) != tuple(f.shape)+(R,):
+        raise ValueError("Supply one perturbation grid per probe and a positive epsilon")
     device = f.device
+    solver = make_solver(device, **(solver_options or {}))
+    lam, nu = (torch.as_tensor(value, device=device, dtype=f.dtype) for value in theta)
+    levels = int(level)
 
-    sure = []
-    
-    lvl = level.cpu().detach().numpy()
+    def fit(grid):
+        lift = solver(grid, repeats, level, lam, nu, tol)[0]
+        return isosurface(lift.detach().cpu().numpy(), levels, grid_y).ravel()
 
-    lmbda_torch = torch.tensor(theta[0], device = device, dtype = torch.float32)
-    nu_torch = torch.tensor(theta[1], device = device, dtype = torch.float32)
-    n = grid_y.size # flatten().shape[0]
-    model = PrimalDual()
-    v = model.forward(f, repeats, level, lmbda_torch, nu_torch, tol)[0]
-    u = isosurface(v.cpu().detach().numpy(), lvl, grid_y)
-
-    u_dist = np.mean(np.abs(grid_y.flatten() - u.flatten())**2)
-    
-    torch.cuda.empty_cache()
-
-    stream = torch.cuda.Stream()
-    with torch.cuda.stream(stream):
-        for r in range(R):
-
-            bt = b[...,r]
-            f_eps = f + bt * eps
-            f_eps = torch.clamp(f_eps, min = 0, max = 1)
-
-            v_eps = model.forward(f_eps, repeats, level, lmbda_torch, nu_torch, tol)[0]
-            u_eps = isosurface(v_eps.cpu().detach().numpy(), lvl, grid_y)
-
-            divf_y = np.real(np.vdot(bt.cpu().detach().numpy().squeeze().flatten(), 
-                                    u_eps.flatten() - u.flatten())) / (eps)
-            sure.append(u_dist - sigma_sq + 2 * sigma_sq * divf_y / n)
-            # TODO: should be euclidean norm
-    torch.cuda.synchronize()  # Ensure all operations are complete
-    sure = np.mean(sure)
-    
-    torch.cuda.empty_cache()
-
-    return sure
+    # Keep all operations on the caller's stream. The readout synchronizes
+    # with the device before NumPy evaluates the squared loss and divergence.
+    with torch.no_grad():
+        base = fit(f)
+        squared_error = np.mean((np.asarray(grid_y).ravel()-base)**2)
+        scores = []
+        for i in range(R):
+            probe = b[..., i].to(device=device, dtype=f.dtype)
+            perturbed = fit((f+eps*probe).clamp(0,1))
+            divergence = np.vdot(probe.cpu().numpy().ravel(), perturbed-base).real / eps
+            scores.append(squared_error-sigma_sq+2*sigma_sq*divergence/base.size)
+    return float(np.mean(scores))

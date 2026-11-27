@@ -4,7 +4,7 @@ import torch
 from .utils import * 
 from sklearn.cluster import KMeans
 from scipy.spatial import cKDTree
-from .primaldual_multi_scaled_tune import LegacyPrimalDual, PrimalDual
+from .primaldual_multi_scaled_tune import PrimalDual, make_solver
 from matplotlib import pyplot as plt
 import pandas as pd
 import random
@@ -139,17 +139,7 @@ class FDR():
         self.nu = nu
         self.pick_nu = pick_nu
         
-        if self.scripted and (not self.scaled or legacy_jump_projection):
-            script = "scripted_primal_dual_scaled.pt" if self.scaled else "scripted_primal_dual.pt"
-            self.model = load_model(script, device=self.device)
-        elif legacy_jump_projection:
-            self.model = LegacyPrimalDual()
-        else:
-            self.model = PrimalDual(step_safety=step_safety)
-            if self.scripted:
-                self.model = torch.jit.script(self.model)
-        
-        self.model = self.model.to(self.device)
+        self.model = make_solver(self.device, self.scaled, self.scripted, legacy_jump_projection, step_safety)
         # TODO: exclude duplicate points (there shouldnt be any cause the variables are assumed to be continuous but anyway)
         
     def normalizeData(self, rectangle, grid_n, X):

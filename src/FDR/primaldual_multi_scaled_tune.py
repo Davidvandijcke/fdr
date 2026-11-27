@@ -4,6 +4,17 @@ import gc
 import torch
 from typing import Tuple, List, Dict
 from .primaldual_multi_scaled import PrimalDual
+from .utils import load_model
+
+
+def make_solver(device, scaled=True, scripted=False, legacy_jump_projection=False, step_safety=1.0):
+    if scripted and (not scaled or legacy_jump_projection):
+        name = "scripted_primal_dual_scaled.pt" if scaled else "scripted_primal_dual.pt"
+        return load_model(name, device)
+    if legacy_jump_projection:
+        return LegacyPrimalDual().to(device)
+    solver = PrimalDual(step_safety=step_safety).to(device)
+    return torch.jit.script(solver) if scripted else solver
 #from .utils import setDevice
 
 
