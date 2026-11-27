@@ -695,8 +695,16 @@ class FDR():
         eps = eps.cpu().detach().numpy()
         
         u = self.isosurface(v)
-        
+        if u.ndim == 1:
+            # The marker adjustment edits consecutive cells in place.
+            if self.image:
+                self.threshold_surface_ = u.copy()
+            else:
+                lower = np.min(self.Y_raw, axis=0)
+                self.threshold_surface_ = u*(np.max(self.Y_raw, axis=0)-lower)+lower
         u, J_grid, jumps = self.boundary(u)
+        if u.ndim != 1:
+            self.threshold_surface_ = u
         
         return (u, jumps, J_grid, nrj, eps, it)
 
@@ -706,7 +714,10 @@ class FDR():
     
     
     def run(self):
-        
+        """Fit FDR. The result's u_threshold is the half-level regression surface
+        in response units, before the one-dimensional jump-marker adjustment.
+        The u and jumps fields retain their historical readouts.
+        """
         f, repeats, level, lmbda, nu, tol = \
             self.arraysToTensors(self.grid_y, self.iter, self.level, self.lmbda, self.nu, self.tol)
         
@@ -723,6 +734,6 @@ class FDR():
             u_lower, u_upper, J_lower = None, None, None
         
         
-        return {"u": u, "u_lower": u_lower, "u_upper": u_upper,
+        return {"u": u, "u_threshold": self.threshold_surface_, "u_lower": u_lower, "u_upper": u_upper,
                 "jumps": jumps, "J": J_grid, "J_lower": J_lower,  
                 "nrj": nrj, "eps": eps, "it": it}
