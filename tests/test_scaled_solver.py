@@ -12,9 +12,13 @@ from FDR.primaldual_multi_scaled import interval_ball, interval_sums, project_pa
 def test_integrated_radius_and_small_spatial_norm():
     # Four lifted levels and seven spatial sites. One vector is interior,
     # one lies on the boundary, and one must be shortened to S * nu.
-    field = torch.tensor([[.2, .4, .9], [0., 0., 0.]])
-    expected = torch.tensor([[.2, .4, .4], [0., 0., 0.]])
+    field = torch.zeros(2,7,1,10)
+    field[0,0,0,:3] = torch.tensor([.2,.4,.9])
+    expected = field.clone()
+    expected[0,0,0,2] = .4
     torch.testing.assert_close(interval_ball(field, 4*.1), expected)
+    projected = PrimalDual().l2projection(field,torch.zeros_like(field),1.,.1)
+    torch.testing.assert_close(projected,expected)
     torch.testing.assert_close(interval_ball(field*0, 0.), torch.zeros_like(field))
     x = torch.tensor([[1.e-5, 0.]])
     t = -torch.ones(2)
