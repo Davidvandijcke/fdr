@@ -60,8 +60,33 @@ def test_public_fit_returns_surface_and_jump_fields(scripted, monkeypatch):
     fit = FDR(y, x, scripted=scripted, CI=False, resolution=.125,
               pick_nu="MS", level=8, iter=40).run()
     assert {"u", "J", "jumps", "nrj", "eps", "it"} <= fit.keys()
+    assert fit["u_threshold"].shape == fit["u"].shape
     assert fit["u"].shape == fit["J"].shape == (8,)
     assert np.isfinite(fit["u"]).all()
+
+
+def test_threshold_surface_precedes_one_dimensional_marker_adjustment(monkeypatch):
+    import FDR.main as main
+    monkeypatch.setattr(main, "setDevice", lambda: torch.device("cpu"))
+    x = np.linspace(0,1,129)
+    model = FDR(10+7*x,x,level=16,resolution=1/8,nu=.002,pick_nu="MS",CI=False)
+    normalized = np.array([.1,.1,.2,.45,.65,.65,.65,.65])
+    nodes = np.arange(1,17)/16
+    lift = (.5+8*(normalized[:,None]-nodes)).clip(0,1)[:,None,:]
+    # Exercise run's readouts on a lift with three consecutive flagged edges.
+    monkeypatch.setattr(model.model, "forward", lambda *a: (torch.tensor(lift),torch.tensor(0.),torch.tensor(0.),1))
+    result = model.run()
+    np.testing.assert_allclose(result["u_threshold"],10+7*normalized,rtol=0,atol=1e-12)
+    assert not np.array_equal(result["u_threshold"],result["u"])
+
+
+@pytest.mark.parametrize("dimension", [2,3])
+def test_higher_dimensional_threshold_surface(dimension,monkeypatch):
+    import FDR.main as main
+    monkeypatch.setattr(main,"setDevice",lambda:torch.device("cpu"))
+    x=np.random.default_rng(81).random((250,dimension))
+    fit=FDR(4+x[:,0],x,level=6,iter=20,grid_n=np.repeat(4,dimension),CI=False,pick_nu="MS").run()
+    np.testing.assert_array_equal(fit["u_threshold"],fit["u"])
 
 
 def test_default_one_dimensional_conformal_run(monkeypatch):
