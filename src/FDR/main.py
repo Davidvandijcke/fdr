@@ -715,7 +715,7 @@ class FDR():
     
     def run(self):
         """Fit FDR. The result's u_threshold is the half-level regression surface
-        in response units, before the one-dimensional jump-marker adjustment.
+        on the same scale as u, before the one-dimensional jump-marker adjustment.
         The u and jumps fields retain their historical readouts.
         """
         f, repeats, level, lmbda, nu, tol = \
