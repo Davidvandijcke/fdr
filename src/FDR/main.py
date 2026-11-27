@@ -4,7 +4,7 @@ import torch
 from .utils import * 
 from sklearn.cluster import KMeans
 from scipy.spatial import cKDTree
-from .primaldual_multi_scaled_tune import PrimalDual
+from .primaldual_multi_scaled_tune import LegacyPrimalDual, PrimalDual
 from matplotlib import pyplot as plt
 import pandas as pd
 import random
@@ -43,6 +43,12 @@ class FDR():
         Whether to scale the gradients in the primal-dual algorithm. Default is False.
     scripted : bool
         Whether to use the scripted version of the primal-dual algorithm. Default is False.
+    legacy_jump_projection : bool
+        Use the historical scaled solver for replaying archived fits. The
+        default uses a common radius for testing and projecting every interval.
+    step_safety : float
+        Multiplier in (0, 1] for the corrected solver's step sizes. The
+        coupled operator bound can reduce it further on unequal grids.
     average : bool
         Whether to average the size of the jump points along each jump direction. Default is False, in which case the direction with the largest jump size is used
         to calculate the overall jump size.
@@ -77,7 +83,8 @@ class FDR():
     def __init__(self, Y : np.array, X : np.array, pick_nu : str="kmeans", level : int=16, 
                  lmbda : float=1, nu : float=0.01, iter : int=1000, tol : float=5e-5, rectangle : bool=False, 
                  image : bool=False, resolution : float=None, grid_n : np.array=None,
-                 scaled=True, scripted=False, average=False, CI=True, alpha=0.05, num_cpus=1, num_gpus=1) -> None:
+                 scaled=True, scripted=False, average=False, CI=True, alpha=0.05, num_cpus=1, num_gpus=1,
+                 legacy_jump_projection=False, step_safety=1.0) -> None:
 
         self.device = setDevice()
         torch.set_grad_enabled(False)
@@ -115,6 +122,8 @@ class FDR():
         
         self.scripted = scripted
         self.scaled = scaled
+        self.legacy_jump_projection = legacy_jump_projection
+        self.step_safety = step_safety
         
         self.average = average
 
@@ -130,16 +139,15 @@ class FDR():
         self.nu = nu
         self.pick_nu = pick_nu
         
-        if self.scripted:
-            # scale gradients?
-            if self.scaled:
-                script = "scripted_primal_dual_scaled"
-            else:
-                script = "scripted_primal_dual"
-            
-            self.model = load_model(script + ".pt", device=self.device) #torch.jit.load(script + ".pt", map_location = self.device)
+        if self.scripted and (not self.scaled or legacy_jump_projection):
+            script = "scripted_primal_dual_scaled.pt" if self.scaled else "scripted_primal_dual.pt"
+            self.model = load_model(script, device=self.device)
+        elif legacy_jump_projection:
+            self.model = LegacyPrimalDual()
         else:
-            self.model = PrimalDual()
+            self.model = PrimalDual(step_safety=step_safety)
+            if self.scripted:
+                self.model = torch.jit.script(self.model)
         
         self.model = self.model.to(self.device)
         # TODO: exclude duplicate points (there shouldnt be any cause the variables are assumed to be continuous but anyway)
@@ -497,7 +505,8 @@ class FDR():
 
         model = FDR(Y_1, X_1, level = self.level, lmbda = self.lmbda, nu = self.nu, iter = self.iter, tol = self.tol, resolution=self.resolution,
             pick_nu = self.pick_nu, scaled = self.scaled, scripted = self.scripted, rectangle = self.rectangle, average=self.average, CI=False, 
-            grid_n = self.grid_n)
+            grid_n = self.grid_n, legacy_jump_projection=getattr(self, "legacy_jump_projection", True),
+            step_safety=getattr(self, "step_safety", 1.0))
 
         self.u_cs = model.run()['u']
 
@@ -507,7 +516,8 @@ class FDR():
 
         model_temp = FDR(Y_2, X_2, level = self.level, lmbda = self.lmbda, nu = self.nu, iter = self.iter, tol = self.tol, resolution=self.resolution,
             pick_nu = self.pick_nu, scaled = self.scaled, scripted = self.scripted, rectangle = self.rectangle, average=self.average, CI=False,
-            grid_n = self.grid_n)
+            grid_n = self.grid_n, legacy_jump_projection=getattr(self, "legacy_jump_projection", True),
+            step_safety=getattr(self, "step_safety", 1.0))
 
 
         grid_x_reshaped = model.grid_x.reshape(-1, model.grid_x.shape[-1])[:,::-1]
@@ -605,7 +615,8 @@ class FDR():
                 print(f"Running trial {s}")
                 model_temp = FDR(Y_star, X_star, level = model.level, lmbda = model.lmbda, nu = model.nu, iter = model.iter, tol = model.tol, resolution=model.resolution,
                     pick_nu = model.pick_nu, scaled = model.scaled, scripted = model.scripted, rectangle = model.rectangle, average=model.average, CI=False, 
-                    grid_n = model.grid_n)
+                    grid_n = model.grid_n, legacy_jump_projection=getattr(model, "legacy_jump_projection", True),
+                    step_safety=getattr(model, "step_safety", 1.0))
                 results = model_temp.run()
                 print(f"Done with trial {s}")
                 res[j,...] = results['u'] 
@@ -719,14 +730,3 @@ class FDR():
         return {"u": u, "u_lower": u_lower, "u_upper": u_upper,
                 "jumps": jumps, "J": J_grid, "J_lower": J_lower,  
                 "nrj": nrj, "eps": eps, "it": it}
-    
-
-        
-        
-   
-
-
-
-        
-
-        

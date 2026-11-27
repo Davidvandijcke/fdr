@@ -1,7 +1,8 @@
 import torch
 from torch.overrides import TorchFunctionMode
 import numpy as np
-import pkg_resources
+from io import BytesIO
+from pkgutil import get_data
 
 _DEVICE_CONSTRUCTOR = {
     # standard ones
@@ -71,8 +72,8 @@ def setDevice():
         torch.set_default_tensor_type('torch.cuda.FloatTensor')
     elif torch.backends.mps.is_available(): # mac gpus
         device = torch.device("mps")
-    elif torch.backends.mkl.is_available(): # intel cpus
-        device = torch.device("mkldnn")
+    else:
+        device = torch.device("cpu")
     torch.set_grad_enabled(True)
     return device
 
@@ -129,6 +130,6 @@ def interpolate(k, uk0, uk1, l):
     return (k + (0.5 - uk0) / (uk1 - uk0)) / l
 
 def load_model(fn, device):
-    model_file_path = pkg_resources.resource_filename('FDD', 'models/' + fn)
-    model = torch.jit.load(model_file_path, map_location=device)
+    model_bytes = get_data(__package__, 'models/' + fn)
+    model = torch.jit.load(BytesIO(model_bytes), map_location=device)
     return model

@@ -3,13 +3,15 @@ from torch import Tensor
 import gc
 import torch
 from typing import Tuple, List, Dict
+from .primaldual_multi_scaled import PrimalDual
 #from .utils import setDevice
 
 
-class PrimalDual(torch.nn.Module):
+class LegacyPrimalDual(torch.nn.Module):
+    """Original eager solver, retained for reproducing archived fits."""
     def __init__(self) -> None:
 
-        super(PrimalDual, self).__init__()
+        super().__init__()
         
         
         torch.set_grad_enabled(False)

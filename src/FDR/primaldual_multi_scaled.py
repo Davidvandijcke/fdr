@@ -1,140 +1,148 @@
 
+import math
 from torch import Tensor
 import torch
 from typing import Tuple, List, Dict
 #from .utils import * 
 
 
+def step_bound(side: int, dimensions: int, levels: int) -> float:
+    """Upper bound for the norm of the preconditioned coupled PDHG operator."""
+    t = 1.0 / (2 * math.sqrt(float(dimensions + 1)) * side)
+    count = levels * (levels + 1) // 2
+    # B maps a vector of lifted values to all contiguous interval sums.
+    norm_b = math.sqrt(float(levels + 1)) / (2 * math.sin(math.pi / (2 * (levels + 1))))
+    a = t * 2 * math.sqrt(float(dimensions * side * side + levels * levels))
+    b, e = norm_b * math.sqrt(t / count), 1.0 / math.sqrt(float(count))
+    trace = a * a + b * b + e * e
+    return math.sqrt((trace + math.sqrt(max(0.0, trace * trace - 4 * a * a * e * e))) / 2)
+
+
+def interval_sums(field: Tensor, starts: Tensor, stops: Tensor) -> Tensor:
+    prefix = torch.cat([torch.zeros_like(field[..., :1]), field.cumsum(-1)], dim=-1)
+    return prefix.index_select(-1, stops) - prefix.index_select(-1, starts)
+
+
+def interval_ball(field: Tensor, radius: float) -> Tensor:
+    norm = torch.sqrt(torch.sum(field * field, dim=0))
+    # In particular a zero radius maps the origin to itself.
+    safe = torch.where(norm > 0, norm, torch.ones_like(norm))
+    return field * (radius / safe).clamp(max=1.0)
+
+
+def project_parabola(x: Tensor, t: Tensor, fidelity: Tensor) -> Tuple[Tensor, Tensor]:
+    """Projection onto t >= ||x||^2/4 - fidelity, independently at each site."""
+    length = torch.sqrt((x * x).sum(dim=0))
+    outside = t < .25 * (x * x).sum(dim=0) - fidelity
+    a = .5 * length
+    b = (2.0 / 3.0) * (1.0 - .5 * (t + fidelity))
+    negative_b = torch.sqrt((-b).clamp(min=0)).pow(3)
+    discriminant = torch.where(b < 0, (a-negative_b)*(a+negative_b), a*a+b.pow(3))
+    c = (a + torch.sqrt(discriminant.clamp(min=0))).pow(1.0 / 3.0)
+    safe_c = torch.where(c > 0, c, torch.ones_like(c))
+    q = b / safe_c
+    # c - b/c cancels at small positive roots. Rationalize the cubic there.
+    denominator = safe_c*safe_c + b + q*q
+    positive_root = torch.where(b >= 0, 2*a/denominator, c-q)
+    negative_b = torch.where(negative_b > 0, negative_b, torch.ones_like(negative_b))
+    angle = torch.acos((a/negative_b).clamp(-1.0, 1.0)) / 3
+    root = torch.where(discriminant < 0, 2*torch.sqrt((-b).clamp(min=0))*torch.cos(angle), positive_root)
+    safe_length = torch.where(length > 0, length, torch.ones_like(length))
+    projected_x = torch.where(outside, 2*root*x/safe_length, x)
+    projected_t = torch.where(outside, .25*(projected_x*projected_x).sum(dim=0)-fidelity, t)
+    return projected_x, projected_t
+
+
 class PrimalDual(torch.nn.Module):
-    def __init__(self) -> None:
+    """Scaled, unit-density FDR solver. The scripted and eager paths share each update."""
 
-        super(PrimalDual, self).__init__()
-        
-        torch.set_grad_enabled(False)
+    step_safety = 1.0
 
+    def __init__(self, step_safety: float = 1.0) -> None:
+        super().__init__()
+        if not 0 < step_safety <= 1:
+            raise ValueError("step_safety must lie in (0, 1]")
+        self.step_safety = float(step_safety)
 
-            
-    def forward(self, f, repeats, l, lmbda, nu, tol):
-    # Original __init__ code moved here (with 'self.' removed)
-    
-        # repeats = int(repeats_a)
-        # l = int(level_a)
-        # lmbda = float(lmbda_a)
-        # nu = float(nu_a)
-        
-        
-        dev = f.device
-        res = torch.tensor(1 / f.shape[0], device = dev)
-        
-        # initialize parameters
-        nrj = torch.tensor(0, device=dev) 
-        
-        # for scaling, multiply by res, not sqrt(res) bcs L^2 and we take the res out of the power
-        tauu = torch.tensor(  1.0 / torch.sqrt(4 * f.ndim) * res, device=dev)  # torch.tensor(  1.0 / 6.0 * res, device=dev) # *res
-        sigmap = torch.tensor( 1.0 / torch.sqrt(4 * f.ndim)  * res, device=dev) # torch.tensor( (1.0 / (3.0 + l))  * res, device=dev) # *res
-        sigmas = torch.tensor(1.0, device = dev) #  torch.tensor(1.0, device=dev) 
-        #sigmas = torch.tensor( 1.0 / torch.sqrt(4 * f.ndim)  * res, device=dev) 
-        
-        # acceleration
-        gamma_u = torch.tensor(1, device=dev, dtype=torch.float32)
-        gamma_mu = torch.tensor(1, device=dev, dtype=torch.float32)
-        theta_u = torch.tensor(1, device=dev, dtype=torch.float32)
-        theta_mu = torch.tensor(1, device=dev, dtype=torch.float32)
-        
-        # adaptive step sizes
-        alpha = torch.tensor(0.95, device=dev, dtype=torch.float32)
-        eta = torch.tensor(0.95, device=dev, dtype=torch.float32)
-
-        # get image dimensions
-        dim = len(f.size())
-        
-        dims = [f.size(dim = x) for x in range(dim)]
-        
-        # s1, s2, mu1, mu2, mun1, mun2, mubar1, mubar2 dimension
-        proj = int(l * (l - 1) / 2 + l)  # see eq. 4.24 in thesis -- number of non-local constraint sets
-        #tau = torch.tensor(1.0 / proj , device=dev) # (1.0 / (2.0 + (proj/4.0)))  
-        tau = torch.tensor( 1.0 / proj, device=dev) 
-        
-        # allocate memory on device
-        u = torch.zeros(dims + [int(l)], dtype=torch.float32, device=dev)
-        ubar = torch.zeros(dims + [int(l)], dtype=torch.float32, device=dev)
-        px = torch.zeros([dim-1] + dims + [int(l)], dtype=torch.float32, device=dev)
-        pt = torch.zeros(dims + [int(l)], dtype=torch.float32, device=dev)
-        # p1 = torch.zeros(h, w, nc, l, dtype=torch.float32)
-        # p2 = torch.zeros(h, w, nc, l, dtype=torch.float32)
-        # p3 = torch.zeros(h, w, nc, l, dtype=torch.float32)
-        sx = torch.zeros([dim-1] + dims + [proj], dtype=torch.float32, device=dev)
-        mux = torch.zeros([dim-1] + dims + [proj], dtype=torch.float32, device=dev)
-        mubarx = torch.zeros([dim-1] + dims + [proj], dtype=torch.float32, device=dev)
-        # s1 = torch.zeros(h, w, nc, proj, dtype=torch.float32)
-        # s2 = torch.zeros(h, w, nc, proj, dtype=torch.float32)
-        # mu1 = torch.zeros(h, w, nc, proj, dtype=torch.float32)
-        # mu2 = torch.zeros(h, w, nc, proj, dtype=torch.float32)
-        # mubar1 = torch.zeros(h, w, nc, proj, dtype=torch.float32)
-        # mubar2 = torch.zeros(h, w, nc, proj, dtype=torch.float32)
-
-        
-        # remove brackets in all lines above as in the first one
-        
-        
-        # initialize tensors    
-        u = torch.stack([f] * l, dim=-1).detach()
-        ubar = u.clone().detach()
-        
-        # preallocate indices for parabola projection set
-        k_indices = torch.jit.annotate(Dict[int, List[int]], {})
-        for z in range(int(l)):
-            K = 0
-            K_indices : List[int] = []
-            for k1 in range(0,int(l)): # l - z
-                for k2 in range(int(k1),int(l)):
-                    if ((z <= k2) and (z >= k1)): 
-                        K_indices.append(K)
-                    K += 1
-            k_indices[z] = K_indices
-        
-        # preallocate indices for helper variable
-        k1_k2_combinations =  torch.jit.annotate(List[Tensor], []) # TODO: take this out of loops
-        for k1 in range(int(l)):
-            for k2 in range(int(k1), int(l)):
-                k1_k2_combinations.append(torch.tensor([k1, k2]).unsqueeze(0))
-
-        k1_k2_combinations = torch.cat(k1_k2_combinations, dim=0)
-            
-        h_un = torch.zeros_like(u)  # Initialize h_un with a default value (None in this case)
-        h_u = torch.zeros_like(u)  # Initialize h_u with a default value (None in this case)
-        nrj = torch.tensor([0], device = dev)  # Initialize nrj with a default value (None in this case)
-        it_total = 0
-        
-        # START loop
-        for it in range(int(repeats)):
-            
-            u_old, mux_old, px_old, pt_old, sx_old = u.clone(), mux.clone(), px.clone(), pt.clone(), sx.clone()
-
-            px, pt = self.parabola(px, pt, ubar, mux, lmbda, l, f, k_indices, dims, sigmap) # project onto parabola (set K)s
-
-            sx = self.l2projection(sx, mubarx, sigmas, nu) # project onto l2 ball 
-            #print("l2projection: ", time.time() - start)
-            #start = time.time()
-            mux, mubarx = self.mu(px, sx, mux, proj, l, k1_k2_combinations, tau) # constrain lagrange multipliers
-            #print("mu: ", time.time() - start)
-            if it%10 == 0:
-                h_un = u.detach().clone()
-            u, ubar = self.clipping(px, pt, u, tauu, dims, l) # project onto set C
-            if it%10 == 0:
-                h_u = u.detach().clone()
-                nrj = self.energy(h_u, h_un) # .detach().item() # calculate energy
-                if torch.le(nrj/(torch.prod(torch.tensor(dims[:-1] + [int(l)]))), tol): # if tolerance criterion is met,
-                    it_total = it
+    def forward(self, f: Tensor, repeats: int, l: int, lmbda: float, nu: float, tol: float):
+        if f.dim() < 2 or f.numel() == 0 or l < 2 or repeats < 1:
+            raise ValueError("Provide a spatial grid, at least two levels and a positive iteration count")
+        if nu < 0 or lmbda < 0 or tol < 0:
+            raise ValueError("lambda, nu and tolerance must be nonnegative")
+        # The numeric parameters of the original six-argument eager API can
+        # also be passed as scalar tensors (the public FDR entry point does so).
+        f = f.detach()
+        levels, cap = int(l), int(repeats)
+        n, dim = f.size(0), f.dim()-1
+        safety = min(self.step_safety, .99/step_bound(n, dim, levels))
+        spatial_step = safety / (2*math.sqrt(float(dim+1))*n)
+        count = levels*(levels+1)//2
+        radius = levels*float(nu)
+        dims = list(f.shape)
+        u = f.detach().unsqueeze(-1).expand(dims+[levels]).clone()
+        u_bar = u
+        px = torch.zeros([dim]+dims+[levels], device=f.device, dtype=f.dtype)
+        pt = torch.zeros_like(u)
+        slack = torch.zeros([dim]+dims+[count], device=f.device, dtype=f.dtype)
+        mu = torch.zeros_like(slack)
+        mu_bar = mu
+        # Construct integer intervals on CPU for older MPS backends.
+        pairs = torch.triu_indices(levels, levels, device="cpu").to(f.device)
+        starts, stops = pairs[0], pairs[1]+1
+        nodes = torch.arange(levels, device=f.device)
+        incidence = ((starts.unsqueeze(1) <= nodes) & (nodes < stops.unsqueeze(1))).to(f.dtype)
+        fidelity = float(lmbda) * ((nodes.to(f.dtype)+1)/levels-f.unsqueeze(-1)).square()
+        change = torch.zeros((), device=f.device, dtype=f.dtype)
+        iterations = cap
+        for it in range(cap):
+            px, pt = self.dual_update(px, pt, u_bar, mu_bar, incidence, fidelity, spatial_step)
+            slack = interval_ball(slack - safety*mu_bar, radius)
+            delta = (safety/count) * (slack - interval_sums(px, starts, stops))
+            mu_bar = mu + 2.0*delta
+            mu = mu + delta
+            previous = u
+            u, u_bar = self.primal_update(px, pt, u, spatial_step)
+            if it % 10 == 0 or it+1 == cap:
+                change = torch.abs(u-previous).sum()
+                if change/u.numel() <= float(tol) and self.stationary(
+                        u, px, pt, slack, mu, starts, stops, incidence, fidelity, radius, float(tol)):
+                    iterations = it
                     break
-                
-            #tauu, tau, sigmap, sigmas = self.updateStepSizes(tauu, tau, sigmap, sigmas, gamma_u, gamma_mu, theta_u, theta_mu) # update step sizes
+        return u, change, change/u.numel(), iterations
 
- 
-            # if torch.equal(iter, repeats-1):
-            #     print("debug")
-        
-        return (u, nrj, nrj/(torch.prod(torch.tensor(dims[:-1] + [int(l)]))), it_total)
+    def dual_update(self, px: Tensor, pt: Tensor, u: Tensor, mu: Tensor,
+                    incidence: Tensor, fidelity: Tensor, step: float) -> Tuple[Tensor, Tensor]:
+        dx = self.forward_differences(u, px.size(0))
+        dt = torch.cat((u[..., 1:]-u[..., :-1], torch.zeros_like(u[..., :1])), dim=-1)*u.size(-1)
+        # Flatten the batch for backends that only support a 2D matrix product.
+        adjoint = (mu.reshape(-1, incidence.size(0)) @ incidence).reshape_as(px)
+        return project_parabola(px+step*(dx+adjoint), pt+step*dt, fidelity)
+
+    def primal_update(self, px: Tensor, pt: Tensor, u: Tensor, step: float) -> Tuple[Tensor, Tensor]:
+        dx = self.backward_differences(px, px.size(0)).sum(dim=0)
+        zero = torch.zeros_like(pt[..., :1])
+        dt = (torch.cat([pt[..., :-1], zero], -1) - torch.cat([zero, pt[..., :-1]], -1))*pt.size(-1)
+        updated = (u+step*(dx+dt)).clamp(0.0, 1.0)
+        updated[..., 0] = 1.0
+        updated[..., -1] = 0.0
+        return updated, 2.0*updated-u
+
+    def stationary(self, u: Tensor, px: Tensor, pt: Tensor, slack: Tensor, mu: Tensor,
+                   starts: Tensor, stops: Tensor, incidence: Tensor, fidelity: Tensor,
+                   radius: float, tol: float) -> bool:
+        threshold = math.sqrt(tol)
+        difference = interval_sums(px, starts, stops)-slack
+        if torch.sqrt((difference*difference).sum(dim=0)).max() > (1+radius)*threshold:
+            return False
+        if (u[..., 1:]-u[..., :-1]).max() > threshold:
+            return False
+        xp, tp = self.dual_update(px, pt, u, mu, incidence, fidelity, 1.0)
+        sp = interval_ball(slack-mu, radius)
+        up, _ = self.primal_update(px, pt, u, 1.0)
+        for new, old in [(xp, px), (tp, pt), (sp, slack), (up, u)]:
+            if (new-old).abs().max() > (1+old.abs().max())*threshold:
+                return False
+        return True
         
     def updateStepSizes(self, tau_u, tau, sigma_p, sigma_s, gamma_u, gamma_mu, theta_u, theta_mu):
         theta_u = 1 / torch.sqrt(2*gamma_u*tau_u)
@@ -187,68 +195,11 @@ class PrimalDual(torch.nn.Module):
     #@torch.jit.script
     def parabola(self, px, pt, ubar, mux, lmbda, l, f, k_indices : Dict[int, List[int]], dims : List[int], sigmap):
 
-        # take forward differences
-        ux = self.forward_differences(ubar, len(dims)-1)
-        # u1 = torch.cat((torch.diff(ubar[...], dim=0), torch.zeros_like(ubar[:1,...], dtype = torch.float16)), dim = 0)
-        # (u1 == ux[0,...]).all()
-        ut = (torch.cat((torch.diff(ubar, dim=-1), \
-                         torch.zeros_like(ubar[...,:1], dtype = torch.float32)), dim = -1)) / (1 / ubar.shape[-1])  #/ (1 / ubar.shape[-1])
-        
-        musum_list = []
-
-        for z in range(int(l)):
-
-            #musum_temp = mux[..., k_indices[z]].sum(dim=-1)
-            musum_temp = torch.index_select(mux, -1, torch.tensor(k_indices[z],  device = px.device)).sum(dim=-1)
-
-            musum_list.append(musum_temp)
-
-        musum = torch.stack(musum_list, dim=-1)
-
-        # Calculate u1, u2, and u3 using the formulas in the original function
-    
-        ux = px + sigmap * (ux + musum)
-        ut = pt + sigmap * ut
-        
-        img = torch.stack([f] * l, dim=-1)
-
-        # Calculate B using bound and broadcast it along the last dimension
-        k = torch.arange(1, int(l)+1, dtype=torch.int64, device = px.device).repeat(dims + [1])
-        
-        B = self.bound(ux, lmbda, k, l, img) # chcked
-        
-        # Use mask to select elements where u3 < B
-        mask = (ut < B)
-
-        xx = ux.detach().clone() #[mask]
-        xt = ut.detach().clone() #[mask]
-        
-        y = xt + lmbda * torch.pow(k / l - img, 2)
-        norm = torch.sqrt(torch.sum(xx * xx, dim=0))
-
-        #v = torch.zeros_like(norm)
-        a = 2.0 * 0.25 * norm
-        b = 2.0 / 3.0 * (1.0 - 2.0 * 0.25 * y)
-        d = torch.zeros_like(a)
-        mask_b = (b < 0)
-        d = torch.where(mask_b, (a - torch.pow(torch.sqrt(-b), 3.0)) * (a + torch.pow(torch.sqrt(-b), 3.0)), 
-                    torch.pow(a,2.0) + torch.pow(b, 3.0))
-        c = torch.pow((a + torch.sqrt(d)), 1.0/3.0)
-        mask1 = (d >= 0) & (c == 0)
-        mask3 = (d < 0)
-        
-        v = torch.where(mask1, 0.0, 
-                        torch.where(mask3,  2.0 * torch.sqrt(-b) * torch.cos(1.0 / 3.0 * torch.acos(a /  (torch.pow(torch.sqrt(-b), 3)))),
-                                     c - b / c))
-
-        px = torch.where(torch.stack([mask] * ux.size(dim = 0), dim=0), 
-                         torch.where(torch.stack([norm] * ux.size(dim = 0), dim=0) == 0, 0.0, 
-                                     (v / (2.0*0.25) ) * xx / norm),
-                         ux)
-        pt = torch.where(mask, self.bound(px, lmbda, k, l, img),
-                         ut)
-        
-        return px, pt
+        musum = torch.stack([mux[..., k_indices[z]].sum(-1) for z in range(int(l))], dim=-1)
+        dx = self.forward_differences(ubar, len(dims)-1)
+        dt = torch.cat([ubar[...,1:]-ubar[...,:-1], torch.zeros_like(ubar[...,:1])], -1)*int(l)
+        nodes = torch.arange(1, int(l)+1, dtype=f.dtype, device=f.device)/int(l)
+        return project_parabola(px+sigmap*(dx+musum), pt+sigmap*dt, lmbda*(nodes-f.unsqueeze(-1)).square())
  
 
         
@@ -267,13 +218,9 @@ class PrimalDual(torch.nn.Module):
         
     #@torch.jit.script
     def l2projection(self, sx, mubarx, sigmas, nu):
-        mx = sx - sigmas * mubarx
-        norm = torch.sqrt(torch.sum(mx * mx, dim = 0))
-        
-        mask = (norm > (nu ) * sx.shape[1] ) # * sx.shape[1]
-        sx = torch.where(torch.stack([mask] * mx.size(dim = 0), dim=0), mx * nu / norm, mx) # TODO sx.shape[1]?
-        
-        return sx
+        # Last axis contains S(S+1)/2 intervals.
+        levels = int((math.sqrt(8.0*sx.size(-1)+1.0)-1.0)/2.0)
+        return interval_ball(sx - sigmas*mubarx, levels*float(nu))
 
     #@torch.jit.script
     def mu(self, px, sx, mux, proj : int, l : int, k1_k2_combinations, tau : float):
