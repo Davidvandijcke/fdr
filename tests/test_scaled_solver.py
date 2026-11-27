@@ -64,6 +64,15 @@ def test_public_fit_returns_surface_and_jump_fields(scripted, monkeypatch):
     assert np.isfinite(fit["u"]).all()
 
 
+def test_default_one_dimensional_conformal_run(monkeypatch):
+    import FDR.main as main
+    monkeypatch.setattr(main, "setDevice", lambda: torch.device("cpu"))
+    x = np.linspace(0,1,251)
+    fit = FDR(x+.3*(x>.5),x,resolution=.125,level=8,iter=35,pick_nu="MS").run()
+    assert fit["u"].shape==fit["u_lower"].shape==fit["u_upper"].shape==fit["J_lower"].shape==(8,)
+    assert np.all(fit["u_lower"]<=fit["u_upper"])
+
+
 @pytest.mark.parametrize("dimension", [1, 2, 3])
 def test_against_small_independent_conic_problem(dimension):
     cp = pytest.importorskip("cvxpy")
