@@ -133,7 +133,8 @@ def SURE(model, maxiter = 100, R = 1, tuner = False, eps = 0.01,
     sigma_sq = waveletDenoising(y=model.grid_y, wavelet=wavelet)
     solver_options = dict(scaled=model.scaled, scripted=model.scripted,
                           legacy_jump_projection=getattr(model, "legacy_jump_projection", True),
-                          step_safety=getattr(model, "step_safety", 1.0))
+                          step_safety=getattr(model, "step_safety", 1.0),
+                          fused_intervals=getattr(model, "fused_intervals", False))
     if probe_seed is None:
         probe_seed = torch.randint(2**31-1, (), device="cpu").item()
 

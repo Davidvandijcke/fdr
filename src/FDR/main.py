@@ -46,6 +46,9 @@ class FDR():
     legacy_jump_projection : bool
         Use the historical scaled solver for replaying archived fits. The
         default uses a common radius for testing and projecting every interval.
+    fused_intervals : bool
+        Fuse the interval projection and multiplier update on CUDA with
+        Triton. Defaults to False. Available for the eager float32 solver.
     step_safety : float
         Multiplier in (0, 1] for the corrected solver's step sizes. The
         coupled operator bound can reduce it further on unequal grids.
@@ -84,7 +87,7 @@ class FDR():
                  lmbda : float=1, nu : float=0.01, iter : int=1000, tol : float=5e-5, rectangle : bool=False, 
                  image : bool=False, resolution : float=None, grid_n : np.array=None,
                  scaled=True, scripted=False, average=False, CI=True, alpha=0.05, num_cpus=1, num_gpus=1,
-                 legacy_jump_projection=False, step_safety=1.0) -> None:
+                 legacy_jump_projection=False, step_safety=1.0, fused_intervals=False) -> None:
 
         self.device = setDevice()
         torch.set_grad_enabled(False)
@@ -124,6 +127,7 @@ class FDR():
         self.scaled = scaled
         self.legacy_jump_projection = legacy_jump_projection
         self.step_safety = step_safety
+        self.fused_intervals = fused_intervals
         
         self.average = average
 
@@ -139,7 +143,7 @@ class FDR():
         self.nu = nu
         self.pick_nu = pick_nu
         
-        self.model = make_solver(self.device, self.scaled, self.scripted, legacy_jump_projection, step_safety)
+        self.model = make_solver(self.device, self.scaled, self.scripted, legacy_jump_projection, step_safety, fused_intervals)
         # TODO: exclude duplicate points (there shouldnt be any cause the variables are assumed to be continuous but anyway)
         
     def normalizeData(self, rectangle, grid_n, X):
@@ -496,7 +500,7 @@ class FDR():
         model = FDR(Y_1, X_1, level = self.level, lmbda = self.lmbda, nu = self.nu, iter = self.iter, tol = self.tol, resolution=self.resolution,
             pick_nu = self.pick_nu, scaled = self.scaled, scripted = self.scripted, rectangle = self.rectangle, average=self.average, CI=False, 
             grid_n = self.grid_n, legacy_jump_projection=getattr(self, "legacy_jump_projection", True),
-            step_safety=getattr(self, "step_safety", 1.0))
+            step_safety=getattr(self, "step_safety", 1.0), fused_intervals=getattr(self, "fused_intervals", False))
 
         self.u_cs = model.run()['u']
 
@@ -507,7 +511,7 @@ class FDR():
         model_temp = FDR(Y_2, X_2, level = self.level, lmbda = self.lmbda, nu = self.nu, iter = self.iter, tol = self.tol, resolution=self.resolution,
             pick_nu = self.pick_nu, scaled = self.scaled, scripted = self.scripted, rectangle = self.rectangle, average=self.average, CI=False,
             grid_n = self.grid_n, legacy_jump_projection=getattr(self, "legacy_jump_projection", True),
-            step_safety=getattr(self, "step_safety", 1.0))
+            step_safety=getattr(self, "step_safety", 1.0), fused_intervals=getattr(self, "fused_intervals", False))
 
 
         grid_x_reshaped = model.grid_x.reshape(-1, model.grid_x.shape[-1])[:,::-1]
@@ -608,7 +612,7 @@ class FDR():
                 model_temp = FDR(Y_star, X_star, level = model.level, lmbda = model.lmbda, nu = model.nu, iter = model.iter, tol = model.tol, resolution=model.resolution,
                     pick_nu = model.pick_nu, scaled = model.scaled, scripted = model.scripted, rectangle = model.rectangle, average=model.average, CI=False, 
                     grid_n = model.grid_n, legacy_jump_projection=getattr(model, "legacy_jump_projection", True),
-                    step_safety=getattr(model, "step_safety", 1.0))
+                    step_safety=getattr(model, "step_safety", 1.0), fused_intervals=getattr(model, "fused_intervals", False))
                 results = model_temp.run()
                 print(f"Done with trial {s}")
                 res[j,...] = results['u'] 
