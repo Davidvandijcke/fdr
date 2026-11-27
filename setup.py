@@ -1,16 +1,17 @@
 from setuptools import setup, find_packages
-from setuptools.command.install import install
-import os
-import subprocess
+from setuptools.command.build_py import build_py
 
-class PostInstallCommand(install):
-    """Post-installation for installation mode."""
-    def run(self):
-        install.run(self)
-        subprocess.run(["python3", "post_install.py"], check=True)
+class BuildFromSource(build_py):
+    def finalize_options(self):
+        super().finalize_options()
+        # The historical repository contains build/lib. Archive checkouts
+        # can give those copies the same timestamp as the package sources.
+        self.force = True
         
 install_requires = [
             'numpy',
+            'torch',
+            'matplotlib',
             #"light-the-torch==0.3.5",
             'scikit-learn',
             'scipy',
@@ -30,6 +31,6 @@ setup(
         'FDR': ['models/*.pt'],
     },
         cmdclass={
-        'install': PostInstallCommand,
+        'build_py': BuildFromSource,
     },
 )
