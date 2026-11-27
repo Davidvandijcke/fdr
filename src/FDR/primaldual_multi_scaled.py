@@ -57,12 +57,19 @@ class PrimalDual(torch.nn.Module):
     """Scaled, unit-density FDR solver. The scripted and eager paths share each update."""
 
     step_safety = 1.0
+    fused_intervals = False
 
-    def __init__(self, step_safety: float = 1.0) -> None:
+    def __init__(self, step_safety: float = 1.0, fused_intervals: bool = False) -> None:
         super().__init__()
         if not 0 < step_safety <= 1:
             raise ValueError("step_safety must lie in (0, 1]")
         self.step_safety = float(step_safety)
+        self.fused_intervals = fused_intervals
+
+    @torch.jit.unused
+    def fused_update(self, px, slack, mu, mu_bar, starts, stops, radius, sigma, tau):
+        from ._cuda_intervals import update
+        return update(px, slack, mu, mu_bar, starts, stops, radius, sigma, tau)
 
     def forward(self, f: Tensor, repeats: int, l: int, lmbda: float, nu: float, tol: float):
         if f.dim() < 2 or f.numel() == 0 or l < 2 or repeats < 1:
@@ -72,6 +79,8 @@ class PrimalDual(torch.nn.Module):
         # The numeric parameters of the original six-argument eager API can
         # also be passed as scalar tensors (the public FDR entry point does so).
         f = f.detach()
+        if self.fused_intervals and (torch.jit.is_scripting() or not f.is_cuda or f.dtype != torch.float32):
+            raise ValueError("fused_intervals requires the eager float32 CUDA solver")
         levels, cap = int(l), int(repeats)
         n, dim = f.size(0), f.dim()-1
         safety = min(self.step_safety, .99/step_bound(n, dim, levels))
@@ -96,10 +105,13 @@ class PrimalDual(torch.nn.Module):
         iterations = cap
         for it in range(cap):
             px, pt = self.dual_update(px, pt, u_bar, mu_bar, incidence, fidelity, spatial_step)
-            slack = interval_ball(slack - safety*mu_bar, radius)
-            delta = (safety/count) * (slack - interval_sums(px, starts, stops))
-            mu_bar = mu + 2.0*delta
-            mu = mu + delta
+            if not torch.jit.is_scripting() and self.fused_intervals:
+                slack, mu, mu_bar = self.fused_update(px,slack,mu,mu_bar,starts,stops,radius,safety,safety/count)
+            else:
+                slack = interval_ball(slack - safety*mu_bar, radius)
+                delta = (safety/count) * (slack - interval_sums(px, starts, stops))
+                mu_bar = mu + 2.0*delta
+                mu = mu + delta
             previous = u
             u, u_bar = self.primal_update(px, pt, u, spatial_step)
             if it % 10 == 0 or it+1 == cap:
